@@ -98,6 +98,29 @@ def setup(bot):
         
         # Nécessaire pour que les commandes fonctionnent également
         await bot.process_commands(message)
+
+    @bot.event
+        async def on_message(message):
+        """Événement déclenché à chaque message"""
+        # Ignorer les messages du bot lui-même
+        if message.author == bot.user:
+    return
+    
+    # Liste des commandes à ignorer de LanorTrad
+    ignored_commands = ["!Shiki", "!Yomi", "!Kingo", "!Rin", "!Mitsuo", "!tiktok", "!twitter"]
+    
+    # Vérifier si le message est du bot LanorTrad et contient une commande à ignorer
+    if message.author.name == "LanorTrad" and any(message.content.startswith(cmd) for cmd in ignored_commands):
+        return
+    
+    # Vérifier si le message est dans le canal spécifique
+    if message.channel.id == CHANNELS["lanortrad_channel"]:
+        role = message.guild.get_role(ROLES["lanortrad_ping"])
+        if role:
+            await message.channel.send(f"{role.mention}")
+    
+    # Nécessaire pour que les commandes fonctionnent également
+    await bot.process_commands(message)
     
     @bot.event
     async def on_command_error(ctx, error):
