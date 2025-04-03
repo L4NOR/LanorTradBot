@@ -86,11 +86,15 @@ def setup(bot):
         if message.author == bot.user:
             return
         
-        # Liste des commandes à ignorer de LanorTrad
+        # Liste des commandes à ignorer pour LanorTrad
         ignored_commands = ["!Shiki", "!Yomi", "!Kingo", "!Rin", "!Mitsuo", "!tiktok", "!twitter"]
         
-        # Vérifier si le message est du bot LanorTrad et contient une commande à ignorer
+        # Vérifier si le message commence par une commande ignorée et provient de LanorTrad
         if message.author.name == "LanorTrad" and any(message.content.startswith(cmd) for cmd in ignored_commands):
+            return  # Ne pas traiter ces commandes spécifiques
+        
+        # Ignorer les autres messages du bot LanorTrad
+        if message.author.name == "LanorTrad":
             return
         
         # Vérifier si le message est dans le canal spécifique
