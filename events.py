@@ -86,22 +86,19 @@ def setup(bot):
         if message.author == bot.user:
             return
         
-        # Liste des commandes à ignorer pour LanorTrad
-        ignored_commands = ["!Shiki", "!Yomi", "!Kingo", "!Rin", "!Mitsuo", "!tiktok", "!twitter"]
-        
-        # Vérifier si le message commence par une commande ignorée et provient de LanorTrad
-        if message.author.name == "LanorTrad" and any(message.content.startswith(cmd) for cmd in ignored_commands):
-            return  # Ne pas traiter ces commandes spécifiques
-        
-        # Ignorer les autres messages du bot LanorTrad
-        if message.author.name == "LanorTrad":
-            return
-        
         # Vérifier si le message est dans le canal spécifique
         if message.channel.id == CHANNELS["lanortrad_channel"]:
             role = message.guild.get_role(ROLES["lanortrad_ping"])
             if role:
                 await message.channel.send(f"{role.mention}")
+        
+        # Vérifier si c'est une des commandes autorisées pour LanorTrad
+        allowed_commands = ["!help", "!info", "!userinfo", "!avatar", "!ping", "!poll"]
+        is_allowed_command = any(message.content.startswith(cmd) for cmd in allowed_commands)
+        
+        # Si c'est LanorTrad et ce n'est pas une commande autorisée, ne pas traiter la commande
+        if message.author.name == "LanorTrad" and not is_allowed_command:
+            return
         
         # Nécessaire pour que les commandes fonctionnent également
         await bot.process_commands(message)
