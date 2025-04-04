@@ -14,69 +14,6 @@ bump_scores = {}
 def setup(bot):
     # Supprimer la commande d'aide par défaut
     bot.remove_command('help')
-    
-    @bot.event
-    async def on_message(message):
-        """Événement déclenché à chaque message pour détecter les bumps"""
-        # ID du canal où les bumps sont comptabilisés
-        bump_channel_id = 1332088539076104192
-        exclusive_role_id = 1357803642177978480
-
-        # Vérifier si le message est dans le canal de bump
-        if message.channel.id == bump_channel_id and message.content.strip() == "/bump":
-            # Ajouter ou incrémenter le score de l'utilisateur
-            if message.author.id not in bump_scores:
-                bump_scores[message.author.id] = 0
-            bump_scores[message.author.id] += 1
-
-            # Envoyer un message de confirmation
-            await message.channel.send(f"🎉 {message.author.mention} a effectué un bump ! Total : **{bump_scores[message.author.id]}** bumps.")
-
-            # Vérifier si l'utilisateur a le plus de bumps
-            max_bumps = max(bump_scores.values())
-            if bump_scores[message.author.id] == max_bumps:
-                guild = message.guild
-                exclusive_role = guild.get_role(exclusive_role_id)
-
-                # Retirer le rôle des autres membres
-                for member_id in bump_scores:
-                    member = guild.get_member(member_id)
-                    if member and exclusive_role in member.roles and member_id != message.author.id:
-                        await member.remove_roles(exclusive_role)
-
-                # Ajouter le rôle à l'utilisateur ayant le plus de bumps
-                await message.author.add_roles(exclusive_role)
-                await message.channel.send(f"🏆 {message.author.mention} est maintenant le **Champion des Bumps** et a reçu le rôle exclusif !")
-
-        # Nécessaire pour que les commandes fonctionnent également
-        await bot.process_commands(message)
-
-    @bot.command()
-    async def bump_leaderboard(ctx):
-        """Affiche le classement des bumps"""
-        if not bump_scores:
-            await ctx.send("📊 Aucun bump n'a encore été enregistré.")
-            return
-
-        # Trier les utilisateurs par nombre de bumps
-        sorted_scores = sorted(bump_scores.items(), key=lambda x: x[1], reverse=True)
-
-        # Créer un embed pour afficher le classement
-        embed = discord.Embed(
-            title="📊 Classement des Bumps",
-            description="Voici le classement des membres ayant effectué le plus de bumps :",
-            color=discord.Color.gold()
-        )
-
-        for i, (user_id, score) in enumerate(sorted_scores, start=1):
-            user = ctx.guild.get_member(user_id)
-            embed.add_field(
-                name=f"#{i} - {user.name if user else 'Utilisateur inconnu'}",
-                value=f"**{score}** bumps",
-                inline=False
-            )
-
-        await ctx.send(embed=embed)
 
     @bot.command()
     async def help(ctx):
@@ -106,8 +43,7 @@ def setup(bot):
                 "• `!userinfo` - Détails du profil utilisateur\n"
                 "• `!avatar` - Afficher l'avatar\n"
                 "• `!ping` - Vérifier la latence\n"
-                "• `!poll` - Créer un sondage\n"
-                "• `!bump_leaderboard` - Afficher le classement des bumps"
+                "• `!poll` - Créer un sondage\n" 
             ),
             inline=False
         )
