@@ -5,6 +5,16 @@ import datetime
 from config import CHANNELS, MESSAGES, ROLES, COLORS
 import logging
 
+CHANNELS = {
+    # Autres canaux...
+    "lanortrad_channel": 1326357401099702393
+}
+
+ROLES = {
+    # Autres rôles...
+    "lanortrad_ping": 1332446295683633304
+}
+
 def setup(bot):
     @bot.event
     async def on_ready():
