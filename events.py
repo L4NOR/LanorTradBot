@@ -86,11 +86,11 @@ def setup(bot):
         if message.author == bot.user:
             return
         
-    # Vérifier si le message est dans le canal spécifique
-    if message.channel.id == 1326357401099702393:
-        role = message.guild.get_role(1332446295683633304)
-        if role:
-            await message.channel.send(f"{role.mention}")
+        # Vérifier si le message est dans le canal spécifique
+        if message.channel.id == CHANNELS["lanortrad_channel"]:
+            role = message.guild.get_role(ROLES["lanortrad_ping"])
+            if role:
+                await message.channel.send(f"{role.mention}")
         
         # Vérifier si c'est une des commandes autorisées pour LanorTrad
         allowed_commands = ["!help", "!info", "!userinfo", "!avatar", "!ping", "!poll"]
