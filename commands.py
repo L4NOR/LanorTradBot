@@ -29,6 +29,7 @@ def setup(bot):
     !avatar   - Afficher l'avatar
     !ping     - Vérifier la latence
     !poll     - Créer un sondage
+    !manga    - Rechercher les informations d'un manga 
     ```
     """,
             inline=False
