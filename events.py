@@ -86,11 +86,29 @@ def setup(bot):
         if message.author == bot.user:
             return
         
-        # Vérifier si le message est dans le canal spécifique
+        # Vérifier si le message est dans le canal des partenaires
         if message.channel.id == CHANNELS["partenaires_channel"]:
-            role = message.guild.get_role(ROLES["partenaires_ping"])
-            if role:
-                await message.channel.send(f"{role.mention}")
+            # Ne pas pinger pour les messages du bot lui-même ou de LanorTrad
+            if message.author.name != "LanorTrad":
+                try:
+                    role = message.guild.get_role(ROLES["partenaires_ping"])
+                    if role:
+                        logging.info(f"Envoi d'un ping pour le rôle {role.name} dans le canal {message.channel.name}")
+                        await message.channel.send(f"{role.mention}")
+                except Exception as e:
+                    logging.error(f"Erreur lors de l'envoi du ping pour les partenaires : {e}")
+        
+        # Vérifier aussi le canal LanorTrad pour la rétrocompatibilité
+        elif message.channel.id == CHANNELS.get("lanortrad_channel"):
+            # Ne pas pinger pour les messages du bot lui-même ou de LanorTrad
+            if message.author.name != "LanorTrad":
+                try:
+                    role = message.guild.get_role(ROLES.get("lanortrad_ping"))
+                    if role:
+                        logging.info(f"Envoi d'un ping pour le rôle {role.name} dans le canal {message.channel.name}")
+                        await message.channel.send(f"{role.mention}")
+                except Exception as e:
+                    logging.error(f"Erreur lors de l'envoi du ping pour LanorTrad : {e}")
         
         # Vérifier si c'est une des commandes autorisées pour LanorTrad
         allowed_commands = ["!help", "!info", "!userinfo", "!avatar", "!ping", "!poll"]
