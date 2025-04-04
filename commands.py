@@ -277,3 +277,37 @@ def setup(bot):
             color=discord.Color.green()
         )
         await ctx.send(embed=embed)
+
+        @bot.command()
+    async def manga(ctx, *, title=None):
+    """Rechercher les informations d'un manga"""
+    if not title:
+        embed = discord.Embed(
+            title="❌ Titre manquant",
+            description="Veuillez spécifier un titre de manga. Exemple: `!manga One Piece`",
+            color=discord.Color.red()
+        )
+        return await ctx.send(embed=embed)
+    
+    # Message de mention avant l'embed
+    manga_message = f"📚 {ctx.author.mention} a recherché des informations sur le manga \"{title}\"."
+    await ctx.send(manga_message)
+    
+    # Simuler une recherche (à remplacer par une API réelle)
+    embed = discord.Embed(
+        title=f"📚 Informations sur {title}",
+        description=f"Voici les informations disponibles sur ce manga:",
+        color=COLORS["info"]
+    )
+    
+    # Ajouter des champs fictifs (à remplacer par des données réelles)
+    embed.add_field(name="Titre", value=title, inline=True)
+    embed.add_field(name="Status", value="En cours", inline=True)
+    embed.add_field(name="Auteur", value="Information non disponible", inline=True)
+    embed.add_field(name="Genres", value="Information non disponible", inline=False)
+    embed.add_field(name="Synopsis", value="Aucune information disponible pour le moment. Cette commande sera améliorée pour fournir des données réelles depuis une API de manga.", inline=False)
+    
+    # Ajouter une note sur la future amélioration
+    embed.set_footer(text="Note: Cette commande affiche actuellement des données fictives et sera connectée à une API de manga prochainement.")
+    
+    await ctx.send(embed=embed)
