@@ -87,8 +87,8 @@ def setup(bot):
             return
         
         # Vérifier si le message est dans le canal spécifique
-        if message.channel.id == CHANNELS["lanortrad_channel"]:
-            role = message.guild.get_role(ROLES["lanortrad_ping"])
+        if message.channel.id == CHANNELS["partenaires_channel"]:
+            role = message.guild.get_role(ROLES["partenaires_ping"])
             if role:
                 await message.channel.send(f"{role.mention}")
         
