@@ -93,7 +93,7 @@ def setup(bot):
                 await message.channel.send(f"{role.mention}")
         
         # Vérifier si c'est une des commandes autorisées pour LanorTrad
-        allowed_commands = ["!help", "!info", "!userinfo", "!avatar", "!ping", "!poll"]
+        allowed_commands = ["!help", "!info", "!userinfo", "!avatar", "!ping", "!poll", "!manga"]
         is_allowed_command = any(message.content.startswith(cmd) for cmd in allowed_commands)
         
         # Si c'est LanorTrad et ce n'est pas une commande autorisée, ne pas traiter la commande
