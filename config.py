@@ -25,7 +25,7 @@ CHANNELS = {
     "general": 1326230396903362759,
     "boost": 1326212624504848394,
     "chapter_announcements": 1326213946188890142,
-    "lanortrad_channel": 1326357401099702393,
+    "partenaires_channel": 1326357401099702393,
     "mod_contact": 1332088539076104192
 }
 
@@ -42,7 +42,7 @@ ROLES = {
     "catenaccio": 1332429989085184010,
     "uzugami": 1332430247894847529,
     "manga_default": 1326795946134343692,
-    "lanortrad_ping": 1332446295683633304
+    "partenaires_ping": 1332446295683633304
 }
 
 # Port du serveur web
