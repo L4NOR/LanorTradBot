@@ -5,20 +5,6 @@ from datetime import datetime
 from config import CHANNELS, ROLES, COLORS
 import logging
 import asyncio
-import json
-import os
-
-def save_tasks():
-    """Sauvegarde l'état des tâches dans un fichier JSON"""
-    with open('tasks.json', 'w', encoding='utf-8') as f:
-        json.dump(etat_taches_global, f, ensure_ascii=False, indent=4)
-
-def load_tasks():
-    """Charge l'état des tâches depuis le fichier JSON"""
-    global etat_taches_global
-    if os.path.exists('tasks.json'):
-        with open('tasks.json', 'r', encoding='utf-8') as f:
-            etat_taches_global = json.load(f)
 
 # Dictionnaire pour stocker les chapitres planifiés
 chapitres_planifies = []
@@ -30,9 +16,6 @@ bump_scores = []
 etat_taches_global = {}
 
 def setup(bot):
-    # Au début du setup, charger les tâches existantes
-    load_tasks()
-    
     # Supprimer la commande d'aide par défaut
     bot.remove_command('help')
 
@@ -411,6 +394,7 @@ def setup(bot):
             await ctx.send(f"❌ Action invalide. Actions possibles : {', '.join(actions_valides)}.")
             return
 
+        # Initialiser l'état des tâches pour ce chapitre si non existant
         chapitre_key = f"{manga.lower()}_{chapitre}"
         if chapitre_key not in etat_taches_global:
             etat_taches_global[chapitre_key] = {
@@ -421,11 +405,8 @@ def setup(bot):
                 "release": "❌ Non commencé"
             }
 
+        # Mettre à jour l'état de la tâche
         etat_taches_global[chapitre_key][action.lower()] = "✅ Terminé"
-        
-        # Sauvegarder après chaque modification
-        save_tasks()
-        
         await ctx.send(f"✅ Tâche **{action}** pour le chapitre **{chapitre}** de **{manga}** mise à jour avec succès !")
 
     @bot.command()
@@ -461,8 +442,6 @@ def setup(bot):
         chapitre_key = f"{manga.lower()}_{chapitre}"
         if chapitre_key in etat_taches_global:
             del etat_taches_global[chapitre_key]
-            # Sauvegarder après la suppression
-            save_tasks()
             await ctx.send(f"✅ Toutes les tâches pour le chapitre **{chapitre}** de **{manga}** ont été supprimées.")
         else:
             await ctx.send(f"❌ Aucune tâche trouvée pour le chapitre **{chapitre}** de **{manga}**.")
