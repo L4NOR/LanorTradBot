@@ -60,7 +60,8 @@ def setup(bot):
                     "• `!supprimer_chapitre` - Supprimer un chapitre planifié\n"
                     "• `!calendrier` - Afficher les chapitres planifiés\n"
                     "• `!task` - Mettre à jour l'état d'une tâche\n"
-                    "• `!task_status` - Afficher l'état des tâches"
+                    "• `!task_status` - Afficher l'état des tâches\n"
+                    "• `!delete_task` - Supprimer toutes les tâches d'un chapitre"
                 ),
                 inline=False
             )
@@ -429,3 +430,16 @@ def setup(bot):
             embed.add_field(name=tache.capitalize(), value=etat, inline=False)
 
         await ctx.send(embed=embed)
+
+    @bot.command()
+    @commands.has_any_role(1331345633977831496, 1331346420883525682)  # Autorise les deux rôles
+    async def delete_task(ctx, manga: str, chapitre: int):
+        """
+        Supprime toutes les tâches associées à un chapitre donné.
+        """
+        chapitre_key = f"{manga.lower()}_{chapitre}"
+        if chapitre_key in etat_taches_global:
+            del etat_taches_global[chapitre_key]
+            await ctx.send(f"✅ Toutes les tâches pour le chapitre **{chapitre}** de **{manga}** ont été supprimées.")
+        else:
+            await ctx.send(f"❌ Aucune tâche trouvée pour le chapitre **{chapitre}** de **{manga}**.")
