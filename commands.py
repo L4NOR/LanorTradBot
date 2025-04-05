@@ -368,7 +368,7 @@ def setup(bot):
         for chapitre in chapitres_planifies:
             embed.add_field(
                 name=f"📖 **{chapitre['manga']}** - Chapitre **{chapitre['chapitre']}**",
-                value=f" *Sortie prévue** : {chapitre['date']}",
+                value=f" **Sortie prévue** : {chapitre['date']}",
                 inline=False
             )
 
