@@ -9,7 +9,10 @@ import logging
 chapitres_planifies = []
 
 # Dictionnaire pour stocker les scores de bump
-bump_scores = {}
+bump_scores = []
+
+# Ajout d'une structure globale pour stocker l'état des tâches
+etat_taches_global = {}
 
 def setup(bot):
     # Supprimer la commande d'aide par défaut
@@ -80,7 +83,7 @@ def setup(bot):
             embed.set_thumbnail(url=ctx.guild.icon.url)
 
         # Ajout d'une image illustrative (optionnel)
-        embed.set_image(url="https://example.com/lanortrad_banner.png")  # Remplacez par une URL valide
+        embed.set_image(url="")  # Remplacez par une URL valide
 
         # Envoi de l'embed
         await ctx.send(embed=embed)
@@ -388,7 +391,19 @@ def setup(bot):
             await ctx.send(f"❌ Action invalide. Actions possibles : {', '.join(actions_valides)}.")
             return
 
-        # Exemple de mise à jour d'une tâche (vous pouvez adapter selon vos besoins)
+        # Initialiser l'état des tâches pour ce chapitre si non existant
+        chapitre_key = f"{manga.lower()}_{chapitre}"
+        if chapitre_key not in etat_taches_global:
+            etat_taches_global[chapitre_key] = {
+                "clean": "❌ Non commencé",
+                "trad": "❌ Non commencé",
+                "check": "❌ Non commencé",
+                "edit": "❌ Non commencé",
+                "release": "❌ Non commencé"
+            }
+
+        # Mettre à jour l'état de la tâche
+        etat_taches_global[chapitre_key][action.lower()] = "✅ Terminé"
         await ctx.send(f"✅ Tâche **{action}** pour le chapitre **{chapitre}** de **{manga}** mise à jour avec succès !")
 
     @bot.command()
@@ -397,14 +412,13 @@ def setup(bot):
         """
         Affiche l'état des tâches pour un chapitre donné.
         """
-        # Exemple de données fictives (vous pouvez les rendre dynamiques)
-        etat_taches = {
-            "clean": "✅ Terminé",
-            "trad": "⏳ En cours",
-            "check": "❌ Non commencé",
-            "edit": "❌ Non commencé",
-            "release": "❌ Non commencé"
-        }
+        chapitre_key = f"{manga.lower()}_{chapitre}"
+        if chapitre_key not in etat_taches_global:
+            await ctx.send(f"❌ Aucun état trouvé pour le chapitre **{chapitre}** de **{manga}**.")
+            return
+
+        # Récupérer l'état des tâches
+        etat_taches = etat_taches_global[chapitre_key]
 
         # Création de l'embed pour afficher l'état des tâches
         embed = discord.Embed(
