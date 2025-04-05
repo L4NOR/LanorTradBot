@@ -4,6 +4,7 @@ from discord.ext import commands
 from datetime import datetime
 from config import CHANNELS, ROLES, COLORS
 import logging
+import asyncio
 
 # Dictionnaire pour stocker les chapitres planifiés
 chapitres_planifies = []
@@ -443,3 +444,101 @@ def setup(bot):
             await ctx.send(f"✅ Toutes les tâches pour le chapitre **{chapitre}** de **{manga}** ont été supprimées.")
         else:
             await ctx.send(f"❌ Aucune tâche trouvée pour le chapitre **{chapitre}** de **{manga}**.")
+
+    @bot.command(name="avancee")
+    async def avancee(ctx):
+        """Affiche l'avancée des mangas de manière interactive"""
+        # Création de l'embed initial
+        embed = discord.Embed(
+            title="📊 Avancée des Projets Manga",
+            description=(
+                "Choisissez un manga pour voir son avancée !\n\n"
+                "👹 **Ao No Exorcist**\n"
+                "🩸 **Satsudou**\n"
+                "🗼 **Tokyo Underworld**\n"
+                "😈 **Tougen Anki**\n"
+                "⚽ **Catenaccio**"
+            ),
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+        embed.set_footer(text="Cliquez sur une réaction pour voir l'avancée du manga !")
+
+        # Envoyer l'embed
+        message = await ctx.send(embed=embed)
+
+        # Ajouter les réactions
+        reactions = ['👹', '🩸', '🗼', '😈', '⚽']
+        for reaction in reactions:
+            await message.add_reaction(reaction)
+
+        # Dictionnaire pour mapper les réactions aux noms de manga
+        manga_map = {
+            '👹': 'Ao No Exorcist',
+            '🩸': 'Satsudou',
+            '🗼': 'Tokyo Underworld',
+            '😈': 'Tougen Anki',
+            '⚽': 'Catenaccio'
+        }
+
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in reactions
+
+        try:
+            reaction, user = await bot.wait_for('reaction_add', timeout=30.0, check=check)
+            manga_name = manga_map[str(reaction.emoji)]
+
+            # Trouver tous les chapitres pour ce manga
+            manga_chapters = {}
+            for key in etat_taches_global:
+                if key.startswith(manga_name.lower() + "_"):
+                    chapter_num = int(key.split("_")[1])
+                    manga_chapters[chapter_num] = etat_taches_global[key]
+
+            if not manga_chapters:
+                await ctx.send(f"❌ Aucune tâche trouvée pour **{manga_name}**.")
+                return
+
+            # Créer un embed pour l'avancée du manga
+            progress_embed = discord.Embed(
+                title=f"🎯 Avancée de {manga_name}",
+                description="Voici l'état d'avancement des chapitres :",
+                color=discord.Color.green(),
+                timestamp=datetime.now()
+            )
+
+            # Tri des chapitres par numéro
+            for chapter in sorted(manga_chapters.keys()):
+                tasks = manga_chapters[chapter]
+                progress = sum(1 for task in tasks.values() if task == "✅ Terminé")
+                progress_bar = generate_progress_bar(progress, len(tasks))
+                
+                field_value = (
+                    f"{progress_bar} ({progress}/{len(tasks)})\n"
+                    f"Clean: {tasks['clean']}\n"
+                    f"Trad: {tasks['trad']}\n"
+                    f"Check: {tasks['check']}\n"
+                    f"Edit: {tasks['edit']}\n"
+                    f"Release: {tasks['release']}"
+                )
+                progress_embed.add_field(
+                    name=f"📑 Chapitre {chapter}",
+                    value=field_value,
+                    inline=False
+                )
+
+            progress_embed.set_footer(text=f"Demandé par {ctx.author.name}")
+            await message.edit(embed=progress_embed)
+
+        except asyncio.TimeoutError:
+            await message.clear_reactions()
+            timeout_embed = embed.copy()
+            timeout_embed.description += "\n\n⏰ Le temps de sélection est écoulé."
+            await message.edit(embed=timeout_embed)
+
+def generate_progress_bar(progress, total, size=10):
+    """Génère une barre de progression visuelle"""
+    percentage = progress / total
+    filled = int(size * percentage)
+    empty = size - filled
+    return f"{'🟩' * filled}{'⬜' * empty}"
