@@ -26,7 +26,8 @@ CHANNELS = {
     "boost": 1326212624504848394,
     "chapter_announcements": 1326213946188890142,
     "partenaires_channel": 1326357401099702393,
-    "mod_contact": 1332088539076104192
+    "mod_contact": 1332088539076104192,
+    "sorties": 1326213946188890142
 }
 
 # IDs des messages
