@@ -537,53 +537,63 @@ def setup(bot):
             timeout_embed.description += "\n\n⏰ Le temps de sélection est écoulé."
             await message.edit(embed=timeout_embed)
 
-    @bot.command()
-    async def newchapter_collab(ctx, manga: str, chapitre: int, lien: str):
-        """Crée une annonce de collaboration pour un nouveau chapitre"""
-        # Vérifie si la commande est utilisée dans le bon salon
-        if ctx.channel.id != 1326213946188890142:
-            await ctx.send("❌ Cette commande ne peut être utilisée que dans le salon d'annonces de chapitres.")
+# Commande pour annoncer un nouveau chapitre collaboratif
+    @bot.command(name='newchapter_collab')
+    @commands.has_permissions(administrator=True)
+    async def announce_new_collab_chapter(ctx, manga_name: str, chapter_number: str, link: str, *, description: str = None):
+        """Annonce un nouveau chapitre collaboratif"""
+        
+        # Vérifier le canal d'annonce
+        if ctx.channel.id != CHANNELS['announcements']:
+            await ctx.send("Cette commande ne peut être utilisée que dans le canal d'annonces.")
             return
 
-        # Vérifie si le manga est valide et l'utilisateur a le bon rôle
+        # Mapping des noms de manga vers leurs rôles
         manga_roles = {
-            "Catenaccio": 1332429989085184010,
-            "Uzugami": 1332430247894847529
+            "Catenaccio": ROLES['catenaccio'],
+            "Uzugami": ROLES['uzugami']
         }
 
-        if manga not in manga_roles:
-            await ctx.send("❌ Le manga doit être soit 'Catenaccio' soit 'Uzugami'.")
+        # Vérifier si le manga est valide
+        manga_name = manga_name.lower()
+        if manga_name not in manga_roles:
+            await ctx.send("❌ Manga non reconnu. Options disponibles : `Catenaccio`, `Uzugami`")
             return
 
-        # Vérifie si l'utilisateur a le rôle approprié pour ce manga
-        if not any(role.id == manga_roles[manga] for role in ctx.author.roles):
-            await ctx.send(f"❌ Vous devez avoir le rôle {manga} pour annoncer ce chapitre.")
+        # Récupérer le rôle
+        role = ctx.guild.get_role(manga_roles[manga_name])
+        if not role:
+            await ctx.send("❌ Le rôle spécifié n'a pas été trouvé.")
             return
 
-        # Message de ping du serveur 
-        await ctx.send(f"@ {ctx.guild.name}\n━━━━━━━━━━━━━━━━━━━━━━━━")
-
-        # Création de l'embed
+        # Créer l'embed
         embed = discord.Embed(
+            title=f"🔥 NOUVEAU CHAPITRE DE {manga_name.upper()} 🔥",
             description=(
-                f"Un nouveau chapitre de {manga} vient d'arriver ! "
-                "Préparez-vous à plonger dans de nouvelles aventures palpitantes !"
+                "Un nouveau chapitre vient d'arriver ! "
+                "Préparez-vous à plonger dans de nouvelles aventures palpitantes !\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━"
             ),
-            color=discord.Color.blue()
+            color=COLORS['royal_blue']
         )
 
-        embed.title = f"🔥 NOUVEAU CHAPITRE DE {manga.upper()} 🔥"
-
+        # Ajouter les champs
         embed.add_field(
             name="📖 Chapitre",
-            value=f"#{chapitre}",
+            value=f"**#{chapter_number}**",
             inline=True
         )
 
         embed.add_field(
             name="⏰ Disponible",
-            value="MAINTENANT !",
+            value="**MAINTENANT !**",
             inline=True
+        )
+
+        embed.add_field(
+            name="📚 Lien de lecture",
+            value=f"[Cliquez ici pour lire le chapitre !]({link})",
+            inline=False
         )
 
         embed.add_field(
@@ -592,24 +602,34 @@ def setup(bot):
             inline=False
         )
 
-        embed.add_field(
-            name="📚 Lien de lecture",
-            value=f"[Cliquez ici pour lire le chapitre !]({lien})",
-            inline=False
+        if description:
+            embed.add_field(
+                name="📝 Aperçu",
+                value=description,
+                inline=False
+            )
+
+        embed.set_footer(
+            text="N'oubliez pas de partager vos théories et réactions sur twitter et discord ! Bonne lecture à tous ! 🎉"
         )
 
-        embed.set_footer(text=(
-            "N'oubliez pas de partager vos théories et réactions sur twitter "
-            "et discord ! Bonne lecture à tous ! 🎉"
-        ))
+        # Message d'annonce
+        announcement_text = (
+            f"{role.mention}\n"
+            "───────────────────────\n"
+            f"**Un nouveau chapitre de {manga_name.upper()} vient d'être publié !**\n"
+            "Retrouvez tous les détails ci-dessous ⬇️"
+        )
 
-        # Envoi de l'embed
-        message = await ctx.send(embed=embed)
+        # Envoyer l'annonce
+        announcement = await ctx.send(announcement_text, embed=embed)
 
-        # Ajout des réactions
-        reactions = ['🔥', '👀', '❤️', '😮']
-        for reaction in reactions:
-            await message.add_reaction(reaction)
+        # Ajouter les réactions
+        for reaction in ['🔥', '👀', '❤️', '🎉']:
+            await announcement.add_reaction(reaction)
+
+        # Supprimer la commande
+        await ctx.message.delete()
 
 def generate_progress_bar(progress, total, size=10):
     """Génère une barre de progression visuelle"""
