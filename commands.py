@@ -544,7 +544,7 @@ def setup(bot):
         """Annonce un nouveau chapitre collaboratif"""
         
         # Vérifier le canal d'annonce
-        if ctx.channel.id != CHANNELS['announcements']:
+        if ctx.channel.id != CHANNELS['sorties']:
             await ctx.send("Cette commande ne peut être utilisée que dans le canal d'annonces.")
             return
 
