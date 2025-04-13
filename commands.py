@@ -537,6 +537,80 @@ def setup(bot):
             timeout_embed.description += "\n\n⏰ Le temps de sélection est écoulé."
             await message.edit(embed=timeout_embed)
 
+    @bot.command()
+    async def newchapter_collab(ctx, manga: str, chapitre: int, lien: str):
+        """Crée une annonce de collaboration pour un nouveau chapitre"""
+        # Vérifie si la commande est utilisée dans le bon salon
+        if ctx.channel.id != 1326213946188890142:
+            await ctx.send("❌ Cette commande ne peut être utilisée que dans le salon d'annonces de chapitres.")
+            return
+
+        # Vérifie si le manga est valide et l'utilisateur a le bon rôle
+        manga_roles = {
+            "Catenaccio": 1332429989085184010,
+            "Uzugami": 1332430247894847529
+        }
+
+        if manga not in manga_roles:
+            await ctx.send("❌ Le manga doit être soit 'Catenaccio' soit 'Uzugami'.")
+            return
+
+        # Vérifie si l'utilisateur a le rôle approprié pour ce manga
+        if not any(role.id == manga_roles[manga] for role in ctx.author.roles):
+            await ctx.send(f"❌ Vous devez avoir le rôle {manga} pour annoncer ce chapitre.")
+            return
+
+        # Message de ping du serveur 
+        await ctx.send(f"@ {ctx.guild.name}\n━━━━━━━━━━━━━━━━━━━━━━━━")
+
+        # Création de l'embed
+        embed = discord.Embed(
+            description=(
+                f"Un nouveau chapitre de {manga} vient d'arriver ! "
+                "Préparez-vous à plonger dans de nouvelles aventures palpitantes !"
+            ),
+            color=discord.Color.blue()
+        )
+
+        embed.title = f"🔥 NOUVEAU CHAPITRE DE {manga.upper()} 🔥"
+
+        embed.add_field(
+            name="📖 Chapitre",
+            value=f"#{chapitre}",
+            inline=True
+        )
+
+        embed.add_field(
+            name="⏰ Disponible",
+            value="MAINTENANT !",
+            inline=True
+        )
+
+        embed.add_field(
+            name="━━━━━━━━━━━━━━━━━━━━━━━━",
+            value="",
+            inline=False
+        )
+
+        embed.add_field(
+            name="📚 Lien de lecture",
+            value=f"[Cliquez ici pour lire le chapitre !]({lien})",
+            inline=False
+        )
+
+        embed.set_footer(text=(
+            "N'oubliez pas de partager vos théories et réactions sur twitter "
+            "et discord ! Bonne lecture à tous ! 🎉"
+        ))
+
+        # Envoi de l'embed
+        message = await ctx.send(embed=embed)
+
+        # Ajout des réactions
+        reactions = ['🔥', '👀', '❤️', '😮']
+        for reaction in reactions:
+            await message.add_reaction(reaction)
+
 def generate_progress_bar(progress, total, size=10):
     """Génère une barre de progression visuelle"""
     percentage = progress / total
