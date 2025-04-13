@@ -543,37 +543,42 @@ def setup(bot):
     async def announce_new_collab_chapter(ctx, manga_name: str, chapter_number: str, link: str):
         """Annonce un nouveau chapitre collaboratif"""
         
-        # Normaliser le nom du manga en minuscules pour la comparaison
         manga_name_lower = manga_name.lower()
         
-        # Liste des mangas autorisés avec leurs IDs de rôle
         allowed_mangas = {
             'catenaccio': 1332429989085184010,
             'uzugami': 1332430247894847529
         }
 
-        # Vérifier si le manga est autorisé
         if manga_name_lower not in allowed_mangas:
             await ctx.send("❌ Manga non reconnu. Options disponibles : `Catenaccio`, `Uzugami`")
             return
 
-        # Récupérer le rôle
         role = ctx.guild.get_role(allowed_mangas[manga_name_lower])
         if not role:
             await ctx.send("❌ Le rôle spécifié n'a pas été trouvé.")
             return
 
-        # Créer l'embed
+        # Message d'annonce modifié
+        announcement_text = (
+            f"{role.mention}\n"
+            "───────────────────────\n"
+            f"Un nouveau chapitre de {manga_name.upper()} vient d'être publié !\n"
+            "Retrouvez tous les détails ci-dessous ⬇️"
+        )
+
+        # Embed modifié avec plus de détails
         embed = discord.Embed(
             title=f"🔥 NOUVEAU CHAPITRE DE {manga_name.upper()} 🔥",
             description=(
-                "Un nouveau chapitre vient d'arriver ! "
-                "Préparez-vous à plonger dans de nouvelles aventures palpitantes !\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━━━━"
+                "Un nouveau chapitre vient d'arriver ! Préparez-vous à plonger dans de nouvelles "
+                "aventures palpitantes !\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━\n"
             ),
             color=0x3498DB
         )
 
+        # Champs modifiés avec emojis et formatage
         embed.add_field(
             name="📖 Chapitre",
             value=f"#{chapter_number}",
@@ -592,23 +597,33 @@ def setup(bot):
             inline=False
         )
 
-        # Message d'annonce
-        announcement_text = (
-            f"{role.mention}\n"
-            "───────────────────────\n"
-            f"Un nouveau chapitre de {manga_name.upper()} vient d'être publié !\n"
-            "Retrouvez tous les détails ci-dessous ⬇️"
+        embed.add_field(
+            name="━━━━━━━━━━━━━━━━━━━━━━━",
+            value="📱 Aperçu",
+            inline=False
         )
 
-        # Envoyer l'annonce
+        # Aperçu avec lien Discord (comme dans l'image)
+        embed.add_field(
+            name="",
+            value=f"[https://discord.com/invite/KKsp4AG8BV]({link})",
+            inline=False
+        )
+
+        # Footer modifié
+        embed.set_footer(
+            text="N'oubliez pas de partager vos théories et réactions sur twitter et discord ! Bonne lecture à tous ! 🎉"
+        )
+
+        # Envoi du message
         announcement = await ctx.send(announcement_text, embed=embed)
 
-        # Ajouter les réactions
-        reactions = ['🔥', '👀', '❤️', '🎉']
+        # Réactions modifiées pour correspondre à l'image
+        reactions = ['🔥', '👀', '❤️']
         for reaction in reactions:
             await announcement.add_reaction(reaction)
 
-        # Supprimer la commande d'origine
+        # Supprimer la commande
         await ctx.message.delete()
 
 def generate_progress_bar(progress, total, size=10):
