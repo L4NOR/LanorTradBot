@@ -24,6 +24,15 @@ MANGA_CHANNELS = {
     "Catenaccio": 1330182024832614541
 }
 
+# Dictionnaire pour mapper les mangas aux rôles
+MANGA_ROLES = {
+    "Catenaccio": 1332429989085184010,
+    "Satsudou": 1326778585478070283,
+    "Ao No Exorcist": 1326778473079111763,
+    "Tokyo Underworld": 1326778697218392149,
+    "Tougen Anki": 1326778962143215677
+}
+
 def setup(bot):
     # Supprimer la commande d'aide par défaut
     bot.remove_command('help')
@@ -670,22 +679,29 @@ def setup(bot):
             await ctx.send(f"❌ Aucun fil associé trouvé pour le manga **{manga}**.")
             return
 
+        # Vérifier si le manga a un rôle associé
+        role_id = MANGA_ROLES.get(manga)
+        if not role_id:
+            await ctx.send(f"❌ Aucun rôle associé trouvé pour le manga **{manga}**.")
+            return
+
         # Récupérer le fil
         thread = ctx.guild.get_thread(thread_id)
         if not thread:
             await ctx.send(f"❌ Impossible de trouver le fil pour le manga **{manga}**.")
             return
 
-        # Envoyer un message dans le fil
-        await thread.send(f"⏳ Le chapitre **{chapitre}** de **{manga}** est prévu pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}**. Le compte à rebours commence maintenant !")
+        # Mentionner le rôle dans le message initial
+        role_mention = f"<@&{role_id}>"
+        await thread.send(f"{role_mention} ⏳ Le chapitre **{chapitre}** de **{manga}** est prévu pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}**. Le compte à rebours commence maintenant !")
 
         # Définir des rappels à des intervalles spécifiques
         intervals = [86400, 3600, 600, 60]  # 1 jour, 1 heure, 10 minutes, 1 minute
         messages = [
-            f"📢 Plus qu'un jour avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
-            f"⏰ Plus qu'une heure avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
-            f"🔥 Plus que 10 minutes avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
-            f"🚨 Plus qu'une minute avant l'arrivée du chapitre **{chapitre}** de **{manga}** !"
+            f"{role_mention} 📢 Plus qu'un jour avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
+            f"{role_mention} ⏰ Plus qu'une heure avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
+            f"{role_mention} 🔥 Plus que 10 minutes avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
+            f"{role_mention} 🚨 Plus qu'une minute avant l'arrivée du chapitre **{chapitre}** de **{manga}** !"
         ]
 
         for interval, message in zip(intervals, messages):
@@ -696,7 +712,7 @@ def setup(bot):
 
         # Message final
         await asyncio.sleep(time_remaining)
-        await thread.send(f"🎉 Le chapitre **{chapitre}** de **{manga}** est maintenant disponible !")
+        await thread.send(f"{role_mention} 🎉 Le chapitre **{chapitre}** de **{manga}** est maintenant disponible !")
 
 def generate_progress_bar(progress, total, size=10):
     """Génère une barre de progression visuelle"""
