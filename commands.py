@@ -387,7 +387,7 @@ def setup(bot):
         for chapitre in chapitres_planifies:
             embed.add_field(
                 name=f"📖 **{chapitre['manga']}** - Chapitre **{chapitre['chapitre']}**",
-                value=f" **Sortie prévue** : {chapitre['date']}",
+                value=f"**Sortie prévue** : {chapitre['date_heure']}",
                 inline=False
             )
 
@@ -664,20 +664,20 @@ def setup(bot):
             await ctx.send(f"❌ La date et l'heure spécifiées sont déjà passées ou sont maintenant.")
             return
 
-        # Vérifier si le manga a un salon associé
-        channel_id = MANGA_CHANNELS.get(manga)
-        if not channel_id:
-            await ctx.send(f"❌ Aucun salon associé trouvé pour le manga **{manga}**.")
+        # Vérifier si le manga a un fil associé
+        thread_id = MANGA_CHANNELS.get(manga)
+        if not thread_id:
+            await ctx.send(f"❌ Aucun fil associé trouvé pour le manga **{manga}**.")
             return
 
-        # Récupérer le salon
-        channel = ctx.guild.get_channel(channel_id)
-        if not channel:
-            await ctx.send(f"❌ Impossible de trouver le salon pour le manga **{manga}**.")
+        # Récupérer le fil
+        thread = ctx.guild.get_thread(thread_id)
+        if not thread:
+            await ctx.send(f"❌ Impossible de trouver le fil pour le manga **{manga}**.")
             return
 
-        # Envoyer un message initial dans le salon spécifique
-        await channel.send(f"⏳ Le chapitre **{chapitre}** de **{manga}** est prévu pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}**. Le compte à rebours commence maintenant !")
+        # Envoyer un message dans le fil
+        await thread.send(f"⏳ Le chapitre **{chapitre}** de **{manga}** est prévu pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}**. Le compte à rebours commence maintenant !")
 
         # Définir des rappels à des intervalles spécifiques
         intervals = [86400, 3600, 600, 60]  # 1 jour, 1 heure, 10 minutes, 1 minute
@@ -692,11 +692,11 @@ def setup(bot):
             if time_remaining > interval:
                 await asyncio.sleep(interval)
                 time_remaining -= interval
-                await channel.send(message)
+                await thread.send(message)
 
         # Message final
         await asyncio.sleep(time_remaining)
-        await channel.send(f"🎉 Le chapitre **{chapitre}** de **{manga}** est maintenant disponible !")
+        await thread.send(f"🎉 Le chapitre **{chapitre}** de **{manga}** est maintenant disponible !")
 
 def generate_progress_bar(progress, total, size=10):
     """Génère une barre de progression visuelle"""
