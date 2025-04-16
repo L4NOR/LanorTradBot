@@ -15,6 +15,15 @@ bump_scores = []
 # Ajout d'une structure globale pour stocker l'état des tâches
 etat_taches_global = {}
 
+# Dictionnaire pour mapper les mangas aux salons
+MANGA_CHANNELS = {
+    "Tougen Anki": 1330144191816142941,
+    "Tokyo Underworld": 1330143657264943266,
+    "Satsudou": 1330142974646026371,
+    "Ao No Exorcist": 1329589897920512020,
+    "Catenaccio": 1330182024832614541
+}
+
 def setup(bot):
     # Supprimer la commande d'aide par défaut
     bot.remove_command('help')
@@ -48,7 +57,8 @@ def setup(bot):
                 "• `!avatar` - Afficher l'avatar\n"
                 "• `!ping` - Vérifier la latence\n"
                 "• `!poll` - Créer un sondage\n"
-                "• `!avancee` - Voir l'avancée des chapitres\n" 
+                "• `!avancee` - Voir l'avancée des chapitres\n"
+                "• `!calendrier` Afficher les chapitres planifiés\n" 
             ),
             inline=False
         )
@@ -326,18 +336,25 @@ def setup(bot):
         await ctx.send(embed=embed)
 
     @bot.command()
-    async def planifier(ctx, manga: str, chapitre: int, date: str):
-        """Planifie un chapitre pour une date donnée"""
+    async def planifier(ctx, manga: str, chapitre: int, date_heure: str):
+        """
+        Planifie un chapitre pour une date et une heure données.
+        Format attendu : JJ/MM/AAAA HH:MM
+        """
         try:
-            # Vérifier si la date est valide
-            datetime.strptime(date, "%d/%m/%Y")
+            # Vérifier si la date et l'heure sont valides
+            release_datetime = datetime.strptime(date_heure, "%d/%m/%Y %H:%M")
         except ValueError:
-            await ctx.send("❌ Format de date invalide. Utilisez le format `JJ/MM/AAAA`.")
+            await ctx.send("❌ Format de date et heure invalide. Utilisez le format `JJ/MM/AAAA HH:MM`.")
             return
 
         # Ajouter le chapitre au dictionnaire
-        chapitres_planifies.append({"manga": manga, "chapitre": chapitre, "date": date})
-        await ctx.send(f"✅ Chapitre **{chapitre}** de **{manga}** planifié pour le **{date}**.")
+        chapitres_planifies.append({
+            "manga": manga,
+            "chapitre": chapitre,
+            "date_heure": release_datetime.strftime("%d/%m/%Y %H:%M")
+        })
+        await ctx.send(f"✅ Chapitre **{chapitre}** de **{manga}** planifié pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}**.")
 
     @bot.command()
     async def supprimer_chapitre(ctx, manga: str, chapitre: int):
@@ -625,6 +642,61 @@ def setup(bot):
 
         # Supprimer la commande
         await ctx.message.delete()
+
+    @bot.command()
+    async def timer(ctx, manga: str, chapitre: int, date_heure: str):
+        """
+        Crée un timer pour "hype" l'arrivée d'un chapitre planifié.
+        Format attendu : JJ/MM/AAAA HH:MM
+        """
+        try:
+            # Vérifier si la date et l'heure sont valides
+            release_datetime = datetime.strptime(date_heure, "%d/%m/%Y %H:%M")
+        except ValueError:
+            await ctx.send("❌ Format de date et heure invalide. Utilisez le format `JJ/MM/AAAA HH:MM`.")
+            return
+
+        # Calculer le temps restant
+        now = datetime.now()
+        time_remaining = (release_datetime - now).total_seconds()
+
+        if time_remaining <= 0:
+            await ctx.send(f"❌ La date et l'heure spécifiées sont déjà passées ou sont maintenant.")
+            return
+
+        # Vérifier si le manga a un salon associé
+        channel_id = MANGA_CHANNELS.get(manga)
+        if not channel_id:
+            await ctx.send(f"❌ Aucun salon associé trouvé pour le manga **{manga}**.")
+            return
+
+        # Récupérer le salon
+        channel = ctx.guild.get_channel(channel_id)
+        if not channel:
+            await ctx.send(f"❌ Impossible de trouver le salon pour le manga **{manga}**.")
+            return
+
+        # Envoyer un message initial dans le salon spécifique
+        await channel.send(f"⏳ Le chapitre **{chapitre}** de **{manga}** est prévu pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}**. Le compte à rebours commence maintenant !")
+
+        # Définir des rappels à des intervalles spécifiques
+        intervals = [86400, 3600, 600, 60]  # 1 jour, 1 heure, 10 minutes, 1 minute
+        messages = [
+            f"📢 Plus qu'un jour avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
+            f"⏰ Plus qu'une heure avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
+            f"🔥 Plus que 10 minutes avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
+            f"🚨 Plus qu'une minute avant l'arrivée du chapitre **{chapitre}** de **{manga}** !"
+        ]
+
+        for interval, message in zip(intervals, messages):
+            if time_remaining > interval:
+                await asyncio.sleep(interval)
+                time_remaining -= interval
+                await channel.send(message)
+
+        # Message final
+        await asyncio.sleep(time_remaining)
+        await channel.send(f"🎉 Le chapitre **{chapitre}** de **{manga}** est maintenant disponible !")
 
 def generate_progress_bar(progress, total, size=10):
     """Génère une barre de progression visuelle"""
