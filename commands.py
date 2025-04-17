@@ -86,9 +86,9 @@ def setup(bot):
                     "• `!task_status <manga> <chapitre>` - Afficher l'état des tâches\n"
                     "• `!delete_task <manga> <chapitre>` - Supprimer les tâches d'un chapitre\n"
                     "• `!newchapter_collab <manga> <chapitre> <lien>` - Annoncer un nouveau chapitre\n"
-                    "• `!planifier <manga> <chapitre> <date>` - Créer un timer\n"
-                    "• `!planning` - Voir tous les timers actifs\n"
-                    "• `!cancel_planning <id>` - Annuler un timer spécifique"
+                    "• `!planifier <manga> <chapitre> <date>` - Créer un planning\n"
+                    "• `!planning` - Voir tous les planning actifs\n"
+                    "• `!cancel_planning <id>` - Annuler un planning spécifique"
                 ),
                 inline=False
             )
