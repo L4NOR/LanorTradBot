@@ -82,15 +82,13 @@ def setup(bot):
                     "• `!ban @utilisateur [raison]` - Bannir un membre\n"
                     "• `!unban nom_utilisateur#tag` - Débannir un membre\n"
                     "• `!warn @utilisateur [raison]` - Avertir un membre\n"
-                    "• `!planifier <manga> <chapitre> <date>` - Planifier un chapitre\n"
-                    "• `!supprimer_chapitre <manga> <chapitre>` - Supprimer un chapitre planifié\n"
                     "• `!task <action> <manga> <chapitre>` - Mettre à jour l'état d'une tâche\n"
                     "• `!task_status <manga> <chapitre>` - Afficher l'état des tâches\n"
                     "• `!delete_task <manga> <chapitre>` - Supprimer les tâches d'un chapitre\n"
                     "• `!newchapter_collab <manga> <chapitre> <lien>` - Annoncer un nouveau chapitre\n"
-                    "• `!timer <manga> <chapitre> <date>` - Créer un timer\n"
-                    "• `!timers` - Voir tous les timers actifs\n"
-                    "• `!cancel_timer <id>` - Annuler un timer spécifique"
+                    "• `!planifier <manga> <chapitre> <date>` - Créer un timer\n"
+                    "• `!planning` - Voir tous les timers actifs\n"
+                    "• `!cancel_planning <id>` - Annuler un timer spécifique"
                 ),
                 inline=False
             )
@@ -353,69 +351,6 @@ def setup(bot):
         await ctx.send(embed=embed)
 
     @bot.command()
-    async def planifier(ctx, manga: str, chapitre: int, date_heure: str):
-        """
-        Planifie un chapitre pour une date et une heure données.
-        Format attendu : JJ/MM/AAAA HH:MM
-        """
-        try:
-            # Vérifier si la date et l'heure sont valides
-            release_datetime = datetime.strptime(date_heure, "%d/%m/%Y %H:%M")
-        except ValueError:
-            await ctx.send("❌ Format de date et heure invalide. Utilisez le format `JJ/MM/AAAA HH:MM`.")
-            return
-
-        # Ajouter le chapitre au dictionnaire
-        chapitres_planifies.append({
-            "manga": manga,
-            "chapitre": chapitre,
-            "date_heure": release_datetime.strftime("%d/%m/%Y %H:%M")
-        })
-        await ctx.send(f"✅ Chapitre **{chapitre}** de **{manga}** planifié pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}**.")
-
-    @bot.command()
-    async def supprimer_chapitre(ctx, manga: str, chapitre: int):
-        """Supprime un chapitre planifié"""
-        global chapitres_planifies
-        for chapitre_planifie in chapitres_planifies:
-            if chapitre_planifie["manga"] == manga and chapitre_planifie["chapitre"] == chapitre:
-                chapitres_planifies.remove(chapitre_planifie)
-                await ctx.send(f"✅ Chapitre **{chapitre}** de **{manga}** supprimé du planning.")
-                return
-
-        await ctx.send(f"❌ Aucun chapitre **{chapitre}** de **{manga}** trouvé dans le planning.")
-
-    @bot.command()
-    async def calendrier(ctx):
-        """Affiche les chapitres planifiés"""
-        if not chapitres_planifies:
-            await ctx.send("📅 Aucun chapitre n'est actuellement planifié.")
-            return
-
-        # Création de l'embed
-        embed = discord.Embed(
-            title="📅 **Calendrier des Prochains Chapitres**",
-            description="Voici les chapitres planifiés :",
-            color=discord.Color.blue(),
-            timestamp=datetime.now()
-        )
-
-        # Ajout des chapitres au contenu de l'embed
-        for chapitre in chapitres_planifies:
-            embed.add_field(
-                name=f"📖 **{chapitre['manga']}** - Chapitre **{chapitre['chapitre']}**",
-                value=f"**Sortie prévue** : {chapitre['date_heure']}",
-                inline=False
-            )
-
-        # Footer et envoi de l'embed
-        embed.set_footer(
-            text=f"Demandé par {ctx.author.name} • Team LanorTrad",
-            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
-        )
-        await ctx.send(embed=embed)
-
-    @bot.command()
     @commands.has_any_role(1331345633977831496, 1331346420883525682)  # Autorise les deux rôles
     async def task(ctx, action: str, manga: str, chapitre: int):
         """
@@ -660,9 +595,9 @@ def setup(bot):
         await ctx.message.delete()
 
     @bot.command()
-    async def timer(ctx, manga: str, chapitre: int, date_heure: str):
+    async def planifier(ctx, manga: str, chapitre: int, date_heure: str):
         """
-        Crée un timer pour "hype" l'arrivée d'un chapitre planifié.
+        Crée un planning pour "hype" l'arrivée d'un chapitre planifié.
         Format attendu : JJ/MM/AAAA HH:MM
         """
         try:
@@ -707,13 +642,13 @@ def setup(bot):
 
         # Envoyer un message de confirmation
         embed = discord.Embed(
-            title="⏰ Timer Créé",
+            title="⏰ Planning Créé",
             description=(
-                f"Un nouveau timer a été créé avec l'ID: **{timer_id}**\n\n"
+                f"Un nouveau planning a été créé avec l'ID: **{timer_id}**\n\n"
                 f"📖 **Manga**: {manga}\n"
                 f"📑 **Chapitre**: {chapitre}\n"
                 f"⏰ **Date de sortie**: {date_heure}\n\n"
-                "*Pour annuler ce timer, utilisez la commande* `!cancel_timer {timer_id}`"
+                "*Pour annuler ce planning, utilisez la commande* `!cancel_planning {timer_id}`"
             ),
             color=discord.Color.blue(),
             timestamp=datetime.now()
@@ -724,19 +659,19 @@ def setup(bot):
     @bot.command()
     @commands.has_permissions(administrator=True)
     async def timers(ctx):
-        """Affiche tous les timers en cours"""
+        """Affiche tous les planning en cours"""
         if not active_timers:
             embed = discord.Embed(
-                title="📊 Timers Actifs",
-                description="Aucun timer n'est actuellement en cours.",
+                title="📊 Planning Actifs",
+                description="Aucun planning n'est actuellement en cours.",
                 color=discord.Color.blue()
             )
             await ctx.send(embed=embed)
             return
 
         embed = discord.Embed(
-            title="📊 Timers Actifs",
-            description="Liste de tous les timers en cours :",
+            title="📊 Planning Actifs",
+            description="Liste de tous les planning en cours :",
             color=discord.Color.blue(),
             timestamp=datetime.now()
         )
@@ -758,11 +693,11 @@ def setup(bot):
     @bot.command()
     @commands.has_permissions(administrator=True)
     async def cancel_timer(ctx, timer_id: int):
-        """Annule un timer spécifique"""
+        """Annule un planning spécifique"""
         if timer_id not in active_timers:
             embed = discord.Embed(
                 title="❌ Erreur",
-                description="Aucun timer trouvé avec cet ID.",
+                description="Aucun planning trouvé avec cet ID.",
                 color=discord.Color.red()
             )
             await ctx.send(embed=embed)
@@ -777,9 +712,9 @@ def setup(bot):
         del active_timers[timer_id]
 
         embed = discord.Embed(
-            title="✅ Timer Annulé",
+            title="✅ Planning Annulé",
             description=(
-                f"Le timer suivant a été annulé avec succès :\n\n"
+                f"Le planning suivant a été annulé avec succès :\n\n"
                 f"📖 **Manga**: {timer_info['manga']}\n"
                 f"📑 **Chapitre**: {timer_info['chapitre']}\n"
                 f"⏰ **Date de sortie**: {timer_info['date_heure']}"
@@ -825,7 +760,7 @@ def setup(bot):
             # Le timer a été annulé
             pass
         except Exception as e:
-            logging.error(f"Erreur dans le timer pour {manga} chapitre {chapitre}: {e}")
+            logging.error(f"Erreur dans le planning pour {manga} chapitre {chapitre}: {e}")
         finally:
             # Supprimer le timer des timers actifs
             for timer_id, timer_info in list(active_timers.items()):
