@@ -77,14 +77,20 @@ def setup(bot):
             embed.add_field(
                 name="🔧 **Commandes Admin**",
                 value=(
-                    "• `!planifier` - Planifier un chapitre\n"
-                    "• `!supprimer_chapitre` - Supprimer un chapitre planifié\n"
-                    "• `!calendrier` - Afficher les chapitres planifiés\n"
-                    "• `!task` - Mettre à jour l'état d'une tâche\n"
-                    "• `!task_status` - Afficher l'état des tâches\n"
-                    "• `!delete_task` - Supprimer toutes les tâches d'un chapitre\n"
-                    "• `!timers` - Afficher tous les timers en cours\n"
-                    "• `!cancel_timer` - Annuler un timer spécifique"
+                    "• `!clear <nombre>` - Supprimer des messages\n"
+                    "• `!kick @utilisateur [raison]` - Expulser un membre\n"
+                    "• `!ban @utilisateur [raison]` - Bannir un membre\n"
+                    "• `!unban nom_utilisateur#tag` - Débannir un membre\n"
+                    "• `!warn @utilisateur [raison]` - Avertir un membre\n"
+                    "• `!planifier <manga> <chapitre> <date>` - Planifier un chapitre\n"
+                    "• `!supprimer_chapitre <manga> <chapitre>` - Supprimer un chapitre planifié\n"
+                    "• `!task <action> <manga> <chapitre>` - Mettre à jour l'état d'une tâche\n"
+                    "• `!task_status <manga> <chapitre>` - Afficher l'état des tâches\n"
+                    "• `!delete_task <manga> <chapitre>` - Supprimer les tâches d'un chapitre\n"
+                    "• `!newchapter_collab <manga> <chapitre> <lien>` - Annoncer un nouveau chapitre\n"
+                    "• `!timer <manga> <chapitre> <date>` - Créer un timer\n"
+                    "• `!timers` - Voir tous les timers actifs\n"
+                    "• `!cancel_timer <id>` - Annuler un timer spécifique"
                 ),
                 inline=False
             )
