@@ -9,9 +9,6 @@ import asyncio
 # Dictionnaire pour stocker les chapitres planifiés
 chapitres_planifies = []
 
-# Dictionnaire pour stocker les scores de bump
-bump_scores = []
-
 # Ajout d'une structure globale pour stocker l'état des tâches
 etat_taches_global = {}
 
@@ -32,6 +29,9 @@ MANGA_ROLES = {
     "Tokyo Underworld": 1326778697218392149,
     "Tougen Anki": 1326778962143215677
 }
+
+# Structure de données pour stocker les timers actifs
+active_timers = {}
 
 def setup(bot):
     # Supprimer la commande d'aide par défaut
@@ -82,7 +82,9 @@ def setup(bot):
                     "• `!calendrier` - Afficher les chapitres planifiés\n"
                     "• `!task` - Mettre à jour l'état d'une tâche\n"
                     "• `!task_status` - Afficher l'état des tâches\n"
-                    "• `!delete_task` - Supprimer toutes les tâches d'un chapitre"
+                    "• `!delete_task` - Supprimer toutes les tâches d'un chapitre\n"
+                    "• `!timers` - Afficher tous les timers en cours\n"
+                    "• `!cancel_timer` - Annuler un timer spécifique"
                 ),
                 inline=False
             )
@@ -563,7 +565,6 @@ def setup(bot):
             timeout_embed.description += "\n\n⏰ Le temps de sélection est écoulé."
             await message.edit(embed=timeout_embed)
 
-# Commande pour annoncer un nouveau chapitre collaboratif
     @bot.command(name='newchapter_collab')
     @commands.has_permissions(administrator=True)
     async def announce_new_collab_chapter(ctx, manga_name: str, chapter_number: str, link: str):
@@ -659,13 +660,11 @@ def setup(bot):
         Format attendu : JJ/MM/AAAA HH:MM
         """
         try:
-            # Vérifier si la date et l'heure sont valides
             release_datetime = datetime.strptime(date_heure, "%d/%m/%Y %H:%M")
         except ValueError:
             await ctx.send("❌ Format de date et heure invalide. Utilisez le format `JJ/MM/AAAA HH:MM`.")
             return
 
-        # Calculer le temps restant
         now = datetime.now()
         time_remaining = (release_datetime - now).total_seconds()
 
@@ -685,34 +684,149 @@ def setup(bot):
             await ctx.send(f"❌ Aucun rôle associé trouvé pour le manga **{manga}**.")
             return
 
-        # Récupérer le fil
-        thread = ctx.guild.get_thread(thread_id)
-        if not thread:
-            await ctx.send(f"❌ Impossible de trouver le fil pour le manga **{manga}**.")
+        # Générer un ID unique pour le timer
+        timer_id = len(active_timers) + 1
+
+        # Créer une tâche asyncio pour gérer le timer
+        task = asyncio.create_task(run_timer(ctx, manga, chapitre, release_datetime, thread_id, role_id))
+
+        # Stocker les informations du timer
+        active_timers[timer_id] = {
+            'manga': manga,
+            'chapitre': chapitre,
+            'date_heure': date_heure,
+            'author': ctx.author,
+            'task': task
+        }
+
+        # Envoyer un message de confirmation
+        embed = discord.Embed(
+            title="⏰ Timer Créé",
+            description=(
+                f"Un nouveau timer a été créé avec l'ID: **{timer_id}**\n\n"
+                f"📖 **Manga**: {manga}\n"
+                f"📑 **Chapitre**: {chapitre}\n"
+                f"⏰ **Date de sortie**: {date_heure}\n\n"
+                "*Pour annuler ce timer, utilisez la commande* `!cancel_timer {timer_id}`"
+            ),
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+        embed.set_footer(text=f"Créé par {ctx.author.name}")
+        await ctx.send(embed=embed)
+
+    @bot.command()
+    @commands.has_permissions(administrator=True)
+    async def timers(ctx):
+        """Affiche tous les timers en cours"""
+        if not active_timers:
+            embed = discord.Embed(
+                title="📊 Timers Actifs",
+                description="Aucun timer n'est actuellement en cours.",
+                color=discord.Color.blue()
+            )
+            await ctx.send(embed=embed)
             return
 
-        # Mentionner le rôle dans le message initial
-        role_mention = f"<@&{role_id}>"
-        await thread.send(f"{role_mention} ⏳ Le chapitre **{chapitre}** de **{manga}** est prévu pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}**. Le compte à rebours commence maintenant !")
+        embed = discord.Embed(
+            title="📊 Timers Actifs",
+            description="Liste de tous les timers en cours :",
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
 
-        # Définir des rappels à des intervalles spécifiques
-        intervals = [86400, 3600, 600, 60]  # 1 jour, 1 heure, 10 minutes, 1 minute
-        messages = [
-            f"{role_mention} 📢 Plus qu'un jour avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
-            f"{role_mention} ⏰ Plus qu'une heure avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
-            f"{role_mention} 🔥 Plus que 10 minutes avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
-            f"{role_mention} 🚨 Plus qu'une minute avant l'arrivée du chapitre **{chapitre}** de **{manga}** !"
-        ]
+        for timer_id, timer_info in active_timers.items():
+            embed.add_field(
+                name=f"ID: {timer_id}",
+                value=(
+                    f"📖 **Manga**: {timer_info['manga']}\n"
+                    f"📑 **Chapitre**: {timer_info['chapitre']}\n"
+                    f"⏰ **Date de sortie**: {timer_info['date_heure']}\n"
+                    f"📌 **Créé par**: {timer_info['author'].mention}"
+                ),
+                inline=False
+            )
 
-        for interval, message in zip(intervals, messages):
-            if time_remaining > interval:
-                await asyncio.sleep(interval)
-                time_remaining -= interval
-                await thread.send(message)
+        await ctx.send(embed=embed)
 
-        # Message final
-        await asyncio.sleep(time_remaining)
-        await thread.send(f"{role_mention} 🎉 Le chapitre **{chapitre}** de **{manga}** est maintenant disponible !")
+    @bot.command()
+    @commands.has_permissions(administrator=True)
+    async def cancel_timer(ctx, timer_id: int):
+        """Annule un timer spécifique"""
+        if timer_id not in active_timers:
+            embed = discord.Embed(
+                title="❌ Erreur",
+                description="Aucun timer trouvé avec cet ID.",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
+            return
+
+        timer_info = active_timers[timer_id]
+        # Annuler les tâches asyncio associées si elles existent
+        if 'task' in timer_info:
+            timer_info['task'].cancel()
+
+        # Supprimer le timer
+        del active_timers[timer_id]
+
+        embed = discord.Embed(
+            title="✅ Timer Annulé",
+            description=(
+                f"Le timer suivant a été annulé avec succès :\n\n"
+                f"📖 **Manga**: {timer_info['manga']}\n"
+                f"📑 **Chapitre**: {timer_info['chapitre']}\n"
+                f"⏰ **Date de sortie**: {timer_info['date_heure']}"
+            ),
+            color=discord.Color.green(),
+            timestamp=datetime.now()
+        )
+        embed.set_footer(text=f"Annulé par {ctx.author.name}")
+        await ctx.send(embed=embed)
+
+    # Fonction asynchrone pour gérer le timer
+    async def run_timer(ctx, manga, chapitre, release_datetime, thread_id, role_id):
+        try:
+            thread = ctx.guild.get_thread(thread_id)
+            role_mention = f"<@&{role_id}>"
+            
+            # Message initial
+            await thread.send(f"{role_mention} ⏳ Le chapitre **{chapitre}** de **{manga}** est prévu pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}**. Le compte à rebours commence maintenant !")
+
+            # Définir les intervalles de rappel
+            intervals = [86400, 3600, 600, 60]  # 1 jour, 1 heure, 10 minutes, 1 minute
+            messages = [
+                f"{role_mention} 📢 Plus qu'un jour avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
+                f"{role_mention} ⏰ Plus qu'une heure avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
+                f"{role_mention} 🔥 Plus que 10 minutes avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
+                f"{role_mention} 🚨 Plus qu'une minute avant l'arrivée du chapitre **{chapitre}** de **{manga}** !"
+            ]
+
+            now = datetime.now()
+            time_remaining = (release_datetime - now).total_seconds()
+
+            for interval, message in zip(intervals, messages):
+                if time_remaining > interval:
+                    await asyncio.sleep(time_remaining - interval)
+                    await thread.send(message)
+                    time_remaining = interval
+
+            # Message final
+            await asyncio.sleep(time_remaining)
+            await thread.send(f"{role_mention} 🎉 Le chapitre **{chapitre}** de **{manga}** est maintenant disponible !")
+
+        except asyncio.CancelledError:
+            # Le timer a été annulé
+            pass
+        except Exception as e:
+            logging.error(f"Erreur dans le timer pour {manga} chapitre {chapitre}: {e}")
+        finally:
+            # Supprimer le timer des timers actifs
+            for timer_id, timer_info in list(active_timers.items()):
+                if (timer_info['manga'] == manga and 
+                    timer_info['chapitre'] == chapitre):
+                    del active_timers[timer_id]
+                    break
 
 def generate_progress_bar(progress, total, size=10):
     """Génère une barre de progression visuelle"""
