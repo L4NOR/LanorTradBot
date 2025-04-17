@@ -658,7 +658,7 @@ def setup(bot):
 
     @bot.command()
     @commands.has_permissions(administrator=True)
-    async def timers(ctx):
+    async def planning(ctx):
         """Affiche tous les planning en cours"""
         if not active_timers:
             embed = discord.Embed(
