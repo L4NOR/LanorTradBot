@@ -67,7 +67,7 @@ def setup(bot):
                 "• `!ping` - Vérifier la latence\n"
                 "• `!poll` - Créer un sondage\n"
                 "• `!avancee` - Voir l'avancée des chapitres\n"
-                "• `!calendrier` Afficher les chapitres planifiés\n" 
+                "• `!planning` - Voir tous les planning actifs"
             ),
             inline=False
         )
