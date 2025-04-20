@@ -376,7 +376,12 @@ def setup(bot):
                 await manga_channel.send(
                     f"📢 Un chapitre de **{manga}** est prévu pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}** !"
                 )
+            else:
+                await ctx.send(f"❌ Impossible de trouver le salon pour le manga **{manga}**.")
+        else:
+            await ctx.send(f"❌ Aucun salon associé trouvé pour le manga **{manga}**.")
 
+        # Confirmation dans le salon où la commande a été exécutée
         await ctx.send(f"✅ Chapitre **{chapitre}** de **{manga}** planifié pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}**.")
 
 
