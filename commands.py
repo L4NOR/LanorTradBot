@@ -30,6 +30,9 @@ MANGA_ROLES = {
     "Tougen Anki": 1326778962143215677
 }
 
+# Structure de données pour stocker les timers actifs
+active_timers = {}
+
 def setup(bot):
     # Supprimer la commande d'aide par défaut
     bot.remove_command('help')
@@ -64,7 +67,7 @@ def setup(bot):
                 "• `!ping` - Vérifier la latence\n"
                 "• `!poll` - Créer un sondage\n"
                 "• `!avancee` - Voir l'avancée des chapitres\n"
-                "• `!planning` Afficher les chapitres planifiés\n" 
+                "• `!planning` - Voir tous les planning actifs"
             ),
             inline=False
         )
@@ -74,12 +77,16 @@ def setup(bot):
             embed.add_field(
                 name="🔧 **Commandes Admin**",
                 value=(
-                    "• `!planifier` - Planifier un chapitre\n"
-                    "• `!supprimer_chapitre` - Supprimer un chapitre planifié\n"
-                    "• `!calendrier` - Afficher les chapitres planifiés\n"
-                    "• `!task` - Mettre à jour l'état d'une tâche\n"
-                    "• `!task_status` - Afficher l'état des tâches\n"
-                    "• `!delete_task` - Supprimer toutes les tâches d'un chapitre"
+                    "• `!clear <nombre>` - Supprimer des messages\n"
+                    "• `!kick @utilisateur [raison]` - Expulser un membre\n"
+                    "• `!ban @utilisateur [raison]` - Bannir un membre\n"
+                    "• `!unban nom_utilisateur#tag` - Débannir un membre\n"
+                    "• `!warn @utilisateur [raison]` - Avertir un membre\n"
+                    "• `!task <action> <manga> <chapitre>` - Mettre à jour l'état d'une tâche\n"
+                    "• `!task_status <manga> <chapitre>` - Afficher l'état des tâches\n"
+                    "• `!delete_task <manga> <chapitre>` - Supprimer les tâches d'un chapitre\n"
+                    "• `!newchapter_collab <manga> <chapitre> <lien>` - Annoncer un nouveau chapitre\n"
+                    "• `!planifier <manga> <chapitre> <date>` - Créer un planning"
                 ),
                 inline=False
             )
@@ -530,7 +537,6 @@ def setup(bot):
             timeout_embed.description += "\n\n⏰ Le temps de sélection est écoulé."
             await message.edit(embed=timeout_embed)
 
-# Commande pour annoncer un nouveau chapitre collaboratif
     @bot.command(name='newchapter_collab')
     @commands.has_permissions(administrator=True)
     async def announce_new_collab_chapter(ctx, manga_name: str, chapter_number: str, link: str):
