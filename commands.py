@@ -367,7 +367,18 @@ def setup(bot):
             "chapitre": chapitre,
             "date_heure": release_datetime.strftime("%d/%m/%Y %H:%M")
         })
+
+        # Envoyer un message dans le salon du manga
+        manga_channel_id = MANGA_CHANNELS.get(manga)
+        if manga_channel_id:
+            manga_channel = ctx.guild.get_channel(manga_channel_id)
+            if manga_channel:
+                await manga_channel.send(
+                    f"📢 Un chapitre de **{manga}** est prévu pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}** !"
+                )
+
         await ctx.send(f"✅ Chapitre **{chapitre}** de **{manga}** planifié pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}**.")
+
 
     @bot.command()
     async def supprimer_chapitre(ctx, manga: str, chapitre: int):
@@ -380,6 +391,36 @@ def setup(bot):
                 return
 
         await ctx.send(f"❌ Aucun chapitre **{chapitre}** de **{manga}** trouvé dans le planning.")
+
+    @bot.command()
+    async def planning(ctx):
+        """Affiche les chapitres planifiés"""
+        if not chapitres_planifies:
+            await ctx.send("📅 Aucun chapitre n'est actuellement planifié.")
+            return
+
+        # Création de l'embed
+        embed = discord.Embed(
+            title="📅 **Calendrier des Prochains Chapitres**",
+            description="Voici les chapitres planifiés :",
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+
+        # Ajout des chapitres au contenu de l'embed
+        for chapitre in chapitres_planifies:
+            embed.add_field(
+                name=f"📖 **{chapitre['manga']}** - Chapitre **{chapitre['chapitre']}**",
+                value=f"**Sortie prévue** : {chapitre['date_heure']}",
+                inline=False
+            )
+
+        # Footer et envoi de l'embed
+        embed.set_footer(
+            text=f"Demandé par {ctx.author.name} • Team LanorTrad",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        )
+        await ctx.send(embed=embed)
 
     @bot.command()
     @commands.has_any_role(1331345633977831496, 1331346420883525682)  # Autorise les deux rôles
