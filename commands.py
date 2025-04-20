@@ -368,18 +368,18 @@ def setup(bot):
             "date_heure": release_datetime.strftime("%d/%m/%Y %H:%M")
         })
 
-        # Envoyer un message dans le salon du manga
-        manga_channel_id = MANGA_CHANNELS.get(manga)
-        if manga_channel_id:
-            manga_channel = ctx.guild.get_channel(manga_channel_id)
-            if manga_channel:
-                await manga_channel.send(
+        # Envoyer un message dans le fil du manga
+        manga_thread_id = MANGA_CHANNELS.get(manga)
+        if manga_thread_id:
+            manga_thread = ctx.guild.get_thread(manga_thread_id)
+            if manga_thread:
+                await manga_thread.send(
                     f"📢 Un chapitre de **{manga}** est prévu pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}** !"
                 )
             else:
-                await ctx.send(f"❌ Impossible de trouver le salon pour le manga **{manga}**.")
+                await ctx.send(f"❌ Impossible de trouver le fil pour le manga **{manga}**.")
         else:
-            await ctx.send(f"❌ Aucun salon associé trouvé pour le manga **{manga}**.")
+            await ctx.send(f"❌ Aucun fil associé trouvé pour le manga **{manga}**.")
 
         # Confirmation dans le salon où la commande a été exécutée
         await ctx.send(f"✅ Chapitre **{chapitre}** de **{manga}** planifié pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}**.")
