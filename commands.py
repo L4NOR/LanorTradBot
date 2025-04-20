@@ -373,7 +373,7 @@ def setup(bot):
         """Supprime un chapitre planifié"""
         global chapitres_planifies
         for chapitre_planifie in chapitres_planifies:
-            if chapitre_planifie["manga"] == manga and chapitre_planifie["chapitre"] == chapitre:
+            if chapitre_planifie["manga"] == manga & chapitre_planifie["chapitre"] == chapitre:
                 chapitres_planifies.remove(chapitre_planifie)
                 await ctx.send(f"✅ Chapitre **{chapitre}** de **{manga}** supprimé du planning.")
                 return
@@ -386,6 +386,45 @@ def setup(bot):
         if not chapitres_planifies:
             await ctx.send("📅 Aucun chapitre n'est actuellement planifié.")
             return
+
+        # Création de l'embed
+        embed = discord.Embed(
+            title="📅 **Calendrier des Prochains Chapitres**",
+            description="Voici les chapitres planifiés :",
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+
+        # Ajout des chapitres au contenu de l'embed
+        for chapitre in chapitres_planifies:
+            embed.add_field(
+                name=f"📖 **{chapitre['manga']}** - Chapitre **{chapitre['chapitre']}**",
+                value=f"**Sortie prévue** : {chapitre['date_heure']}",
+                inline=False
+            )
+
+        # Footer et envoi de l'embed
+        embed.set_footer(
+            text=f"Demandé par {ctx.author.name} • Team LanorTrad",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        )
+        await ctx.send(embed=embed)
+
+    @bot.command()
+    async def planning_everyone(ctx):
+        """Affiche les chapitres planifiés et mentionne un rôle spécifique"""
+        if not chapitres_planifies:
+            await ctx.send("📅 Aucun chapitre n'est actuellement planifié.")
+            return
+
+        # Mentionner le rôle dans le canal spécifié
+        role_id = 1332116820638826537
+        channel_id = 1332363693174034472
+        role = ctx.guild.get_role(role_id)
+        channel = ctx.guild.get_channel(channel_id)
+
+        if role & channel:
+            await channel.send(f"{role.mention} voici le planning de la semaine !")
 
         # Création de l'embed
         embed = discord.Embed(
