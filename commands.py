@@ -1,7 +1,7 @@
 # commands.py
 import discord
-from discord.ext import commands, tasks
-from datetime import datetime, timedelta
+from discord.ext import commands
+from datetime import datetime
 from config import CHANNELS, ROLES, COLORS
 import logging
 import asyncio
@@ -660,60 +660,3 @@ def generate_progress_bar(progress, total, size=10):
     filled = int(size * percentage)
     empty = size - filled
     return f"{'🟩' * filled}{'⬜' * empty}"
-
-@tasks.loop(time=datetime.strptime("00:00", "%H:%M").time())
-async def envoyer_planning_hebdomadaire():
-    """Envoie le planning hebdomadaire tous les lundis à minuit."""
-    # Vérifier si c'est un lundi
-    if datetime.now().weekday() != 0:  # 0 correspond à lundi
-        return
-
-    # Récupérer le salon et le rôle
-    guild = bot.get_guild(1325767167203082341)  # Remplacez par l'ID de votre serveur
-    channel = guild.get_channel(1332363693174034472)
-    role = guild.get_role(1332116820638826537)
-
-    if not channel or not role:
-        logging.error("Salon ou rôle introuvable pour l'envoi du planning hebdomadaire.")
-        return
-
-    # Vérifier si des chapitres sont planifiés
-    if not chapitres_planifies:
-        await channel.send(f"{role.mention} 📅 Aucun chapitre n'est actuellement planifié pour cette semaine.")
-        return
-
-    # Filtrer les chapitres planifiés pour la semaine en cours
-    debut_semaine = datetime.now()
-    fin_semaine = debut_semaine + timedelta(days=6)
-    chapitres_semaine = [
-        chapitre for chapitre in chapitres_planifies
-        if debut_semaine <= datetime.strptime(chapitre["date_heure"], "%d/%m/%Y %H:%M") <= fin_semaine
-    ]
-
-    if not chapitres_semaine:
-        await channel.send(f"{role.mention} 📅 Aucun chapitre n'est prévu pour cette semaine.")
-        return
-
-    # Créer un embed pour afficher le planning
-    embed = discord.Embed(
-        title="📅 **Planning Hebdomadaire des Chapitres**",
-        description="Voici les chapitres prévus pour cette semaine :",
-        color=discord.Color.blue(),
-        timestamp=datetime.now()
-    )
-
-    for chapitre in chapitres_semaine:
-        embed.add_field(
-            name=f"📖 **{chapitre['manga']}** - Chapitre **{chapitre['chapitre']}**",
-            value=f"**Sortie prévue** : {chapitre['date_heure']}",
-            inline=False
-        )
-
-    embed.set_footer(text="Planning hebdomadaire • LanorTrad Bot")
-    await channel.send(content=f"{role.mention}", embed=embed)
-
-# Démarrer la tâche de fond lorsque le bot est prêt
-@bot.event
-async def on_ready():
-    if not envoyer_planning_hebdomadaire.is_running():
-        envoyer_planning_hebdomadaire.start()
