@@ -9,9 +9,6 @@ import asyncio
 # Dictionnaire pour stocker les chapitres planifiés
 chapitres_planifies = []
 
-# Dictionnaire pour stocker les scores de bump
-bump_scores = []
-
 # Ajout d'une structure globale pour stocker l'état des tâches
 etat_taches_global = {}
 
@@ -67,7 +64,7 @@ def setup(bot):
                 "• `!ping` - Vérifier la latence\n"
                 "• `!poll` - Créer un sondage\n"
                 "• `!avancee` - Voir l'avancée des chapitres\n"
-                "• `!calendrier` Afficher les chapitres planifiés\n" 
+                "• `!planning` Afficher les chapitres planifiés\n" 
             ),
             inline=False
         )
@@ -378,36 +375,6 @@ def setup(bot):
         await ctx.send(f"❌ Aucun chapitre **{chapitre}** de **{manga}** trouvé dans le planning.")
 
     @bot.command()
-    async def calendrier(ctx):
-        """Affiche les chapitres planifiés"""
-        if not chapitres_planifies:
-            await ctx.send("📅 Aucun chapitre n'est actuellement planifié.")
-            return
-
-        # Création de l'embed
-        embed = discord.Embed(
-            title="📅 **Calendrier des Prochains Chapitres**",
-            description="Voici les chapitres planifiés :",
-            color=discord.Color.blue(),
-            timestamp=datetime.now()
-        )
-
-        # Ajout des chapitres au contenu de l'embed
-        for chapitre in chapitres_planifies:
-            embed.add_field(
-                name=f"📖 **{chapitre['manga']}** - Chapitre **{chapitre['chapitre']}**",
-                value=f"**Sortie prévue** : {chapitre['date_heure']}",
-                inline=False
-            )
-
-        # Footer et envoi de l'embed
-        embed.set_footer(
-            text=f"Demandé par {ctx.author.name} • Team LanorTrad",
-            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
-        )
-        await ctx.send(embed=embed)
-
-    @bot.command()
     @commands.has_any_role(1331345633977831496, 1331346420883525682)  # Autorise les deux rôles
     async def task(ctx, action: str, manga: str, chapitre: int):
         """
@@ -651,68 +618,6 @@ def setup(bot):
 
         # Supprimer la commande
         await ctx.message.delete()
-
-    @bot.command()
-    async def timer(ctx, manga: str, chapitre: int, date_heure: str):
-        """
-        Crée un timer pour "hype" l'arrivée d'un chapitre planifié.
-        Format attendu : JJ/MM/AAAA HH:MM
-        """
-        try:
-            # Vérifier si la date et l'heure sont valides
-            release_datetime = datetime.strptime(date_heure, "%d/%m/%Y %H:%M")
-        except ValueError:
-            await ctx.send("❌ Format de date et heure invalide. Utilisez le format `JJ/MM/AAAA HH:MM`.")
-            return
-
-        # Calculer le temps restant
-        now = datetime.now()
-        time_remaining = (release_datetime - now).total_seconds()
-
-        if time_remaining <= 0:
-            await ctx.send(f"❌ La date et l'heure spécifiées sont déjà passées ou sont maintenant.")
-            return
-
-        # Vérifier si le manga a un fil associé
-        thread_id = MANGA_CHANNELS.get(manga)
-        if not thread_id:
-            await ctx.send(f"❌ Aucun fil associé trouvé pour le manga **{manga}**.")
-            return
-
-        # Vérifier si le manga a un rôle associé
-        role_id = MANGA_ROLES.get(manga)
-        if not role_id:
-            await ctx.send(f"❌ Aucun rôle associé trouvé pour le manga **{manga}**.")
-            return
-
-        # Récupérer le fil
-        thread = ctx.guild.get_thread(thread_id)
-        if not thread:
-            await ctx.send(f"❌ Impossible de trouver le fil pour le manga **{manga}**.")
-            return
-
-        # Mentionner le rôle dans le message initial
-        role_mention = f"<@&{role_id}>"
-        await thread.send(f"{role_mention} ⏳ Le chapitre **{chapitre}** de **{manga}** est prévu pour le **{release_datetime.strftime('%d/%m/%Y à %H:%M')}**. Le compte à rebours commence maintenant !")
-
-        # Définir des rappels à des intervalles spécifiques
-        intervals = [86400, 3600, 600, 60]  # 1 jour, 1 heure, 10 minutes, 1 minute
-        messages = [
-            f"{role_mention} 📢 Plus qu'un jour avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
-            f"{role_mention} ⏰ Plus qu'une heure avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
-            f"{role_mention} 🔥 Plus que 10 minutes avant l'arrivée du chapitre **{chapitre}** de **{manga}** !",
-            f"{role_mention} 🚨 Plus qu'une minute avant l'arrivée du chapitre **{chapitre}** de **{manga}** !"
-        ]
-
-        for interval, message in zip(intervals, messages):
-            if time_remaining > interval:
-                await asyncio.sleep(interval)
-                time_remaining -= interval
-                await thread.send(message)
-
-        # Message final
-        await asyncio.sleep(time_remaining)
-        await thread.send(f"{role_mention} 🎉 Le chapitre **{chapitre}** de **{manga}** est maintenant disponible !")
 
 def generate_progress_bar(progress, total, size=10):
     """Génère une barre de progression visuelle"""
