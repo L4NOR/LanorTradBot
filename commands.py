@@ -673,7 +673,7 @@ def setup(bot):
         # Aperçu avec lien Discord (comme dans l'image)
         embed.add_field(
             name="",
-            value=f"[https://discord.com/invite/KKsp4AG8BV]({link})",
+            value=f"https://discord.com/invite/KKsp4AG8BV",
             inline=False
         )
 
@@ -692,6 +692,51 @@ def setup(bot):
 
         # Supprimer la commande
         await ctx.message.delete()
+
+    @bot.command(name="task_all")
+    @commands.has_any_role(1331345633977831496, 1331346420883525682)  # Autorise les deux rôles
+    async def task_all(ctx):
+        """
+        Affiche toutes les tâches actuellement en cours pour tous les chapitres et mangas.
+        """
+        if not etat_taches_global:
+            await ctx.send("📋 Aucune tâche en cours actuellement.")
+            return
+
+        # Création de l'embed pour afficher toutes les tâches
+        embed = discord.Embed(
+            title="📋 Toutes les Tâches en Cours",
+            description="Voici l'état des tâches pour tous les chapitres et mangas :",
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+
+        # Parcourir toutes les tâches
+        for chapitre_key, tasks in etat_taches_global.items():
+            manga, chapitre = chapitre_key.split("_")
+            progress = sum(1 for task in tasks.values() if task == "✅ Terminé")
+            progress_bar = generate_progress_bar(progress, len(tasks))
+
+            field_value = (
+                f"{progress_bar} ({progress}/{len(tasks)})\n"
+                f"Clean: {tasks['clean']}\n"
+                f"Trad: {tasks['trad']}\n"
+                f"Check: {tasks['check']}\n"
+                f"Edit: {tasks['edit']}\n"
+                f"Release: {tasks['release']}"
+            )
+            embed.add_field(
+                name=f"📖 {manga.capitalize()} - Chapitre {chapitre}",
+                value=field_value,
+                inline=False
+            )
+
+        # Footer et envoi de l'embed
+        embed.set_footer(
+            text=f"Demandé par {ctx.author.name}",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        )
+        await ctx.send(embed=embed)
 
 def generate_progress_bar(progress, total, size=10):
     """Génère une barre de progression visuelle"""
