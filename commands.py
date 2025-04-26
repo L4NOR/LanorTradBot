@@ -81,6 +81,7 @@ def setup(bot):
                     "• `!warn @utilisateur [raison]` - Avertir un membre\n"
                     "• `!task <action> <manga> <chapitre>` - Mettre à jour l'état d'une tâche\n"
                     "• `!task_status <manga> <chapitre>` - Afficher l'état des tâches\n"
+                    "• `!task_all` - Afficher toutes les tâches en cours\n"
                     "• `!delete_task <manga> <chapitre>` - Supprimer les tâches d'un chapitre\n"
                     "• `!newchapter_collab <manga> <chapitre> <lien>` - Annoncer un nouveau chapitre\n"
                     "• `!planifier <manga> <chapitre> <date>` - Créer un planning"
