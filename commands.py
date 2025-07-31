@@ -472,10 +472,12 @@ def setup(bot):
 
     @bot.command()
     @commands.has_any_role(1331345633977831496, 1331346420883525682)  # Autorise les deux rôles
-    async def task(ctx, action: str, manga: str, chapitre: int):
+    async def task(ctx, action: str, manga: str, *chapitres: str):
         """
-        Met à jour l'état d'une tâche pour un chapitre.
+        Met à jour l'état d'une tâche pour un ou plusieurs chapitres.
         Actions possibles : clean, trad, check, edit, release.
+        Usage: !task <action> <manga> <chapitres>
+        Exemple: !task trad "Catenaccio" 24 25 26
         """
         actions_valides = ["clean", "trad", "check", "edit", "release"]
         
@@ -483,21 +485,50 @@ def setup(bot):
             await ctx.send(f"❌ Action invalide. Actions possibles : {', '.join(actions_valides)}.")
             return
 
-        # Initialiser l'état des tâches pour ce chapitre si non existant
-        chapitre_key = f"{manga.lower()}_{chapitre}"
-        if chapitre_key not in etat_taches_global:
-            etat_taches_global[chapitre_key] = {
-                "clean": "❌ Non commencé",
-                "trad": "❌ Non commencé",
-                "check": "❌ Non commencé",
-                "edit": "❌ Non commencé",
-                "release": "❌ Non commencé"
-            }
+        # Traiter chaque chapitre fourni
+        chapitres_traites = []
+        chapitres_erreur = []
 
-        # Mettre à jour l'état de la tâche
-        etat_taches_global[chapitre_key][action.lower()] = "✅ Terminé"
+        for chapitre_str in chapitres:
+            # Nettoyer la chaîne de caractères des virgules éventuelles
+            chapitre_str = chapitre_str.strip().rstrip(',')
+            
+            try:
+                chapitre = int(chapitre_str)
+                # Initialiser l'état des tâches pour ce chapitre si non existant
+                chapitre_key = f"{manga.lower()}_{chapitre}"
+                if chapitre_key not in etat_taches_global:
+                    etat_taches_global[chapitre_key] = {
+                        "clean": "❌ Non commencé",
+                        "trad": "❌ Non commencé",
+                        "check": "❌ Non commencé",
+                        "edit": "❌ Non commencé",
+                        "release": "❌ Non commencé"
+                    }
+
+                # Mettre à jour l'état de la tâche
+                etat_taches_global[chapitre_key][action.lower()] = "✅ Terminé"
+                chapitres_traites.append(str(chapitre))
+                
+            except ValueError:
+                chapitres_erreur.append(chapitre_str)
+                continue
+
+        # Sauvegarder les modifications
         sauvegarder_etat_taches()
-        await ctx.send(f"✅ Tâche **{action}** pour le chapitre **{chapitre}** de **{manga}** mise à jour avec succès !")
+
+        # Préparer le message de réponse
+        reponse = []
+        if chapitres_traites:
+            reponse.append(f"✅ Tâche **{action}** mise à jour pour **{manga}** chapitres : **{', '.join(chapitres_traites)}**")
+        
+        if chapitres_erreur:
+            reponse.append(f"❌ Chapitres invalides ignorés : {', '.join(chapitres_erreur)}")
+        
+        if not chapitres_traites and not chapitres_erreur:
+            reponse.append("❌ Aucun chapitre valide n'a été spécifié.")
+
+        await ctx.send('\n'.join(reponse))
 
     @bot.command()
     @commands.has_any_role(1331345633977831496, 1331346420883525682)  # Autorise les deux rôles
