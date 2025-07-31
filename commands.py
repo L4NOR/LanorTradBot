@@ -5,12 +5,30 @@ from datetime import datetime
 from config import CHANNELS, ROLES, COLORS
 import logging
 import asyncio
+import json
+import os
+
+TASKS_FILE = "data/etat_taches.json"
+os.makedirs("data", exist_ok=True)
 
 # Dictionnaire pour stocker les chapitres planifiés
 chapitres_planifies = []
 
 # Ajout d'une structure globale pour stocker l'état des tâches
 etat_taches_global = {}
+# Charger les tâches depuis le fichier JSON au démarrage
+def charger_etat_taches():
+    global etat_taches_global
+    if os.path.exists(TASKS_FILE):
+        with open(TASKS_FILE, "r", encoding="utf-8") as f:
+            etat_taches_global = json.load(f)
+    else:
+        etat_taches_global = {}
+
+# Sauvegarder les tâches dans le fichier JSON
+def sauvegarder_etat_taches():
+    with open(TASKS_FILE, "w", encoding="utf-8") as f:
+        json.dump(etat_taches_global, f, ensure_ascii=False, indent=4)
 
 # Dictionnaire pour mapper les mangas aux salons
 MANGA_CHANNELS = {
@@ -31,6 +49,8 @@ MANGA_ROLES = {
 }
 
 def setup(bot):
+    charger_etat_taches()  # Charger les tâches depuis le fichier JSON au démarrage
+
     # Supprimer la commande d'aide par défaut
     bot.remove_command('help')
 
@@ -476,6 +496,7 @@ def setup(bot):
 
         # Mettre à jour l'état de la tâche
         etat_taches_global[chapitre_key][action.lower()] = "✅ Terminé"
+        sauvegarder_etat_taches()
         await ctx.send(f"✅ Tâche **{action}** pour le chapitre **{chapitre}** de **{manga}** mise à jour avec succès !")
 
     @bot.command()
@@ -511,6 +532,7 @@ def setup(bot):
         chapitre_key = f"{manga.lower()}_{chapitre}"
         if chapitre_key in etat_taches_global:
             del etat_taches_global[chapitre_key]
+            sauvegarder_etat_taches()
             await ctx.send(f"✅ Toutes les tâches pour le chapitre **{chapitre}** de **{manga}** ont été supprimées.")
         else:
             await ctx.send(f"❌ Aucune tâche trouvée pour le chapitre **{chapitre}** de **{manga}**.")
