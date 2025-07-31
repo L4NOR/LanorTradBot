@@ -772,7 +772,7 @@ def setup(bot):
 
         # Parcourir toutes les tâches
         for chapitre_key, tasks in etat_taches_global.items():
-            manga, chapitre = chapitre_key.split("_")
+            manga, chapitre = chapitre_key.rsplit("_", 1)
             progress = sum(1 for task in tasks.values() if task == "✅ Terminé")
             progress_bar = generate_progress_bar(progress, len(tasks))
 
