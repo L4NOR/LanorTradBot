@@ -51,10 +51,10 @@ MANGA_ROLES = {
 }
 
 def setup(bot):
+    charger_etat_taches()  # Charger les tâches depuis le fichier JSON au démarrage
+
     global bot_instance
     bot_instance = bot
-
-    charger_etat_taches()  # Charger les tâches depuis le fichier JSON au démarrage
 
     # Supprimer la commande d'aide par défaut
     bot.remove_command('help')
