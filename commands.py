@@ -85,11 +85,8 @@ def setup(bot):
                 "• `!help` - Afficher ce menu d'aide\n"
                 "• `!info` - Informations du serveur\n"
                 "• `!userinfo` - Détails du profil utilisateur\n"
-                "• `!avatar` - Afficher l'avatar\n"
                 "• `!ping` - Vérifier la latence\n"
-                "• `!poll` - Créer un sondage\n"
                 "• `!avancee` - Voir l'avancée des chapitres\n"
-                "• `!planning` - Voir tous les planning actifs"
             ),
             inline=False
         )
@@ -109,7 +106,6 @@ def setup(bot):
                     "• `!task_all` - Afficher toutes les tâches en cours\n"
                     "• `!delete_task <manga> <chapitre>` - Supprimer les tâches d'un chapitre\n"
                     "• `!newchapter_collab <manga> <chapitre> <lien>` - Annoncer un nouveau chapitre\n"
-                    "• `!planifier <manga> <chapitre> <date>` - Créer un planning"
                 ),
                 inline=False
             )
@@ -271,90 +267,6 @@ def setup(bot):
         
         if member.avatar:
             embed.set_thumbnail(url=member.avatar.url)
-        await ctx.send(embed=embed)
-
-    @bot.command()
-    async def poll(ctx, *, poll_input=None):
-        """Crée un sondage"""
-        if not poll_input:
-            embed = discord.Embed(
-                title="❌ Erreur de création de sondage",
-                description=(
-                    "Utilisation correcte : `!poll \"Votre question\" Option1 Option2 Option3...`\n\n"
-                    "Règles :\n"
-                    "• Mettez la question entre guillemets\n"
-                    "• Ajoutez 2-10 options séparées par des espaces\n"
-                    "• Exemple : `!poll \"Quel est votre jeu préféré ?\" Minecraft Fortnite Roblox`"
-                ),
-                color=discord.Color.red()
-            )
-            return await ctx.send(embed=embed)
-        
-        # Split the input, first part is the question (in quotes), rest are options
-        try:
-            parts = poll_input.split('"')
-            question = parts[1].strip()
-            options = parts[2].strip().split()
-        except (IndexError, ValueError):
-            embed = discord.Embed(
-                title="❌ Format de sondage incorrect",
-                description="Assurez-vous de mettre la question entre guillemets.",
-                color=discord.Color.red()
-            )
-            return await ctx.send(embed=embed)
-
-        # Validate options
-        if len(options) < 2:
-            embed = discord.Embed(
-                title="❌ Pas assez d'options",
-                description="Un sondage nécessite au moins 2 options.",
-                color=discord.Color.red()
-            )
-            return await ctx.send(embed=embed)
-
-        if len(options) > 10:
-            embed = discord.Embed(
-                title="❌ Trop d'options",
-                description="Un sondage ne peut pas avoir plus de 10 options.",
-                color=discord.Color.red()
-            )
-            return await ctx.send(embed=embed)
-        
-        # Emoji for reactions
-        reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
-        
-        # Prepare poll description
-        description = []
-        for i, option in enumerate(options):
-            description.append(f"{reactions[i]} {option}")
-        
-        # Create poll embed
-        embed = discord.Embed(
-            title=f"📊 Sondage : {question}",
-            description='\n'.join(description),
-            color=discord.Color.blue()
-        )
-        embed.set_footer(text=f"Sondage créé par {ctx.author.name}")
-        
-        # Send poll message
-        poll_msg = await ctx.send(embed=embed)
-        
-        # Add reaction emojis
-        for i in range(len(options)):
-            await poll_msg.add_reaction(reactions[i])
-
-    @bot.command()
-    async def avatar(ctx, member: discord.Member = None):
-        """Affiche l'avatar d'un utilisateur"""
-        member = member or ctx.author
-        
-        embed = discord.Embed(
-            title=f"Avatar de {member.name}",
-            color=member.color
-        )
-        if member.avatar:
-            embed.set_image(url=member.avatar.url)
-        
         await ctx.send(embed=embed)
 
     @bot.command()
