@@ -7,6 +7,7 @@ import logging
 import asyncio
 import json
 import os
+import random
 
 bot_instance = None
 
@@ -406,6 +407,8 @@ def setup(bot):
                         "edit": "❌ Non commencé",
                         "release": "❌ Non commencé"
                     }
+                    # ➕ Notifie automatiquement dans le salon du manga concerné
+                    await notifier_nouvelle_task(ctx, manga, chapitre)
 
                 # Mettre à jour l'état de la tâche
                 etat_taches_global[chapitre_key][action.lower()] = "✅ Terminé"
@@ -699,3 +702,30 @@ def generate_progress_bar(progress, total, size=10):
     filled = int(size * percentage)
     empty = size - filled
     return f"{'🟩' * filled}{'⬜' * empty}"
+
+async def notifier_nouvelle_task(ctx, manga, chapitre):
+    messages_variants = [
+        "Tiens, tiens, y'a du mouvement par ici... 👀",
+        "Une nouvelle tâche vient d’être ajoutée ! 📌",
+        "Oho, un chapitre qui entre dans la danse… 🕺",
+        "Un peu d’action dans le coin, ça fait plaisir ! 🎉",
+    ]
+
+    texte_suivi = "Si j’étais vous, je ferais la commande `!avancee` pour suivre ça !"
+
+    manga = manga.strip()
+
+    if manga in MANGA_CHANNELS and manga in MANGA_ROLES:
+        channel_id = MANGA_CHANNELS[manga]
+        role_id = MANGA_ROLES[manga]
+
+        channel = ctx.guild.get_thread(channel_id) or ctx.guild.get_channel(channel_id)
+        role = ctx.guild.get_role(role_id)
+
+        if channel and role:
+            message = f"{role.mention}\n{random.choice(messages_variants)}\n{texte_suivi}"
+            try:
+                await channel.send(message)
+            except Exception as e:
+                logging.warning(f"Impossible d'envoyer une notification dans {channel.name} : {e}")
+
