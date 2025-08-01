@@ -7,7 +7,6 @@ import logging
 import asyncio
 import json
 import os
-import random
 
 bot_instance = None
 
@@ -49,60 +48,6 @@ MANGA_ROLES = {
     "Ao No Exorcist": 1326778473079111763,
     "Tokyo Underworld": 1326778697218392149,
     "Tougen Anki": 1326778962143215677
-}
-
-# Ajouter ces constantes au début du fichier, après les imports
-MANGA_NOTIFICATIONS = {
-    "catenaccio": {
-        "channel_id": 1330182024832614541,
-        "role_id": 1332429989085184010,
-        "messages": [
-            "🔥 Oh ! Une mise à jour pour Catenaccio ! Faites `!avancee` pour voir ça !",
-            "⚽ Du nouveau sur le terrain ! Découvrez l'avancée avec `!avancee` !",
-            "🎯 But marqué dans l'avancement ! Checkez `!avancee` !",
-            "🌟 Les choses bougent pour Catenaccio ! `!avancee` pour en savoir plus !"
-        ]
-    },
-    "ao no exorcist": {
-        "channel_id": 1329589897920512020,
-        "role_id": 1326778473079111763,
-        "messages": [
-            "👹 Les démons s'agitent ! Nouvelle update sur Ao No Exorcist ! `!avancee` !",
-            "🔥 Rin fait des siennes ! Regardez `!avancee` !",
-            "⚔️ Du nouveau dans le monde des exorcistes ! `!avancee` pour voir !",
-            "✨ Une flamme bleue vient d'apparaître ! `!avancee` pour plus d'infos !"
-        ]
-    },
-    "satsudou": {
-        "channel_id": 1330142974646026371,
-        "role_id": 1326778585478070283,
-        "messages": [
-            "🗡️ Du sang frais dans Satsudou ! `!avancee` pour voir ça !",
-            "🔪 Les lames s'aiguisent ! Découvrez l'avancée avec `!avancee` !",
-            "💀 Un nouveau chapitre se prépare ! Checkez `!avancee` !",
-            "🌙 Les ombres s'agitent dans Satsudou ! `!avancee` pour en savoir plus !"
-        ]
-    },
-    "tokyo underworld": {
-        "channel_id": 1330143657264943266,
-        "role_id": 1326778697218392149,
-        "messages": [
-            "🌆 Du mouvement dans les bas-fonds de Tokyo ! `!avancee` !",
-            "🏮 Les yakuzas sont en action ! Regardez `!avancee` !",
-            "🗼 Tokyo s'éveille ! `!avancee` pour voir l'avancée !",
-            "⚔️ Les clans s'agitent ! `!avancee` pour plus d'infos !"
-        ]
-    },
-    "tougen anki": {
-        "channel_id": 1330144191816142941,
-        "role_id": 1326778962143215677,
-        "messages": [
-            "😈 Les démons de Tougen Anki s'agitent ! `!avancee` !",
-            "🎭 Un nouveau masque apparaît ! Découvrez avec `!avancee` !",
-            "⛩️ Le temple cache de nouveaux secrets ! `!avancee` pour voir !",
-            "🌸 Les pétales dansent pour Tougen Anki ! `!avancee` pour plus d'infos !"
-        ]
-    }
 }
 
 def setup(bot):
@@ -398,16 +343,6 @@ def setup(bot):
 
         await ctx.send('\n'.join(reponse))
 
-        manga_lower = manga.lower()
-        if manga_lower in MANGA_NOTIFICATIONS:
-            notification = MANGA_NOTIFICATIONS[manga_lower]
-            channel = ctx.guild.get_channel(notification["channel_id"])
-            if channel:
-                role = ctx.guild.get_role(notification["role_id"])
-                if role:
-                    random_message = random.choice(notification["messages"])
-                    await channel.send(f"{role.mention} {random_message}")
-
     @bot.command()
     @commands.has_any_role(1331345633977831496, 1331346420883525682)  # Autorise les deux rôles
     async def task_status(ctx, manga: str, chapitre: int):
@@ -626,67 +561,91 @@ def setup(bot):
         await ctx.message.delete()
 
     @bot.command(name="task_all")
-    @commands.has_any_role(1331345633977831496, 1331346420883525682)  # Autorise les deux rôles
+    @commands.has_any_role(1331345633977831496, 1331346420883525682)
     async def task_all(ctx):
         """
-        Affiche toutes les tâches actuellement en cours pour tous les chapitres et mangas.
+        Affiche toutes les tâches actuellement en cours, organisées par manga avec pagination.
         """
         if not etat_taches_global:
             await ctx.send("📋 Aucune tâche en cours actuellement.")
             return
 
-        embeds = []
-        current_embed = discord.Embed(
-            title="📋 Toutes les Tâches en Cours",
-            description="Voici l'état des tâches pour tous les chapitres et mangas :",
-            color=discord.Color.blue(),
-            timestamp=datetime.now()
-        )
-        field_count = 0
-
+        # Organiser les tâches par manga
+        tasks_by_manga = {}
         for chapitre_key, tasks in etat_taches_global.items():
             manga, chapitre = chapitre_key.rsplit("_", 1)
-            progress = sum(1 for task in tasks.values() if task == "✅ Terminé")
-            progress_bar = generate_progress_bar(progress, len(tasks))
+            if manga not in tasks_by_manga:
+                tasks_by_manga[manga] = {}
+            tasks_by_manga[manga][chapitre] = tasks
 
-            field_value = (
-                f"{progress_bar} ({progress}/{len(tasks)})\n"
-                f"Clean: {tasks['clean']}\n"
-                f"Trad: {tasks['trad']}\n"
-                f"Check: {tasks['check']}\n"
-                f"Edit: {tasks['edit']}\n"
-                f"Release: {tasks['release']}"
+        # Créer les embeds, un par manga
+        embeds = []
+        for manga, chapitres in tasks_by_manga.items():
+            embed = discord.Embed(
+                title=f"📋 Tâches en cours - {manga.capitalize()}",
+                color=discord.Color.blue(),
+                timestamp=datetime.now()
             )
 
-            current_embed.add_field(
-                name=f"📖 {manga.capitalize()} - Chapitre {chapitre}",
-                value=field_value,
-                inline=False
-            )
-            field_count += 1
+            for chapitre, tasks in sorted(chapitres.items(), key=lambda x: int(x[0])):
+                progress = sum(1 for task in tasks.values() if task == "✅ Terminé")
+                progress_bar = generate_progress_bar(progress, len(tasks))
 
-            # Dès qu'on atteint 25 champs, on envoie un embed et on en crée un nouveau
-            if field_count == 25:
-                embeds.append(current_embed)
-                current_embed = discord.Embed(
-                    title="📋 Toutes les Tâches en Cours (suite)",
-                    color=discord.Color.blue(),
-                    timestamp=datetime.now()
+                field_value = (
+                    f"{progress_bar} ({progress}/{len(tasks)})\n"
+                    f"Clean: {tasks['clean']}\n"
+                    f"Trad: {tasks['trad']}\n"
+                    f"Check: {tasks['check']}\n"
+                    f"Edit: {tasks['edit']}\n"
+                    f"Release: {tasks['release']}"
                 )
-                field_count = 0
 
-        # Ajouter le dernier embed s’il contient encore des champs
-        if field_count > 0:
-            embeds.append(current_embed)
+                embed.add_field(
+                    name=f"📖 Chapitre {chapitre}",
+                    value=field_value,
+                    inline=False
+                )
 
-        # Envoyer tous les embeds un par un
-        for embed in embeds:
             embed.set_footer(
-                text=f"Demandé par {ctx.author.name}",
+                text=f"Page {len(embeds) + 1}/{len(tasks_by_manga)} | Demandé par {ctx.author.name}",
                 icon_url=ctx.author.avatar.url if ctx.author.avatar else None
             )
-            await ctx.send(embed=embed)
+            embeds.append(embed)
 
+        if not embeds:
+            await ctx.send("❌ Aucune tâche trouvée.")
+            return
+
+        # Envoyer le premier embed
+        current_page = 0
+        message = await ctx.send(embed=embeds[current_page])
+
+        # Ajouter les réactions pour la navigation
+        reactions = ['⬅️', '➡️']
+        for reaction in reactions:
+            await message.add_reaction(reaction)
+
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in reactions and reaction.message.id == message.id
+
+        while True:
+            try:
+                reaction, user = await ctx.bot.wait_for('reaction_add', timeout=60.0, check=check)
+
+                if str(reaction.emoji) == '⬅️':
+                    if current_page > 0:
+                        current_page -= 1
+                        await message.edit(embed=embeds[current_page])
+                elif str(reaction.emoji) == '➡️':
+                    if current_page < len(embeds) - 1:
+                        current_page += 1
+                        await message.edit(embed=embeds[current_page])
+
+                await message.remove_reaction(reaction, user)
+
+            except asyncio.TimeoutError:
+                await message.clear_reactions()
+                break
 def generate_progress_bar(progress, total, size=10):
     """Génère une barre de progression visuelle"""
     percentage = progress / total
