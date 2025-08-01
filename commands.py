@@ -7,7 +7,6 @@ import logging
 import asyncio
 import json
 import os
-import random
 
 bot_instance = None
 
@@ -304,9 +303,12 @@ def setup(bot):
         chapitres_erreur = []
 
         for chapitre_str in chapitres:
+            # Nettoyer la chaîne de caractères des virgules éventuelles
             chapitre_str = chapitre_str.strip().rstrip(',')
+            
             try:
                 chapitre = int(chapitre_str)
+                # Initialiser l'état des tâches pour ce chapitre si non existant
                 chapitre_key = f"{manga.lower()}_{chapitre}"
                 if chapitre_key not in etat_taches_global:
                     etat_taches_global[chapitre_key] = {
@@ -316,14 +318,19 @@ def setup(bot):
                         "edit": "❌ Non commencé",
                         "release": "❌ Non commencé"
                     }
+
+                # Mettre à jour l'état de la tâche
                 etat_taches_global[chapitre_key][action.lower()] = "✅ Terminé"
                 chapitres_traites.append(str(chapitre))
+                
             except ValueError:
                 chapitres_erreur.append(chapitre_str)
                 continue
 
+        # Sauvegarder les modifications
         sauvegarder_etat_taches()
 
+        # Préparer le message de réponse
         reponse = []
         if chapitres_traites:
             reponse.append(f"✅ Tâche **{action}** mise à jour pour **{manga}** chapitres : **{', '.join(chapitres_traites)}**")
@@ -335,29 +342,6 @@ def setup(bot):
             reponse.append("❌ Aucun chapitre valide n'a été spécifié.")
 
         await ctx.send('\n'.join(reponse))
-
-        # --- Ajout du message d'annonce spécifique ---
-        # Dictionnaire des salons et rôles par manga
-        manga_announce = {
-            "catenaccio": {"role": 1332429989085184010, "channel": 1330182024832614541},
-            "ao no exorcist": {"role": 1326778473079111763, "channel": 1329589897920512020},
-            "satsudou": {"role": 1326778585478070283, "channel": 1330142974646026371},
-            "tokyo underworld": {"role": 1326778697218392149, "channel": 1330143657264943266},
-            "tougen anki": {"role": 1326778962143215677, "channel": 1330144191816142941},
-        }
-        manga_key = manga.lower()
-        if chapitres_traites and manga_key in manga_announce:
-            phrases = [
-                "Tiens, tiens, y'a du mouvement par ici... Si j'étais vous, je ferais la commande `!avancee` pour voir ça !",
-                "On dirait qu'un chapitre avance ! N'oubliez pas de jeter un œil avec `!avancee`.",
-                "Quelqu'un a bossé sur un chapitre... Curieux ? Tapez `!avancee` pour voir les progrès !",
-                "Du nouveau sur ce manga ! Faites `!avancee` pour suivre l'évolution des chapitres !"
-            ]
-            phrase = random.choice(phrases)
-            channel = ctx.guild.get_channel(manga_announce[manga_key]["channel"])
-            role = ctx.guild.get_role(manga_announce[manga_key]["role"])
-            if channel and role:
-                await channel.send(f"{role.mention} {phrase}")
 
     @bot.command()
     @commands.has_any_role(1331345633977831496, 1331346420883525682)  # Autorise les deux rôles
