@@ -7,6 +7,7 @@ import logging
 import asyncio
 import json
 import os
+import random
 
 bot_instance = None
 
@@ -48,6 +49,60 @@ MANGA_ROLES = {
     "Ao No Exorcist": 1326778473079111763,
     "Tokyo Underworld": 1326778697218392149,
     "Tougen Anki": 1326778962143215677
+}
+
+# Ajouter ces constantes au début du fichier, après les imports
+MANGA_NOTIFICATIONS = {
+    "catenaccio": {
+        "channel_id": 1330182024832614541,
+        "role_id": 1332429989085184010,
+        "messages": [
+            "🔥 Oh ! Une mise à jour pour Catenaccio ! Faites `!avancee` pour voir ça !",
+            "⚽ Du nouveau sur le terrain ! Découvrez l'avancée avec `!avancee` !",
+            "🎯 But marqué dans l'avancement ! Checkez `!avancee` !",
+            "🌟 Les choses bougent pour Catenaccio ! `!avancee` pour en savoir plus !"
+        ]
+    },
+    "ao no exorcist": {
+        "channel_id": 1329589897920512020,
+        "role_id": 1326778473079111763,
+        "messages": [
+            "👹 Les démons s'agitent ! Nouvelle update sur Ao No Exorcist ! `!avancee` !",
+            "🔥 Rin fait des siennes ! Regardez `!avancee` !",
+            "⚔️ Du nouveau dans le monde des exorcistes ! `!avancee` pour voir !",
+            "✨ Une flamme bleue vient d'apparaître ! `!avancee` pour plus d'infos !"
+        ]
+    },
+    "satsudou": {
+        "channel_id": 1330142974646026371,
+        "role_id": 1326778585478070283,
+        "messages": [
+            "🗡️ Du sang frais dans Satsudou ! `!avancee` pour voir ça !",
+            "🔪 Les lames s'aiguisent ! Découvrez l'avancée avec `!avancee` !",
+            "💀 Un nouveau chapitre se prépare ! Checkez `!avancee` !",
+            "🌙 Les ombres s'agitent dans Satsudou ! `!avancee` pour en savoir plus !"
+        ]
+    },
+    "tokyo underworld": {
+        "channel_id": 1330143657264943266,
+        "role_id": 1326778697218392149,
+        "messages": [
+            "🌆 Du mouvement dans les bas-fonds de Tokyo ! `!avancee` !",
+            "🏮 Les yakuzas sont en action ! Regardez `!avancee` !",
+            "🗼 Tokyo s'éveille ! `!avancee` pour voir l'avancée !",
+            "⚔️ Les clans s'agitent ! `!avancee` pour plus d'infos !"
+        ]
+    },
+    "tougen anki": {
+        "channel_id": 1330144191816142941,
+        "role_id": 1326778962143215677,
+        "messages": [
+            "😈 Les démons de Tougen Anki s'agitent ! `!avancee` !",
+            "🎭 Un nouveau masque apparaît ! Découvrez avec `!avancee` !",
+            "⛩️ Le temple cache de nouveaux secrets ! `!avancee` pour voir !",
+            "🌸 Les pétales dansent pour Tougen Anki ! `!avancee` pour plus d'infos !"
+        ]
+    }
 }
 
 def setup(bot):
@@ -342,6 +397,16 @@ def setup(bot):
             reponse.append("❌ Aucun chapitre valide n'a été spécifié.")
 
         await ctx.send('\n'.join(reponse))
+
+        manga_lower = manga.lower()
+        if manga_lower in MANGA_NOTIFICATIONS:
+            notification = MANGA_NOTIFICATIONS[manga_lower]
+            channel = ctx.guild.get_channel(notification["channel_id"])
+            if channel:
+                role = ctx.guild.get_role(notification["role_id"])
+                if role:
+                    random_message = random.choice(notification["messages"])
+                    await channel.send(f"{role.mention} {random_message}")
 
     @bot.command()
     @commands.has_any_role(1331345633977831496, 1331346420883525682)  # Autorise les deux rôles
