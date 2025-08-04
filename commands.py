@@ -343,6 +343,25 @@ def setup(bot):
 
         await ctx.send('\n'.join(reponse))
 
+                # ✅ Notification dans le forum pour les fans du manga
+        manga_nom_formate = manga.strip()
+
+        # Vérifie que le manga est bien défini dans les deux dictionnaires
+        if manga_nom_formate in MANGA_CHANNELS and manga_nom_formate in MANGA_ROLES:
+            thread_id = MANGA_CHANNELS[manga_nom_formate]
+            role_id = MANGA_ROLES[manga_nom_formate]
+
+            # Récupération du salon
+            thread_channel = bot.get_channel(thread_id)
+            if thread_channel:
+                mention_role = f"<@&{role_id}>"
+                chapitres_mention = ", ".join(chapitres_traites)
+                await thread_channel.send(
+                    f"{mention_role} Une nouvelle tâche **{action.upper()}** vient d'être effectuée "
+                    f"pour **{manga_nom_formate}** chapitres : **{chapitres_mention}**.\n"
+                    f"Utilisez la commande `!avancee` pour voir l'évolution du projet. 👀"
+                )
+
     @bot.command()
     @commands.has_any_role(1331345633977831496, 1331346420883525682)  # Autorise les deux rôles
     async def task_status(ctx, manga: str, chapitre: int):
