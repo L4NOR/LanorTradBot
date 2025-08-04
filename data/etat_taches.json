@@ -1,4 +1,11 @@
 {
+  "ao_no_exorcist_160": {
+  "clean": "✅ Terminé",
+  "trad": "✅ Terminé",
+  "check": "❌ Non commencé",
+  "edit": "❌ Non commencé",
+  "release": "❌ Non commencé"
+  },  
   "satsudou_18": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
@@ -196,6 +203,13 @@
     "release": "❌ Non commencé"
   },
   "tokyo underworld_41": {
+    "clean": "✅ Terminé",
+    "trad": "✅ Terminé",
+    "check": "❌ Non commencé",
+    "edit": "❌ Non commencé",
+    "release": "❌ Non commencé"
+  },
+    "tokyo underworld_42": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
     "check": "❌ Non commencé",
