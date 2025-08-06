@@ -1,11 +1,4 @@
-{
-  "ao no exorcist_160": {
-  "clean": "❌ Non commencé",
-  "trad": "❌ Non commencé",
-  "check": "❌ Non commencé",
-  "edit": "❌ Non commencé",
-  "release": "❌ Non commencé"
-  },  
+{  
   "satsudou_18": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
@@ -70,6 +63,20 @@
     "release": "❌ Non commencé"
   },
   "catenaccio_31": {
+    "clean": "✅ Terminé",
+    "trad": "✅ Terminé",
+    "check": "❌ Non commencé",
+    "edit": "❌ Non commencé",
+    "release": "❌ Non commencé"
+  },
+    "catenaccio_32": {
+    "clean": "✅ Terminé",
+    "trad": "✅ Terminé",
+    "check": "❌ Non commencé",
+    "edit": "❌ Non commencé",
+    "release": "❌ Non commencé"
+  },
+    "catenaccio_33": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
     "check": "❌ Non commencé",
