@@ -9,43 +9,43 @@
   "catenaccio_23": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
-    "check": "❌ Non commencé",
+    "check": "✅ Terminé",
     "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "catenaccio_24": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
-    "check": "❌ Non commencé",
-    "edit": "❌ Non commencé",
+    "check": "✅ Terminé",
+    "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "catenaccio_25": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
-    "check": "❌ Non commencé",
-    "edit": "❌ Non commencé",
+    "check": "✅ Terminé",
+    "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "catenaccio_26": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
-    "check": "❌ Non commencé",
-    "edit": "❌ Non commencé",
+    "check": "✅ Terminé",
+    "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "catenaccio_27": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
     "check": "❌ Non commencé",
-    "edit": "❌ Non commencé",
+    "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "catenaccio_28": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
     "check": "❌ Non commencé",
-    "edit": "❌ Non commencé",
+    "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "catenaccio_29": {
@@ -83,32 +83,60 @@
     "edit": "❌ Non commencé",
     "release": "❌ Non commencé"
   },
-  "tougen anki_201": {
+    "catenaccio_34": {
     "clean": "✅ Terminé",
-    "trad": "❌ Non commencé",
+    "trad": "✅ Terminé",
     "check": "❌ Non commencé",
     "edit": "❌ Non commencé",
+    "release": "❌ Non commencé"
+  },
+    "catenaccio_35": {
+    "clean": "✅ Terminé",
+    "trad": "✅ Terminé",
+    "check": "❌ Non commencé",
+    "edit": "❌ Non commencé",
+    "release": "❌ Non commencé"
+  },
+    "catenaccio_36": {
+    "clean": "✅ Terminé",
+    "trad": "✅ Terminé",
+    "check": "❌ Non commencé",
+    "edit": "❌ Non commencé",
+    "release": "❌ Non commencé"
+  },
+    "catenaccio_37": {
+    "clean": "✅ Terminé",
+    "trad": "✅ Terminé",
+    "check": "❌ Non commencé",
+    "edit": "❌ Non commencé",
+    "release": "❌ Non commencé"
+  },
+  "tougen anki_201": {
+    "clean": "✅ Terminé",
+    "trad": "✅ Terminé",
+    "check": "❌ Non commencé",
+    "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "tougen anki_202": {
     "clean": "✅ Terminé",
-    "trad": "❌ Non commencé",
+    "trad": "✅ Terminé",
     "check": "❌ Non commencé",
-    "edit": "❌ Non commencé",
+    "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "tougen anki_203": {
     "clean": "✅ Terminé",
-    "trad": "❌ Non commencé",
+    "trad": "✅ Terminé",
     "check": "❌ Non commencé",
-    "edit": "❌ Non commencé",
+    "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "tougen anki_204": {
     "clean": "✅ Terminé",
     "trad": "❌ Non commencé",
     "check": "❌ Non commencé",
-    "edit": "❌ Non commencé",
+    "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "tougen anki_205": {
@@ -219,6 +247,13 @@
     "tokyo underworld_42": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
+    "check": "❌ Non commencé",
+    "edit": "❌ Non commencé",
+    "release": "❌ Non commencé"
+  },
+  "tokyo underworld_43": {
+    "clean": "✅ Terminé",
+    "trad": "❌ Non commencé",
     "check": "❌ Non commencé",
     "edit": "❌ Non commencé",
     "release": "❌ Non commencé"
