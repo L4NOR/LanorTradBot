@@ -493,11 +493,11 @@ def setup(bot):
 
     @bot.command(name='newchapter_collab')
     @commands.has_permissions(administrator=True)
-    async def announce_new_collab_chapter(ctx, manga_name: str, chapter_number: str, link: str):
-        """Annonce un nouveau chapitre collaboratif"""
-        
+    async def announce_new_collab_chapter(ctx, manga_name: str, *chapters_and_link: str):
+        """Annonce un ou plusieurs nouveaux chapitres collaboratifs"""
+
         manga_name_lower = manga_name.lower()
-        
+
         allowed_mangas = {
             'catenaccio': 1332429989085184010,
             'uzugami': 1332430247894847529
@@ -507,77 +507,52 @@ def setup(bot):
             await ctx.send("❌ Manga non reconnu. Options disponibles : `Catenaccio`, `Uzugami`")
             return
 
+        # Le dernier argument est le lien, tout le reste ce sont les chapitres
+        if len(chapters_and_link) < 2:
+            await ctx.send("❌ Format invalide. Exemple : `!newchapter_collab Catenaccio 24 25 26 https://lien.com`")
+            return
+
+        *chapter_numbers, link = chapters_and_link
+
         role = ctx.guild.get_role(allowed_mangas[manga_name_lower])
         if not role:
             await ctx.send("❌ Le rôle spécifié n'a pas été trouvé.")
             return
 
-        # Message d'annonce modifié
+        chapters_str = ", ".join([f"#{c}" for c in chapter_numbers])
+
+        # Message d'annonce
         announcement_text = (
             f"{role.mention}\n"
             "───────────────────────\n"
-            f"Un nouveau chapitre de {manga_name.upper()} vient d'être publié !\n"
+            f"Nouveau(x) chapitre(s) de {manga_name.upper()} disponible(s) !\n"
+            f"Chapitres : {chapters_str}\n"
             "Retrouvez tous les détails ci-dessous ⬇️"
         )
 
-        # Embed modifié avec plus de détails
+        # Embed
         embed = discord.Embed(
-            title=f"🔥 NOUVEAU CHAPITRE DE {manga_name.upper()} 🔥",
-            description=(
-                "Un nouveau chapitre vient d'arriver ! Préparez-vous à plonger dans de nouvelles "
-                "aventures palpitantes !\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━━━\n"
-            ),
+            title=f"🔥 NOUVEAU(x) CHAPITRE(s) DE {manga_name.upper()} 🔥",
+            description="Préparez-vous à plonger dans de nouvelles aventures palpitantes !\n\n━━━━━━━━━━━━━━━━━━━━━━━",
             color=0x3498DB
         )
 
-        # Champs modifiés avec emojis et formatage
-        embed.add_field(
-            name="📖 Chapitre",
-            value=f"#{chapter_number}",
-            inline=True
-        )
+        embed.add_field(name="📖 Chapitres", value=chapters_str, inline=True)
+        embed.add_field(name="⏰ Disponible", value="MAINTENANT !", inline=True)
+        embed.add_field(name="📚 Lien de lecture", value=f"[Cliquez ici pour lire !]({link})", inline=False)
 
-        embed.add_field(
-            name="⏰ Disponible",
-            value="MAINTENANT !",
-            inline=True
-        )
+        embed.add_field(name="━━━━━━━━━━━━━━━━━━━━━━━", value="📱 Aperçu", inline=False)
+        embed.add_field(name="", value=f"https://discord.com/invite/KKsp4AG8BV", inline=False)
 
-        embed.add_field(
-            name="📚 Lien de lecture",
-            value=f"[Cliquez ici pour lire le chapitre !]({link})",
-            inline=False
-        )
+        embed.set_footer(text="N'oubliez pas de partager vos théories et réactions ! 🎉")
 
-        embed.add_field(
-            name="━━━━━━━━━━━━━━━━━━━━━━━",
-            value="📱 Aperçu",
-            inline=False
-        )
-
-        # Aperçu avec lien Discord (comme dans l'image)
-        embed.add_field(
-            name="",
-            value=f"https://discord.com/invite/KKsp4AG8BV",
-            inline=False
-        )
-
-        # Footer modifié
-        embed.set_footer(
-            text="N'oubliez pas de partager vos théories et réactions sur twitter et discord ! Bonne lecture à tous ! 🎉"
-        )
-
-        # Envoi du message
         announcement = await ctx.send(announcement_text, embed=embed)
 
-        # Réactions modifiées pour correspondre à l'image
-        reactions = ['🔥', '👀', '❤️']
-        for reaction in reactions:
+        for reaction in ['🔥', '👀', '❤️']:
             await announcement.add_reaction(reaction)
 
-        # Supprimer la commande
         await ctx.message.delete()
+
 
     @bot.command(name="task_all")
     @commands.has_any_role(1331345633977831496, 1331346420883525682)
