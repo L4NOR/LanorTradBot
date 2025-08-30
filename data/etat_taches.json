@@ -6,34 +6,6 @@
     "edit": "❌ Non commencé",
     "release": "❌ Non commencé"
   },
-  "catenaccio_23": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-  "catenaccio_24": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-  "catenaccio_25": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-  "catenaccio_26": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
   "catenaccio_27": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
@@ -52,14 +24,14 @@
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
     "check": "❌ Non commencé",
-    "edit": "❌ Non commencé",
+    "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "catenaccio_30": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
     "check": "❌ Non commencé",
-    "edit": "❌ Non commencé",
+    "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "catenaccio_31": {
@@ -105,6 +77,41 @@
     "release": "❌ Non commencé"
   },
     "catenaccio_37": {
+    "clean": "✅ Terminé",
+    "trad": "✅ Terminé",
+    "check": "❌ Non commencé",
+    "edit": "❌ Non commencé",
+    "release": "❌ Non commencé"
+  },
+    "catenaccio_38": {
+    "clean": "✅ Terminé",
+    "trad": "✅ Terminé",
+    "check": "❌ Non commencé",
+    "edit": "❌ Non commencé",
+    "release": "❌ Non commencé"
+  },
+    "catenaccio_39": {
+    "clean": "✅ Terminé",
+    "trad": "✅ Terminé",
+    "check": "❌ Non commencé",
+    "edit": "❌ Non commencé",
+    "release": "❌ Non commencé"
+  },
+    "catenaccio_40": {
+    "clean": "✅ Terminé",
+    "trad": "✅ Terminé",
+    "check": "❌ Non commencé",
+    "edit": "❌ Non commencé",
+    "release": "❌ Non commencé"
+  },
+    "catenaccio_41": {
+    "clean": "✅ Terminé",
+    "trad": "✅ Terminé",
+    "check": "❌ Non commencé",
+    "edit": "❌ Non commencé",
+    "release": "❌ Non commencé"
+  },
+    "catenaccio_42": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
     "check": "❌ Non commencé",
