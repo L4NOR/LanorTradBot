@@ -284,7 +284,7 @@ def setup(bot):
         await ctx.send(embed=embed)
 
     @bot.command()
-    @commands.has_any_role(1331345633977831496, 1331346420883525682)  # Autorise les deux rôles
+    @commands.has_any_role(1326417422663680090, 1331346420883525682)  # Autorise les deux rôles
     async def task(ctx, action: str, manga: str, *chapitres: str):
         """
         Met à jour l'état d'une tâche pour un ou plusieurs chapitres.
@@ -645,4 +645,5 @@ def generate_progress_bar(progress, total, size=10):
     percentage = progress / total
     filled = int(size * percentage)
     empty = size - filled
+
     return f"{'🟩' * filled}{'⬜' * empty}"
