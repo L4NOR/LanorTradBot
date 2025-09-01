@@ -647,3 +647,4 @@ def generate_progress_bar(progress, total, size=10):
     empty = size - filled
 
     return f"{'🟩' * filled}{'⬜' * empty}"
+
