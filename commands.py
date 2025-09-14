@@ -284,7 +284,7 @@ def setup(bot):
         await ctx.send(embed=embed)
 
     @bot.command()
-    @commands.has_any_role(1326417422663680090, 1331346420883525682)  # Autorise les deux rôles
+    @commands.has_any_role(1326417422663680090, 1330147432847114321)  # Autorise les deux rôles
     async def task(ctx, action: str, manga: str, *chapitres: str):
         """
         Met à jour l'état d'une tâche pour un ou plusieurs chapitres.
@@ -363,7 +363,7 @@ def setup(bot):
                 )
 
     @bot.command()
-    @commands.has_any_role(1326417422663680090, 1331346420883525682)  # Autorise les deux rôles
+    @commands.has_any_role(1326417422663680090, 1330147432847114321)  # Autorise les deux rôles
     async def task_status(ctx, manga: str, chapitre: int):
         """
         Affiche l'état des tâches pour un chapitre donné.
@@ -387,7 +387,7 @@ def setup(bot):
         await ctx.send(embed=embed)
 
     @bot.command()
-    @commands.has_any_role(1326417422663680090, 1331346420883525682)  # Autorise les deux rôles
+    @commands.has_any_role(1326417422663680090, 1330147432847114321)  # Autorise les deux rôles
     async def delete_task(ctx, manga: str, chapitre: int):
         """
         Supprime toutes les tâches associées à un chapitre donné.
@@ -555,7 +555,7 @@ def setup(bot):
 
 
     @bot.command(name="task_all")
-    @commands.has_any_role(1331345633977831496, 1331346420883525682)
+    @commands.has_any_role(1326417422663680090, 1330147432847114321)
     async def task_all(ctx):
         """
         Affiche toutes les tâches actuellement en cours, organisées par manga avec pagination.

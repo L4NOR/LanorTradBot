@@ -9,28 +9,28 @@
   "catenaccio_27": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
-    "check": "❌ Non commencé",
+    "check": "✅ Terminé",
     "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "catenaccio_28": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
-    "check": "❌ Non commencé",
+    "check": "✅ Terminé",
     "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "catenaccio_29": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
-    "check": "❌ Non commencé",
+    "check": "✅ Terminé",
     "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "catenaccio_30": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
-    "check": "❌ Non commencé",
+    "check": "✅ Terminé",
     "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
@@ -118,51 +118,16 @@
     "edit": "❌ Non commencé",
     "release": "❌ Non commencé"
   },
-  "tougen anki_201": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-  "tougen anki_202": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-  "tougen anki_203": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-  "tougen anki_204": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-  "tougen anki_205": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "❌ Non commencé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
   "tougen anki_206": {
     "clean": "✅ Terminé",
-    "trad": "❌ Non commencé",
-    "check": "❌ Non commencé",
-    "edit": "❌ Non commencé",
+    "trad": "✅ Terminé",
+    "check": "✅ Terminé",
+    "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "tougen anki_207": {
     "clean": "✅ Terminé",
-    "trad": "❌ Non commencé",
+    "trad": "✅ Terminé",
     "check": "❌ Non commencé",
     "edit": "❌ Non commencé",
     "release": "❌ Non commencé"
