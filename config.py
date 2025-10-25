@@ -27,7 +27,8 @@ CHANNELS = {
     "chapter_announcements": 1326213946188890142,
     "partenaires_channel": 1326357401099702393,
     "mod_contact": 1332088539076104192,
-    "sorties": 1326213946188890142
+    "sorties": 1326213946188890142,
+    "rappels": 1326357041773678634
 }
 
 # IDs des messages

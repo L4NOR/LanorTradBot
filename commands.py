@@ -63,11 +63,56 @@ MANGA_ROLES = {
     "Tougen Anki": 1326778962143215677
 }
 
+rappels = []
+
+async def check_rappels():
+    while True:
+        now = datetime.now()
+        channel = bot_instance.get_channel(CHANNELS["rappels"])
+        
+        for rappel in rappels[:]:  # Copie de la liste pour éviter les problèmes de modification pendant l'itération
+            date_limite = datetime.strptime(rappel["date"], "%d/%m")
+            date_limite = date_limite.replace(year=now.year)
+            
+            # Si la date est déjà passée pour cette année, on ajoute un an
+            if date_limite < now:
+                date_limite = date_limite.replace(year=now.year + 1)
+            
+            # Si c'est un nouveau jour, on envoie un rappel
+            if (now.day != getattr(check_rappels, "last_check_day", None) or 
+                now.month != getattr(check_rappels, "last_check_month", None)):
+                if channel:
+                    days_left = (date_limite - now).days
+                    if days_left >= 0:
+                        await channel.send(
+                            f"🔔 Rappel pour {rappel['membre'].mention} :\n"
+                            f"Tu as une tâche de **{rappel['type_tache']}** pour le chapitre {rappel['chapitre']} "
+                            f"de {rappel['manga']} à terminer pour le {rappel['date']} "
+                            f"(dans {days_left} jours) !"
+                        )
+                    else:
+                        # La date limite est dépassée, on supprime le rappel
+                        rappels.remove(rappel)
+                        await channel.send(
+                            f"⚠️ {rappel['membre'].mention}, la date limite ({rappel['date']}) est dépassée pour "
+                            f"la tâche de {rappel['type_tache']} du chapitre {rappel['chapitre']} de {rappel['manga']} !"
+                        )
+        
+        # Mettre à jour le dernier jour vérifié
+        check_rappels.last_check_day = now.day
+        check_rappels.last_check_month = now.month
+        
+        # Attendre jusqu'au prochain jour
+        await asyncio.sleep(3600)  # Vérifier toutes les heures
+
 def setup(bot):
     charger_etat_taches()  # Charger les tâches depuis le fichier JSON au démarrage
 
     global bot_instance
     bot_instance = bot
+    
+    # Démarrer la tâche de vérification des rappels
+    bot.loop.create_task(check_rappels())
 
     # Supprimer la commande d'aide par défaut
     bot.remove_command('help')
@@ -654,6 +699,99 @@ def setup(bot):
             except asyncio.TimeoutError:
                 await message.clear_reactions()
                 break
+    @bot.command(name="rappel")
+    @commands.has_any_role(1326417422663680090, 1330147432847114321)
+    async def rappel(ctx, membre: discord.Member, type_tache: str, manga: str, chapitre: str, date: str):
+        """Crée un rappel pour une tâche
+        
+        Arguments :
+        - membre : La personne à mentionner (@mention)
+        - type_tache : Le type de tâche (trad/edit/qcheck/clean)
+        - manga : Le nom du manga
+        - chapitre : Le numéro du chapitre
+        - date : La date limite au format JJ/MM
+        """
+        # Vérifier le format de la date
+        try:
+            datetime.strptime(date, "%d/%m")
+        except ValueError:
+            await ctx.send("❌ Format de date incorrect. Utilisez le format JJ/MM (exemple: 12/11)")
+            return
+            
+        # Vérifier le type de tâche
+        types_valides = ["trad", "edit", "qcheck", "clean"]
+        if type_tache.lower() not in types_valides:
+            await ctx.send(f"❌ Type de tâche invalide. Types valides : {', '.join(types_valides)}")
+            return
+            
+        # Ajouter le rappel
+        rappels.append({
+            "membre": membre,
+            "type_tache": type_tache.lower(),
+            "manga": manga,
+            "chapitre": chapitre,
+            "date": date
+        })
+        
+        await ctx.send(
+            f"✅ Rappel créé !\n"
+            f"• Membre : {membre.mention}\n"
+            f"• Tâche : {type_tache}\n"
+            f"• Manga : {manga}\n"
+            f"• Chapitre : {chapitre}\n"
+            f"• Date limite : {date}"
+        )
+
+    @bot.command(name="rappels")
+    @commands.has_any_role(1326417422663680090, 1330147432847114321)
+    async def liste_rappels(ctx):
+        """Affiche la liste des rappels actifs"""
+        if not rappels:
+            await ctx.send("Aucun rappel actif.")
+            return
+            
+        embed = discord.Embed(
+            title="📋 Liste des rappels actifs",
+            color=discord.Color(COLORS["info"])
+        )
+        
+        for i, rappel in enumerate(rappels, 1):
+            embed.add_field(
+                name=f"Rappel #{i}",
+                value=(
+                    f"• Membre : {rappel['membre'].mention}\n"
+                    f"• Tâche : {rappel['type_tache']}\n"
+                    f"• Manga : {rappel['manga']}\n"
+                    f"• Chapitre : {rappel['chapitre']}\n"
+                    f"• Date limite : {rappel['date']}"
+                ),
+                inline=False
+            )
+            
+        await ctx.send(embed=embed)
+
+    @bot.command(name="suppr_rappel")
+    @commands.has_any_role(1326417422663680090, 1330147432847114321)
+    async def supprimer_rappel(ctx, index: int):
+        """Supprime un rappel par son numéro
+        
+        Arguments :
+        - index : Le numéro du rappel à supprimer (visible avec !rappels)
+        """
+        if not 1 <= index <= len(rappels):
+            await ctx.send("❌ Numéro de rappel invalide.")
+            return
+            
+        rappel = rappels.pop(index - 1)
+        await ctx.send(
+            f"✅ Rappel supprimé :\n"
+            f"• Membre : {rappel['membre'].mention}\n"
+            f"• Tâche : {rappel['type_tache']}\n"
+            f"• Manga : {rappel['manga']}\n"
+            f"• Chapitre : {rappel['chapitre']}\n"
+            f"• Date limite : {rappel['date']}"
+        )
+
     @bot.command(name="actualiser")
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
     async def actualiser(ctx, action: str = "save"):
