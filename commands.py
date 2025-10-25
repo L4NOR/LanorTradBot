@@ -11,6 +11,7 @@ import os
 bot_instance = None
 
 TASKS_FILE = "data/etat_taches.json"
+META_FILE = "data/etat_taches_meta.json"
 os.makedirs("data", exist_ok=True)
 
 # Dictionnaire pour stocker les chapitres planifiés
@@ -29,8 +30,20 @@ def charger_etat_taches():
 
 # Sauvegarder les tâches dans le fichier JSON
 def sauvegarder_etat_taches():
-    with open(TASKS_FILE, "w", encoding="utf-8") as f:
-        json.dump(etat_taches_global, f, ensure_ascii=False, indent=4)
+    # Sauvegarde principale (format inchangé pour la compatibilité)
+    try:
+        with open(TASKS_FILE, "w", encoding="utf-8") as f:
+            json.dump(etat_taches_global, f, ensure_ascii=False, indent=4)
+
+        # Écrire aussi un petit fichier méta pour garder la trace des sauvegardes
+        meta = {
+            "last_saved": datetime.utcnow().isoformat() + "Z",
+            "task_count": len(etat_taches_global)
+        }
+        with open(META_FILE, "w", encoding="utf-8") as mf:
+            json.dump(meta, mf, ensure_ascii=False, indent=4)
+    except Exception as e:
+        logging.error(f"Erreur lors de la sauvegarde des tâches: {e}")
 
 # Dictionnaire pour mapper les mangas aux salons
 MANGA_CHANNELS = {
@@ -106,6 +119,7 @@ def setup(bot):
                     "• `!task_all` - Afficher toutes les tâches en cours\n"
                     "• `!delete_task <manga> <chapitre>` - Supprimer les tâches d'un chapitre\n"
                     "• `!newchapter_collab <manga> <chapitre> <lien>` - Annoncer un nouveau chapitre\n"
+                    "• `!actualiser <save|reload>` - Enregistrer ou recharger le fichier `etat_taches.json`\n"
                 ),
                 inline=False
             )
@@ -640,6 +654,61 @@ def setup(bot):
             except asyncio.TimeoutError:
                 await message.clear_reactions()
                 break
+    @bot.command(name="actualiser")
+    @commands.has_any_role(1326417422663680090, 1330147432847114321)
+    async def actualiser(ctx, action: str = "save"):
+        """
+        Commande d'administration pour sauvegarder ou recharger l'état des tâches.
+        Usage: `!actualiser save` -> écrit `etat_taches.json`
+               `!actualiser reload` -> recharge le fichier en mémoire
+        """
+        action = (action or "").lower()
+
+        if action in ("save", "sauvegarder", "enregistrer"):
+            sauvegarder_etat_taches()
+            meta = {}
+            try:
+                if os.path.exists(META_FILE):
+                    with open(META_FILE, "r", encoding="utf-8") as mf:
+                        meta = json.load(mf)
+            except Exception:
+                meta = {}
+
+            embed = discord.Embed(
+                title="💾 Actualisation des tâches",
+                description="Le fichier `etat_taches.json` a été mis à jour avec l'état actuel en mémoire.",
+                color=discord.Color(COLORS.get("success", 0x2ECC71)),
+                timestamp=datetime.utcnow()
+            )
+            embed.add_field(name="Nombre de tâches", value=str(len(etat_taches_global)), inline=True)
+            embed.add_field(name="Dernière sauvegarde", value=meta.get("last_saved", "N/A"), inline=True)
+            embed.set_footer(text=f"Demandé par {ctx.author.name}")
+            await ctx.send(embed=embed)
+
+        elif action in ("reload", "recharge", "recharger"):
+            charger_etat_taches()
+            meta = {}
+            try:
+                if os.path.exists(META_FILE):
+                    with open(META_FILE, "r", encoding="utf-8") as mf:
+                        meta = json.load(mf)
+            except Exception:
+                meta = {}
+
+            embed = discord.Embed(
+                title="♻️ Rechargement des tâches",
+                description="Le fichier `etat_taches.json` a été rechargé en mémoire.",
+                color=discord.Color(COLORS.get("info", 0x3498DB)),
+                timestamp=datetime.utcnow()
+            )
+            embed.add_field(name="Nombre de tâches chargées", value=str(len(etat_taches_global)), inline=True)
+            embed.add_field(name="Dernière sauvegarde", value=meta.get("last_saved", "N/A"), inline=True)
+            embed.set_footer(text=f"Demandé par {ctx.author.name}")
+            await ctx.send(embed=embed)
+
+        else:
+            await ctx.send("❗ Usage: `!actualiser save` ou `!actualiser reload`")
+
 def generate_progress_bar(progress, total, size=10):
     """Génère une barre de progression visuelle"""
     percentage = progress / total
@@ -647,4 +716,7 @@ def generate_progress_bar(progress, total, size=10):
     empty = size - filled
 
     return f"{'🟩' * filled}{'⬜' * empty}"
+
+
+    
 
