@@ -241,12 +241,6 @@ def setup(bot):
 
     global bot_instance
     bot_instance = bot
-    
-    # Démarrer la tâche de vérification des rappels
-    bot.loop.create_task(check_rappels())
-    # Charger et démarrer le système de timers
-    charger_timers()
-    bot.loop.create_task(check_timers())
 
     # Supprimer la commande d'aide par défaut
     bot.remove_command('help')
