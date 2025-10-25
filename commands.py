@@ -884,16 +884,20 @@ def setup(bot):
 
     @bot.command(name="set_timer")
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
-    async def set_timer(ctx, type_tache: str, manga: str, chapitre: str, membre: discord.Member, date: str):
+    async def set_timer(ctx, type_tache: str, manga: str, membre: discord.Member, date: str, *chapitres: str):
         """
-        Créer un timer pour une tâche avec rappels quotidiens.
-        Usage: !set_timer <trad/edit/check/clean> <manga> <chapitre> @membre <date>
-        Exemple: !set_timer trad "Catenaccio" 25 @User 15/12
+        Créer des timers pour une tâche avec rappels quotidiens pour plusieurs chapitres.
+        Usage: !set_timer <trad/edit/check/clean> <manga> @membre <date> <chapitres...>
+        Exemple: !set_timer trad "Catenaccio" @User 15/12 24 25 26
         """
         types_valides = ["trad", "edit", "check", "clean", "qcheck"]
         
         if type_tache.lower() not in types_valides:
             await ctx.send(f"❌ Type de tâche invalide. Types possibles : {', '.join(types_valides)}")
+            return
+        
+        if not chapitres:
+            await ctx.send("❌ Veuillez spécifier au moins un chapitre.")
             return
         
         # Vérifier le format de la date
@@ -903,30 +907,33 @@ def setup(bot):
             await ctx.send("❌ Format de date invalide. Utilisez le format JJ/MM (ex: 15/12)")
             return
         
-        # Créer le timer
-        timer = {
-            "type_tache": type_tache.lower(),
-            "manga": manga,
-            "chapitre": chapitre,
-            "user_id": membre.id,
-            "date": date,
-            "date_creation": datetime.now().strftime("%d/%m/%Y"),
-            "created_by": ctx.author.id
-        }
+        # Créer les timers pour chaque chapitre
+        timers_crees = []
+        for chapitre in chapitres:
+            timer = {
+                "type_tache": type_tache.lower(),
+                "manga": manga,
+                "chapitre": chapitre,
+                "user_id": membre.id,
+                "date": date,
+                "date_creation": datetime.now().strftime("%d/%m/%Y"),
+                "created_by": ctx.author.id
+            }
+            timers_list.append(timer)
+            timers_crees.append(chapitre)
         
-        timers_list.append(timer)
         sauvegarder_timers()
         
         # Confirmation
         embed = discord.Embed(
-            title="✅ Timer créé avec succès",
-            description="Un rappel quotidien sera envoyé jusqu'à la date limite.",
+            title="✅ Timers créés avec succès",
+            description="Des rappels quotidiens seront envoyés jusqu'à la date limite.",
             color=discord.Color.green(),
             timestamp=datetime.now()
         )
         embed.add_field(name="👤 Personne assignée", value=membre.mention, inline=True)
         embed.add_field(name="📚 Manga", value=manga, inline=True)
-        embed.add_field(name="📖 Chapitre", value=chapitre, inline=True)
+        embed.add_field(name="📖 Chapitres", value=", ".join(timers_crees), inline=True)
         embed.add_field(name="🔧 Tâche", value=type_tache.upper(), inline=True)
         embed.add_field(name="📅 Date limite", value=date, inline=True)
         embed.add_field(name="📍 Canal de rappel", value="<#1431607377882382396>", inline=True)
