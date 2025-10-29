@@ -54,7 +54,8 @@ def charger_timers():
     global timers_list
     if os.path.exists(TIMERS_FILE):
         with open(TIMERS_FILE, "r", encoding="utf-8") as f:
-            timers_list = json.load(f)
+            data = json.load(f)
+            timers_list = data.get("timers", [])
     else:
         timers_list = []
 
@@ -62,7 +63,7 @@ def charger_timers():
 def sauvegarder_timers():
     try:
         with open(TIMERS_FILE, "w", encoding="utf-8") as f:
-            json.dump(timers_list, f, ensure_ascii=False, indent=4)
+            json.dump({"timers": timers_list}, f, ensure_ascii=False, indent=4)
     except Exception as e:
         logging.error(f"Erreur lors de la sauvegarde des timers: {e}")
 
@@ -83,19 +84,26 @@ async def check_timers():
                 channel = bot_instance.get_channel(1431607377882382396)
                 
                 if channel:
-                    timers_to_remove = []
+                    # Charger les timers depuis le fichier
+                    charger_timers()
                     
-                    for timer in timers_list[:]:
+                    for timer in timers_list:
                         try:
                             # Parser la date limite
-                            date_limite = datetime.strptime(timer["date"], "%d/%m")
-                            date_limite = date_limite.replace(year=now.year)
+                            deadline = datetime.strptime(timer["deadline"], "%Y-%m-%d").date()
+                            days_left = (deadline - current_date).days
                             
-                            # Si la date est passée pour cette année, ajouter un an
-                            if date_limite.date() < current_date:
-                                date_limite = date_limite.replace(year=now.year + 1)
-                            
-                            days_left = (date_limite.date() - current_date).days
+                            if days_left >= 0:  # Ne pas envoyer de rappel si la deadline est dépassée
+                                # Créer le message de rappel
+                                reminder = f"⏰ **Rappel**\n"
+                                reminder += f"👤 Personne: {timer['person']}\n"
+                                reminder += f"📚 Manga: {timer['manga']}\n"
+                                reminder += f"📖 Chapitre: {timer['chapter']}\n"
+                                reminder += f"🔧 Tâche: {timer['task']}\n"
+                                reminder += f"📅 Date limite: {deadline.strftime('%d/%m')}\n"
+                                reminder += f"⏳ Jours restants: {days_left}"
+                                
+                                await channel.send(reminder)
                             
                             # Si la date limite est dépassée
                             if days_left < 0:

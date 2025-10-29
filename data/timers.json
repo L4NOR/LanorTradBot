@@ -1,0 +1,175 @@
+{
+  "timers": [
+    {
+      "person": "@X",
+      "manga": "Tougen Anki",
+      "chapter": "211",
+      "task": "TRAD",
+      "deadline": "2025-10-29",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@X",
+      "manga": "Tougen Anki",
+      "chapter": "212",
+      "task": "TRAD",
+      "deadline": "2025-10-29",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@X",
+      "manga": "Tougen Anki",
+      "chapter": "213",
+      "task": "TRAD",
+      "deadline": "2025-10-29",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@Zerox",
+      "manga": "Tougen Anki",
+      "chapter": "208",
+      "task": "CHECK",
+      "deadline": "2025-10-29",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@Zerox",
+      "manga": "Tougen Anki",
+      "chapter": "209",
+      "task": "CHECK",
+      "deadline": "2025-10-29",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@Zerox",
+      "manga": "Tougen Anki",
+      "chapter": "210",
+      "task": "CHECK",
+      "deadline": "2025-10-29",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@.LANOR",
+      "manga": "Catenaccio",
+      "chapter": "37",
+      "task": "EDIT",
+      "deadline": "2025-11-04",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@.LANOR",
+      "manga": "Catenaccio",
+      "chapter": "38",
+      "task": "EDIT",
+      "deadline": "2025-11-04",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@.LANOR",
+      "manga": "Catenaccio",
+      "chapter": "39",
+      "task": "EDIT",
+      "deadline": "2025-11-04",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@.LANOR",
+      "manga": "Catenaccio",
+      "chapter": "40",
+      "task": "EDIT",
+      "deadline": "2025-11-04",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@.LANOR",
+      "manga": "Catenaccio",
+      "chapter": "41",
+      "task": "EDIT",
+      "deadline": "2025-11-04",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@.LANOR",
+      "manga": "Catenaccio",
+      "chapter": "42",
+      "task": "EDIT",
+      "deadline": "2025-11-04",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@.LANOR",
+      "manga": "Catenaccio",
+      "chapter": "43",
+      "task": "EDIT",
+      "deadline": "2025-11-04",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@.LANOR",
+      "manga": "Tokyo Underworld",
+      "chapter": "35",
+      "task": "EDIT",
+      "deadline": "2025-11-10",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@.LANOR",
+      "manga": "Tokyo Underworld",
+      "chapter": "35.5",
+      "task": "EDIT",
+      "deadline": "2025-11-10",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@.LANOR",
+      "manga": "Tokyo Underworld",
+      "chapter": "36",
+      "task": "EDIT",
+      "deadline": "2025-11-10",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@.LANOR",
+      "manga": "Tokyo Underworld",
+      "chapter": "37",
+      "task": "EDIT",
+      "deadline": "2025-11-10",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@.LANOR",
+      "manga": "Tokyo Underworld",
+      "chapter": "38",
+      "task": "EDIT",
+      "deadline": "2025-11-10",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    },
+    {
+      "person": "@.LANOR",
+      "manga": "Tokyo Underworld",
+      "chapter": "38.5",
+      "task": "EDIT",
+      "deadline": "2025-11-10",
+      "messageId": "1441895171189959970",
+      "channelId": "1431607377882382396"
+    }
+  ]
+}
