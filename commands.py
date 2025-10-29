@@ -83,52 +83,101 @@ MANGA_ROLES = {
     "Tougen Anki": 1326778962143215677
 }
 
-async def daily_reminder(bot):
-    """Fonction qui vérifie et envoie les rappels quotidiens pour les timers."""
-    await bot.wait_until_ready()
-    while not bot.is_closed():
+class TaskCommands(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.bot.loop.create_task(self.daily_reminder())
+
+    async def daily_reminder(self):
+        """Fonction qui vérifie et envoie les rappels quotidiens pour les timers."""
+        await self.bot.wait_until_ready()
+        while not self.bot.is_closed():
+            try:
+                # Attendre jusqu'à 15h le jour suivant
+                now = datetime.now()
+                next_run = now.replace(hour=15, minute=0, second=0, microsecond=0)
+                if now >= next_run:
+                    next_run += timedelta(days=1)
+                await asyncio.sleep((next_run - now).total_seconds())
+
+                # Parcourir tous les timers actifs
+                timers_to_remove = []
+                for timer_id, timer_info in timers.items():
+                    date_limite = datetime.strptime(timer_info["date_limite"], "%d/%m/%Y")
+                    
+                    # Si la date limite est dépassée, marquer le timer pour suppression
+                    if date_limite < datetime.now():
+                        timers_to_remove.append(timer_id)
+                        continue
+
+                    # Envoyer le rappel quotidien
+                    channel = self.bot.get_channel(timer_info["channel_id"])
+                    user = self.bot.get_user(timer_info["user_id"])
+                    
+                    if channel and user:
+                        jours_restants = (date_limite - datetime.now()).days
+                        embed = discord.Embed(
+                            title="⏰ Rappel quotidien",
+                            description=f"Hey {user.mention}, n'oublie pas :\n\n**{timer_info['description']}**\n\nIl te reste {jours_restants} jour(s) avant la date limite ({timer_info['date_limite']})",
+                            color=discord.Color(COLORS.get("warning", 0xF1C40F))
+                        )
+                        await channel.send(embed=embed)
+
+                # Supprimer les timers expirés
+                for timer_id in timers_to_remove:
+                    del timers[timer_id]
+                
+                if timers_to_remove:
+                    sauvegarder_timers()
+
+            except Exception as e:
+                logging.error(f"Erreur dans daily_reminder: {e}")
+                await asyncio.sleep(60)  # Attendre 1 minute en cas d'erreur
+                continue
+
+    @commands.command()
+    async def set_timer(self, ctx, *, tache_description: str):
+        """Crée un timer pour une tâche avec des rappels quotidiens"""
         try:
-            # Attendre jusqu'à 15h le jour suivant
-            now = datetime.now()
-            next_run = now.replace(hour=15, minute=0, second=0, microsecond=0)
-            if now >= next_run:
-                next_run += timedelta(days=1)
-            await asyncio.sleep((next_run - now).total_seconds())
+            # Extraire la date limite de la description (format: DD/MM/YYYY)
+            description_parts = tache_description.split(" avant le ")
+            if len(description_parts) != 2:
+                await ctx.send("❌ Format incorrect. Utilisez : `!set_timer [description de la tâche] avant le [DD/MM/YYYY]`")
+                return
 
-            # Parcourir tous les timers actifs
-            timers_to_remove = []
-            for timer_id, timer_info in timers.items():
-                date_limite = datetime.strptime(timer_info["date_limite"], "%d/%m/%Y")
-                
-                # Si la date limite est dépassée, marquer le timer pour suppression
-                if date_limite < datetime.now():
-                    timers_to_remove.append(timer_id)
-                    continue
+            description, date_str = description_parts
+            date_limite = datetime.strptime(date_str.strip(), "%d/%m/%Y")
 
-                # Envoyer le rappel quotidien
-                channel = bot.get_channel(timer_info["channel_id"])
-                user = bot.get_user(timer_info["user_id"])
-                
-                if channel and user:
-                    jours_restants = (date_limite - datetime.now()).days
-                    embed = discord.Embed(
-                        title="⏰ Rappel quotidien",
-                        description=f"Hey {user.mention}, n'oublie pas :\n\n**{timer_info['description']}**\n\nIl te reste {jours_restants} jour(s) avant la date limite ({timer_info['date_limite']})",
-                        color=discord.Color(COLORS.get("warning", 0xF1C40F))
-                    )
-                    await channel.send(embed=embed)
+            # Vérifier si la date est dans le futur
+            if date_limite < datetime.now():
+                await ctx.send("❌ La date limite doit être dans le futur!")
+                return
 
-            # Supprimer les timers expirés
-            for timer_id in timers_to_remove:
-                del timers[timer_id]
-            
-            if timers_to_remove:
-                sauvegarder_timers()
+            # Créer le timer
+            timer_id = str(len(timers) + 1)
+            timer_info = {
+                "description": description,
+                "date_limite": date_limite.strftime("%d/%m/%Y"),
+                "user_id": ctx.author.id,
+                "channel_id": ctx.channel.id,
+                "created_at": datetime.now().strftime("%d/%m/%Y"),
+            }
 
+            timers[timer_id] = timer_info
+            sauvegarder_timers()
+
+            # Confirmation
+            embed = discord.Embed(
+                title="⏰ Timer créé avec succès",
+                description=f"**Tâche :** {description}\n**Date limite :** {date_limite.strftime('%d/%m/%Y')}",
+                color=discord.Color(COLORS.get("success", 0x2ECC71))
+            )
+            await ctx.send(embed=embed)
+
+        except ValueError:
+            await ctx.send("❌ Format de date incorrect. Utilisez le format DD/MM/YYYY")
         except Exception as e:
-            logging.error(f"Erreur dans daily_reminder: {e}")
-            await asyncio.sleep(60)  # Attendre 1 minute en cas d'erreur
-            continue
+            await ctx.send(f"❌ Une erreur s'est produite: {str(e)}")
 
 def setup(bot):
     charger_etat_taches()  # Charger les tâches depuis le fichier JSON au démarrage
@@ -137,8 +186,8 @@ def setup(bot):
     global bot_instance
     bot_instance = bot
 
-    # Démarrer la boucle de rappel quotidien
-    bot.loop.create_task(daily_reminder(bot))
+    # Ajouter les commandes de timer
+    bot.add_cog(TaskCommands(bot))
 
     # Supprimer la commande d'aide par défaut
     bot.remove_command('help')
@@ -150,12 +199,9 @@ def setup(bot):
         admin_roles = [1326417422663680090, 1331346420883525682]
         user_roles = [role.id for role in ctx.author.roles]
 
-    @bot.command(name="set_timer")
+    @bot.command()
     async def set_timer(ctx, *, tache_description: str):
-        """
-        Crée un timer pour une tâche avec des rappels quotidiens.
-        Format: !set_timer Traduction du chapitre 150 de Catenaccio avant le 15/11/2025
-        """
+        """Crée un timer pour une tâche avec des rappels quotidiens"""
         try:
             # Extraire la date limite de la description (format: DD/MM/YYYY)
             description_parts = tache_description.split(" avant le ")
