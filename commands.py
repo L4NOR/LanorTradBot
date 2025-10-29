@@ -1,7 +1,7 @@
 # commands.py
 import discord
 from discord.ext import commands
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from config import CHANNELS, ROLES, COLORS
 import logging
 import asyncio
@@ -12,153 +12,28 @@ bot_instance = None
 
 TASKS_FILE = "data/etat_taches.json"
 META_FILE = "data/etat_taches_meta.json"
+TIMERS_FILE = "data/timers.json"
 os.makedirs("data", exist_ok=True)
 
-chapitres_planifies = []
+# Dictionnaire pour stocker les timers
+timers = {}
 
-
-# Timers en mémoire et sauvegarde
-import pathlib
-TIMERS_FILE = pathlib.Path("data/timers.json")
-timers_list = []  # [{type_tache, manga, chapitre, user_id, date_limite, date_creation, created_by}]
-
+# Charger les timers depuis le fichier JSON
 def charger_timers():
-    global timers_list
-    if TIMERS_FILE.exists():
-        try:
-            with TIMERS_FILE.open("r", encoding="utf-8") as f:
-                timers_list = json.load(f)
-        except Exception:
-            timers_list = []
+    global timers
+    if os.path.exists(TIMERS_FILE):
+        with open(TIMERS_FILE, "r", encoding="utf-8") as f:
+            timers = json.load(f)
     else:
-        timers_list = []
+        timers = {}
 
+# Sauvegarder les timers dans le fichier JSON
 def sauvegarder_timers():
-    try:
-        TIMERS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with TIMERS_FILE.open("w", encoding="utf-8") as f:
-            json.dump(timers_list, f, ensure_ascii=False, indent=4)
-    except Exception as e:
-        logging.error(f"Erreur lors de la sauvegarde des timers: {e}")
+    with open(TIMERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(timers, f, ensure_ascii=False, indent=4)
 
-async def daily_timer_task():
-    await bot_instance.wait_until_ready()
-    while not bot_instance.is_closed():
-        now = datetime.now()
-        # Calculer le temps jusqu'à 15h
-        target = now.replace(hour=15, minute=0, second=0, microsecond=0)
-        if now > target:
-            # Si on est déjà après 15h, attendre jusqu'à demain 15h
-            target = target.replace(day=now.day + 1)
-        wait_seconds = (target - now).total_seconds()
-        await asyncio.sleep(wait_seconds)
-
-        # À 15h, envoyer les rappels
-        channel = bot_instance.get_channel(1431607377882382396)
-        if channel:
-            today = datetime.now().date()
-            timers_to_remove = []
-            for timer in timers_list:
-                # timer['date_limite'] au format JJ/MM/AAAA
-                try:
-                    date_limite = datetime.strptime(timer['date_limite'], "%d/%m/%Y").date()
-                except Exception:
-                    continue
-                days_left = (date_limite - today).days
-                if days_left < 0:
-                    timers_to_remove.append(timer)
-                    continue
-                # Message de rappel
-                membre_mention = f"<@{timer['user_id']}>"
-                await channel.send(
-                    f"⏰ Rappel quotidien pour {membre_mention} :\n"
-                    f"Tâche : **{timer['type_tache'].upper()}**\n"
-                    f"Manga : **{timer['manga']}**\n"
-                    f"Chapitre : **{timer['chapitre']}**\n"
-                    f"Date limite : **{timer['date_limite']}**\n"
-                    f"Jours restants : **{days_left}**"
-                )
-            # Nettoyer les timers expirés
-            for timer in timers_to_remove:
-                timers_list.remove(timer)
-    @bot.command(name="set_timer")
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
-    async def set_timer(ctx, type_tache: str, manga: str, membre: discord.Member, date_limite: str, chapitre: str):
-        """
-        Crée un timer pour envoyer un rappel quotidien à 15h jusqu'à la date limite.
-        Usage: !set_timer <trad/edit/check/clean/qcheck> <manga> @membre <date_limite JJ/MM/AAAA> <chapitre>
-        Exemple: !set_timer trad Catenaccio @User 15/12/2025 150
-        """
-        types_valides = ["trad", "edit", "check", "clean", "qcheck"]
-        if type_tache.lower() not in types_valides:
-            await ctx.send(f"❌ Type de tâche invalide. Types possibles : {', '.join(types_valides)}")
-            return
-        try:
-            date_obj = datetime.strptime(date_limite, "%d/%m/%Y")
-        except ValueError:
-            await ctx.send("❌ Format de date invalide. Utilisez JJ/MM/AAAA (ex: 15/12/2025)")
-            return
-        timer = {
-            "type_tache": type_tache.lower(),
-            "manga": manga,
-            "chapitre": chapitre,
-            "user_id": membre.id,
-            "date_limite": date_limite,
-            "date_creation": datetime.now().strftime("%d/%m/%Y"),
-            "created_by": ctx.author.id
-        }
-        timers_list.append(timer)
-        sauvegarder_timers()
-        await ctx.send(f"✅ Timer créé pour {membre.mention} : {type_tache.upper()} {manga} chapitre {chapitre} jusqu'au {date_limite}. Un rappel sera envoyé chaque jour à 15h.")
-
-    @bot.command(name="delete_timer")
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
-    async def delete_timer(ctx, manga: str, chapitre: str, membre: discord.Member = None):
-        """
-        Supprime un timer spécifique.
-        Usage: !delete_timer <manga> <chapitre> [@membre]
-        """
-        timers_found = []
-        for timer in timers_list:
-            if timer['manga'].lower() == manga.lower() and timer['chapitre'] == chapitre:
-                if membre is None or timer['user_id'] == membre.id:
-                    timers_found.append(timer)
-        if not timers_found:
-            await ctx.send("❌ Aucun timer trouvé avec ces critères.")
-            return
-        for timer in timers_found:
-            timers_list.remove(timer)
-        sauvegarder_timers()
-        await ctx.send(f"✅ {len(timers_found)} timer(s) supprimé(s) pour {manga} chapitre {chapitre}.")
-
-    @bot.command(name="list_timers")
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
-    async def list_timers(ctx):
-        """Affiche tous les timers actifs"""
-        if not timers_list:
-            await ctx.send("📋 Aucun timer actif actuellement.")
-            return
-        embed = discord.Embed(
-            title="⏰ Timers actifs",
-            description=f"Il y a actuellement {len(timers_list)} timer(s) actif(s)",
-            color=discord.Color.blue(),
-            timestamp=datetime.now()
-        )
-        for i, timer in enumerate(timers_list, 1):
-            field_value = (
-                f"👤 Personne: <@{timer['user_id']}>\n"
-                f"📚 Manga: {timer['manga']}\n"
-                f"📖 Chapitre: {timer['chapitre']}\n"
-                f"🔧 Tâche: {timer['type_tache'].upper()}\n"
-                f"📅 Date limite: {timer['date_limite']}"
-            )
-            embed.add_field(
-                name=f"Timer #{i}",
-                value=field_value,
-                inline=False
-            )
-        embed.set_footer(text=f"Demandé par {ctx.author.name}")
-        await ctx.send(embed=embed)
+# Dictionnaire pour stocker les chapitres planifiés
+chapitres_planifies = []
 
 # Ajout d'une structure globale pour stocker l'état des tâches
 etat_taches_global = {}
@@ -208,60 +83,14 @@ MANGA_ROLES = {
     "Tougen Anki": 1326778962143215677
 }
 
-rappels = []
-
-async def check_rappels():
-    while True:
-        now = datetime.now()
-        channel = bot_instance.get_channel(CHANNELS["rappels"])
-        
-        for rappel in rappels[:]:  # Copie de la liste pour éviter les problèmes de modification pendant l'itération
-            date_limite = datetime.strptime(rappel["date"], "%d/%m")
-            date_limite = date_limite.replace(year=now.year)
-            
-            # Si la date est déjà passée pour cette année, on ajoute un an
-            if date_limite < now:
-                date_limite = date_limite.replace(year=now.year + 1)
-            
-            # Si c'est un nouveau jour, on envoie un rappel
-            if (now.day != getattr(check_rappels, "last_check_day", None) or 
-                now.month != getattr(check_rappels, "last_check_month", None)):
-                if channel:
-                    days_left = (date_limite - now).days
-                    if days_left >= 0:
-                        await channel.send(
-                            f"🔔 Rappel pour {rappel['membre'].mention} :\n"
-                            f"Tu as une tâche de **{rappel['type_tache']}** pour le chapitre {rappel['chapitre']} "
-                            f"de {rappel['manga']} à terminer pour le {rappel['date']} "
-                            f"(dans {days_left} jours) !"
-                        )
-                    else:
-                        # La date limite est dépassée, on supprime le rappel
-                        rappels.remove(rappel)
-                        await channel.send(
-                            f"⚠️ {rappel['membre'].mention}, la date limite ({rappel['date']}) est dépassée pour "
-                            f"la tâche de {rappel['type_tache']} du chapitre {rappel['chapitre']} de {rappel['manga']} !"
-                        )
-        
-        # Mettre à jour le dernier jour vérifié
-        check_rappels.last_check_day = now.day
-        check_rappels.last_check_month = now.month
-        
-        # Attendre jusqu'au prochain jour
-        await asyncio.sleep(3600)  # Vérifier toutes les heures
-
 def setup(bot):
     charger_etat_taches()  # Charger les tâches depuis le fichier JSON au démarrage
-    charger_timers()       # Charger les timers depuis le fichier au démarrage
 
     global bot_instance
     bot_instance = bot
 
     # Supprimer la commande d'aide par défaut
     bot.remove_command('help')
-
-    # Lancer la tâche de rappel quotidien
-    bot.loop.create_task(daily_timer_task())
 
     @bot.command()
     async def help(ctx):
@@ -890,6 +719,109 @@ def setup(bot):
                 title="♻️ Rechargement des tâches",
                 description="Le fichier `etat_taches.json` a été rechargé en mémoire.",
                 color=discord.Color(COLORS.get("info", 0x3498DB)),
+
+    @commands.command(name="set_timer")
+    async def set_timer(self, ctx, *, tache_description: str):
+        """
+        Crée un timer pour une tâche avec des rappels quotidiens.
+        Format: !set_timer Traduction du chapitre 150 de Catenaccio avant le 15/11/2025
+        """
+        try:
+            # Extraire la date limite de la description (format: DD/MM/YYYY)
+            description_parts = tache_description.split(" avant le ")
+            if len(description_parts) != 2:
+                await ctx.send("❌ Format incorrect. Utilisez : `!set_timer [description de la tâche] avant le [DD/MM/YYYY]`")
+                return
+
+            description, date_str = description_parts
+            date_limite = datetime.strptime(date_str.strip(), "%d/%m/%Y")
+
+            # Vérifier si la date est dans le futur
+            if date_limite < datetime.now():
+                await ctx.send("❌ La date limite doit être dans le futur!")
+                return
+
+            # Créer le timer
+            timer_id = str(len(timers) + 1)
+            timer_info = {
+                "description": description,
+                "date_limite": date_limite.strftime("%d/%m/%Y"),
+                "user_id": ctx.author.id,
+                "channel_id": ctx.channel.id,
+                "created_at": datetime.now().strftime("%d/%m/%Y"),
+            }
+
+            timers[timer_id] = timer_info
+            sauvegarder_timers()
+
+            # Confirmation
+            embed = discord.Embed(
+                title="⏰ Timer créé avec succès",
+                description=f"**Tâche :** {description}\n**Date limite :** {date_limite.strftime('%d/%m/%Y')}",
+                color=discord.Color(COLORS.get("success", 0x2ECC71))
+            )
+            await ctx.send(embed=embed)
+
+        except ValueError:
+            await ctx.send("❌ Format de date incorrect. Utilisez le format DD/MM/YYYY")
+        except Exception as e:
+            await ctx.send(f"❌ Une erreur s'est produite: {str(e)}")
+
+    async def daily_reminder(self):
+        """Fonction qui vérifie et envoie les rappels quotidiens pour les timers."""
+        await self.bot.wait_until_ready()
+        while not self.bot.is_closed():
+            try:
+                # Attendre jusqu'à 15h le jour suivant
+                now = datetime.now()
+                next_run = now.replace(hour=15, minute=0, second=0, microsecond=0)
+                if now >= next_run:
+                    next_run += timedelta(days=1)
+                await asyncio.sleep((next_run - now).total_seconds())
+
+                # Parcourir tous les timers actifs
+                timers_to_remove = []
+                for timer_id, timer_info in timers.items():
+                    date_limite = datetime.strptime(timer_info["date_limite"], "%d/%m/%Y")
+                    
+                    # Si la date limite est dépassée, marquer le timer pour suppression
+                    if date_limite < datetime.now():
+                        timers_to_remove.append(timer_id)
+                        continue
+
+                    # Envoyer le rappel quotidien
+                    channel = self.bot.get_channel(timer_info["channel_id"])
+                    user = self.bot.get_user(timer_info["user_id"])
+                    
+                    if channel and user:
+                        jours_restants = (date_limite - datetime.now()).days
+                        embed = discord.Embed(
+                            title="⏰ Rappel quotidien",
+                            description=f"Hey {user.mention}, n'oublie pas :\n\n**{timer_info['description']}**\n\nIl te reste {jours_restants} jour(s) avant la date limite ({timer_info['date_limite']})",
+                            color=discord.Color(COLORS.get("warning", 0xF1C40F))
+                        )
+                        await channel.send(embed=embed)
+
+                # Supprimer les timers expirés
+                for timer_id in timers_to_remove:
+                    del timers[timer_id]
+                
+                if timers_to_remove:
+                    sauvegarder_timers()
+
+            except Exception as e:
+                logging.error(f"Erreur dans daily_reminder: {e}")
+                await asyncio.sleep(60)  # Attendre 1 minute en cas d'erreur
+                continue
+
+    def __init__(self, bot):
+        self.bot = bot
+        global bot_instance
+        bot_instance = bot
+        charger_etat_taches()
+        charger_timers()
+        # Démarrer la boucle de rappel quotidien
+        bot.loop.create_task(self.daily_reminder())
                 timestamp=datetime.utcnow()
             )
             embed.add_field(name="Nombre de tâches chargées", value=str(len(etat_taches_global)), inline=True)
