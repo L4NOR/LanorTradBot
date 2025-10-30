@@ -64,44 +64,69 @@ class RappelTask(commands.Cog):
         await envoyer_rappel(self.bot)
 
     @commands.command()
-    async def add_rappel(self, ctx, user: discord.Member, chapitre: int, date_limite: str):
-        """Créer un rappel de task pour un utilisateur jusqu'à la date limite (format: YYYY-MM-DD)"""
+    async def add_rappel(self, ctx, user: discord.Member):
+        """Créer un rappel de task pour un utilisateur en demandant toutes les informations nécessaires."""
         mangas = ["Ao No Exorcist", "Satsudou", "Tougen Anki", "Catenaccio", "Tokyo Underworld"]
         tasks = ["traduire", "qcheck", "edit", "clean"]
 
+        await ctx.send(f"Création d'un rappel pour {user.mention}. Répondez aux questions ci-dessous.")
+
         # Choix du manga
-        await ctx.send(f"Choisissez le manga parmi : {', '.join(mangas)}")
+        await ctx.send(f"Quel manga ? Choisissez parmi : {', '.join(mangas)}")
         def check_manga(m):
             return m.author == ctx.author and m.channel == ctx.channel and m.content in mangas
         try:
-            manga_msg = await ctx.bot.wait_for("message", timeout=30, check=check_manga)
+            manga_msg = await ctx.bot.wait_for("message", timeout=60, check=check_manga)
             manga = manga_msg.content
         except asyncio.TimeoutError:
             await ctx.send("Choix du manga expiré.")
             return
 
         # Choix de la tâche
-        await ctx.send(f"Choisissez la tâche parmi : {', '.join(tasks)}")
+        await ctx.send(f"Quelle tâche ? Choisissez parmi : {', '.join(tasks)}")
         def check_task(m):
             return m.author == ctx.author and m.channel == ctx.channel and m.content in tasks
         try:
-            task_msg = await ctx.bot.wait_for("message", timeout=30, check=check_task)
+            task_msg = await ctx.bot.wait_for("message", timeout=60, check=check_task)
             task = task_msg.content
         except asyncio.TimeoutError:
             await ctx.send("Choix de la tâche expiré.")
             return
 
+        # Demande du chapitre
+        await ctx.send("Pour quel chapitre ? (numéro uniquement)")
+        def check_chap(m):
+            return m.author == ctx.author and m.channel == ctx.channel and m.content.isdigit()
         try:
-            date_obj = datetime.datetime.strptime(date_limite, "%Y-%m-%d")
-        except ValueError:
-            await ctx.send("Format de date invalide. Utilisez YYYY-MM-DD.")
+            chap_msg = await ctx.bot.wait_for("message", timeout=60, check=check_chap)
+            chapitre = int(chap_msg.content)
+        except asyncio.TimeoutError:
+            await ctx.send("Réponse pour le chapitre expirée.")
             return
+
+        # Demande de la date limite
+        await ctx.send("Pour quelle date cela doit-il être réalisé ? (format : YYYY-MM-DD)")
+        def check_date(m):
+            try:
+                datetime.datetime.strptime(m.content, "%Y-%m-%d")
+                return m.author == ctx.author and m.channel == ctx.channel
+            except ValueError:
+                return False
+        try:
+            date_msg = await ctx.bot.wait_for("message", timeout=60, check=check_date)
+            date_limite = date_msg.content
+        except asyncio.TimeoutError:
+            await ctx.send("Réponse pour la date expirée.")
+            return
+
+        date_obj = datetime.datetime.strptime(date_limite, "%Y-%m-%d")
         delta = (date_obj.date() - datetime.datetime.now().date()).days
         if delta < 0:
             await ctx.send("La date limite doit être dans le futur.")
             return
+
         # Confirmation
-        msg = await ctx.send(f"Êtes-vous sûr de vouloir recevoir un rappel de task '{task}' chaque jour pour {user.mention} sur le manga '{manga}' pendant {delta} jours (jusqu'au {date_limite}) ? Répondez par 'oui' ou 'non'.")
+        msg = await ctx.send(f"Confirmez-vous la création d'un rappel '{task}' pour {user.mention} sur le manga '{manga}' chapitre {chapitre} à réaliser avant le {date_limite} ? Répondez par 'oui' ou 'non'.")
         def check(m):
             return m.author == ctx.author and m.channel == ctx.channel and m.content.lower() in ["oui", "non"]
         try:
