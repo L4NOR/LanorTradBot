@@ -42,7 +42,7 @@ def main():
     
     # Chargement du système de rappels
     import rappels
-    rappels.setup(bot)
+    await rappels.setup(bot)
     
     # Lancement du bot
     try:
