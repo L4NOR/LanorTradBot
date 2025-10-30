@@ -9,46 +9,40 @@ from config import TOKEN, PREFIX, INTENTS, PORT
 import events
 import commands as cmd
 
-# Configuration du logging
 logging.basicConfig(level=logging.INFO)
 
-def main():
-    # Configuration du bot
+async def main():
     bot = commands.Bot(command_prefix=PREFIX, intents=INTENTS)
     
-    # Configuration du serveur web
+    # Serveur web interne (pour uptime monitor par ex.)
     async def setup_webserver():
         app = web.Application()
-        
         async def health_check(request):
             return web.Response(text="OK", status=200)
-        
         app.router.add_get('/', health_check)
-        
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, '0.0.0.0', PORT)
         await site.start()
         logging.info(f"Serveur web démarré sur le port {PORT}")
     
-    # Ajout de la méthode setup_webserver au bot
     bot.setup_webserver = setup_webserver
-    
-    # Chargement des événements
+
+    # Charger les événements
     events.setup(bot)
-    
-    # Chargement des commandes
+
+    # Charger les commandes (synchrone)
     cmd.setup(bot)
-    
-    # Chargement du système de rappels
+
+    # Charger les rappels (asynchrone)
     import rappels
-    await rappels.setup(bot)
-    
-    # Lancement du bot
+    await rappels.setup(bot)   # ⬅️ ICI le await est indispensable !
+
+    # Lancer le bot
     try:
-        bot.run(TOKEN)
+        await bot.start(TOKEN)
     except Exception as e:
         logging.error(f"Erreur lors du démarrage du bot: {e}")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
