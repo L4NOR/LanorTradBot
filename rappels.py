@@ -55,6 +55,8 @@ class RappelTask(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         charger_rappels()
+
+    async def cog_load(self):
         self.rappel_loop.start()
 
     @tasks.loop(minutes=1)
