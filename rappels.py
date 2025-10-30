@@ -64,8 +64,33 @@ class RappelTask(commands.Cog):
         await envoyer_rappel(self.bot)
 
     @commands.command()
-    async def add_rappel(self, ctx, user: discord.Member, manga: str, chapitre: int, date_limite: str):
+    async def add_rappel(self, ctx, user: discord.Member, chapitre: int, date_limite: str):
         """Créer un rappel de task pour un utilisateur jusqu'à la date limite (format: YYYY-MM-DD)"""
+        mangas = ["Ao No Exorcist", "Satsudou", "Tougen Anki", "Catenaccio", "Tokyo Underworld"]
+        tasks = ["traduire", "qcheck", "edit", "clean"]
+
+        # Choix du manga
+        await ctx.send(f"Choisissez le manga parmi : {', '.join(mangas)}")
+        def check_manga(m):
+            return m.author == ctx.author and m.channel == ctx.channel and m.content in mangas
+        try:
+            manga_msg = await ctx.bot.wait_for("message", timeout=30, check=check_manga)
+            manga = manga_msg.content
+        except asyncio.TimeoutError:
+            await ctx.send("Choix du manga expiré.")
+            return
+
+        # Choix de la tâche
+        await ctx.send(f"Choisissez la tâche parmi : {', '.join(tasks)}")
+        def check_task(m):
+            return m.author == ctx.author and m.channel == ctx.channel and m.content in tasks
+        try:
+            task_msg = await ctx.bot.wait_for("message", timeout=30, check=check_task)
+            task = task_msg.content
+        except asyncio.TimeoutError:
+            await ctx.send("Choix de la tâche expiré.")
+            return
+
         try:
             date_obj = datetime.datetime.strptime(date_limite, "%Y-%m-%d")
         except ValueError:
@@ -76,7 +101,7 @@ class RappelTask(commands.Cog):
             await ctx.send("La date limite doit être dans le futur.")
             return
         # Confirmation
-        msg = await ctx.send(f"Êtes-vous sûr de vouloir recevoir un rappel de task chaque jour pour {user.mention} pendant {delta} jours (jusqu'au {date_limite}) ? Répondez par 'oui' ou 'non'.")
+        msg = await ctx.send(f"Êtes-vous sûr de vouloir recevoir un rappel de task '{task}' chaque jour pour {user.mention} sur le manga '{manga}' pendant {delta} jours (jusqu'au {date_limite}) ? Répondez par 'oui' ou 'non'.")
         def check(m):
             return m.author == ctx.author and m.channel == ctx.channel and m.content.lower() in ["oui", "non"]
         try:
@@ -85,13 +110,14 @@ class RappelTask(commands.Cog):
             await ctx.send("Confirmation expirée.")
             return
         if rep.content.lower() == "oui":
-            rappel_id = f"{user.id}_{manga}_{chapitre}"
+            rappel_id = f"{user.id}_{manga}_{chapitre}_{task}"
             rappeals_actifs[rappel_id] = {
                 "user_id": user.id,
                 "manga": manga,
                 "chapitre": chapitre,
+                "task": task,
                 "date_limite": date_limite,
-                "channel_id": 1431607377882382396
+                "channel_id": ctx.channel.id
             }
             sauvegarder_rappels()
             await ctx.send(f"Rappel créé pour {user.mention} !")
