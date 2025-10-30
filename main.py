@@ -8,7 +8,6 @@ from aiohttp import web
 from config import TOKEN, PREFIX, INTENTS, PORT
 import events
 import commands as cmd
-import rappels  # Nouveau module
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
