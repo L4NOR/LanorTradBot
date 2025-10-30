@@ -106,10 +106,15 @@ async def verifier_rappels():
 class RappelCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._task = bot.loop.create_task(verifier_rappels())
+        bot.loop.create_task(self.start_tasks())
+
+    async def start_tasks(self):
+        await self.bot.wait_until_ready()
+        self._task = self.bot.loop.create_task(verifier_rappels())
 
     def cog_unload(self):
-        self._task.cancel()
+        if hasattr(self, '_task'):
+            self._task.cancel()
 
     @commands.command(name="set_rappel")
     async def set_rappel(self, ctx, type_tache: str, projet: str, chapitre: str, user: discord.Member, date: str):
