@@ -17,7 +17,14 @@ def charger_rappels():
     global rappeals_actifs
     if os.path.exists(RAPPELS_FILE):
         with open(RAPPELS_FILE, "r", encoding="utf-8") as f:
-            rappeals_actifs = json.load(f)
+            contenu = f.read().strip()
+            if not contenu:
+                rappeals_actifs = {}
+            else:
+                try:
+                    rappeals_actifs = json.loads(contenu)
+                except Exception:
+                    rappeals_actifs = {}
     else:
         rappeals_actifs = {}
 
