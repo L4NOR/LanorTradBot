@@ -20,6 +20,50 @@ chapitres_planifies = []
 # Ajout d'une structure globale pour stocker l'état des tâches
 etat_taches_global = {}
 
+# Fichier de stockage des rappels
+RAPPELS_FILE = "data/rappels.json"
+
+# Charger les rappels depuis le fichier JSON
+def charger_rappels():
+    if os.path.exists(RAPPELS_FILE):
+        with open(RAPPELS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+# Sauvegarder les rappels dans le fichier JSON
+def sauvegarder_rappels(rappels):
+    try:
+        with open(RAPPELS_FILE, "w", encoding="utf-8") as f:
+            json.dump(rappels, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        logging.error(f"Erreur lors de la sauvegarde des rappels: {e}")
+
+# Tâche de rappel périodique
+async def rappel_task(bot):
+    while True:
+        now = datetime.now()
+        rappels = charger_rappels()
+        # Heures de rappel
+        heures = [12, 16, 20]
+        for rappel in rappels:
+            # Vérifier la date de fin
+            date_fin = datetime.strptime(rappel["date_fin"], "%d/%m/%Y")
+            if now.date() > date_fin.date():
+                continue
+            # Envoyer le rappel si l'heure correspond
+            if now.hour in heures and now.minute == 0:
+                try:
+                    channel = bot.get_channel(1431607377882382396)
+                    if channel:
+                        user_mention = rappel["user_mention"]
+                        manga = rappel["manga"]
+                        task = rappel["task"]
+                        chapitre = rappel["chapitre"]
+                        await channel.send(f"⏰ Rappel pour {user_mention} : La tâche **{task}** sur le manga **{manga}** (chapitre {chapitre}) est toujours en attente ! Date limite : {rappel['date_fin']}")
+                except Exception as e:
+                    logging.error(f"Erreur lors de l'envoi du rappel : {e}")
+        # Attendre 60 secondes avant de vérifier à nouveau
+        await asyncio.sleep(60)
 # Charger les tâches depuis le fichier JSON au démarrage
 def charger_etat_taches():
     global etat_taches_global
@@ -69,6 +113,65 @@ def setup(bot):
     global bot_instance
     bot_instance = bot
     bot.remove_command('help')
+
+    # Lancer la tâche de rappel périodique
+    bot.loop.create_task(rappel_task(bot))
+
+    @bot.command(name="set_rappel")
+    async def set_rappel(ctx, task: str, manga: str, chapitre: str, user: discord.Member, date_fin: str):
+        """Crée un rappel pour une tâche sur un manga jusqu'à une date donnée"""
+        actions_valides = ["clean", "trad", "check", "edit", "release", "qcheck"]
+        if task.lower() not in actions_valides:
+            await ctx.send(f"❌ Tâche inconnue. Tâches valides : {', '.join(actions_valides)}")
+            return
+        # Vérifier la date
+        try:
+            date_obj = datetime.strptime(date_fin, "%d/%m")
+            # Ajouter l'année courante
+            date_obj = date_obj.replace(year=datetime.now().year)
+        except Exception:
+            await ctx.send("❌ Format de date invalide. Utilisez JJ/MM (ex: 15/10)")
+            return
+        rappels = charger_rappels()
+        rappel = {
+            "task": task,
+            "manga": manga,
+            "chapitre": chapitre,
+            "user_id": user.id,
+            "user_mention": user.mention,
+            "date_fin": date_obj.strftime("%d/%m/%Y"),
+            "created_by": ctx.author.id
+        }
+        rappels.append(rappel)
+        sauvegarder_rappels(rappels)
+        await ctx.send(f"✅ Rappel créé pour {user.mention} sur la tâche **{task}** du manga **{manga}** chapitre {chapitre} jusqu'au {date_obj.strftime('%d/%m/%Y')}")
+
+    @bot.command(name="rappels")
+    async def rappels_cmd(ctx):
+        """Affiche la liste des rappels actifs"""
+        rappels = charger_rappels()
+        if not rappels:
+            await ctx.send("Aucun rappel actif.")
+            return
+        embed = discord.Embed(title="⏰ Rappels actifs", color=discord.Color.orange())
+        for i, r in enumerate(rappels, 1):
+            embed.add_field(
+                name=f"Rappel #{i}",
+                value=(f"Tâche : **{r['task']}**\nManga : **{r['manga']}**\nChapitre : {r['chapitre']}\nUtilisateur : {r['user_mention']}\nDate limite : {r['date_fin']}"),
+                inline=False
+            )
+        await ctx.send(embed=embed)
+
+    @bot.command(name="delete_rappel")
+    async def delete_rappel(ctx, index: int):
+        """Supprime un rappel par son index (voir !rappels)"""
+        rappels = charger_rappels()
+        if index < 1 or index > len(rappels):
+            await ctx.send("Index invalide. Utilisez !rappels pour voir les index.")
+            return
+        rappel = rappels.pop(index - 1)
+        sauvegarder_rappels(rappels)
+        await ctx.send(f"🗑️ Rappel supprimé pour {rappel['user_mention']} sur {rappel['manga']} chapitre {rappel['chapitre']}.")
     
     @bot.command()
     async def help(ctx):
