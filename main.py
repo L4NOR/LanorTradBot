@@ -41,6 +41,7 @@ def main():
     cmd.setup(bot)
     
     # Chargement du système de rappels
+    import rappels
     rappels.setup(bot)
     
     # Lancement du bot
