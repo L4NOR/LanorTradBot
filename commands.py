@@ -1,21 +1,17 @@
 # commands.py
 import discord
 from discord.ext import commands
-from datetime import datetime, timedelta
+from datetime import datetime
 from config import CHANNELS, ROLES, COLORS
 import logging
 import asyncio
 import json
 import os
-from typing import Dict, List
 
 bot_instance = None
 
 TASKS_FILE = "data/etat_taches.json"
 META_FILE = "data/etat_taches_meta.json"
-REMINDERS_FILE = "data/rappels.json"
-REMINDER_CHANNEL_ID = 1431607377882382396  # Channel pour les rappels quotidiens
-REMINDER_TIMES = ["12:00", "16:00", "20:00"]  # Heures des rappels quotidiens
 os.makedirs("data", exist_ok=True)
 
 # Dictionnaire pour stocker les chapitres planifiés
@@ -47,156 +43,6 @@ def sauvegarder_etat_taches():
             json.dump(meta, mf, ensure_ascii=False, indent=4)
     except Exception as e:
         logging.error(f"Erreur lors de la sauvegarde des tâches: {e}")
-
-# Système de rappels
-rappels = {}
-
-def charger_rappels():
-    global rappels
-    if os.path.exists(REMINDERS_FILE):
-        with open(REMINDERS_FILE, "r", encoding="utf-8") as f:
-            rappels = json.load(f)
-    else:
-        rappels = {}
-
-def sauvegarder_rappels():
-    with open(REMINDERS_FILE, "w", encoding="utf-8") as f:
-        json.dump(rappels, f, ensure_ascii=False, indent=4)
-
-async def envoyer_rappel(ctx, rappel_id):
-    if rappel_id not in rappels:
-        return
-
-    rappel = rappels[rappel_id]
-    channel = bot_instance.get_channel(REMINDER_CHANNEL_ID)
-    user = await bot_instance.fetch_user(rappel["user_id"])
-    
-    message = f"🔔 Rappel pour {user.mention} :\n"
-    message += f"Tâche: {rappel['type']} - {rappel['projet']}\n"
-    message += f"Date limite: {rappel['date_fin']}"
-    
-    await channel.send(message)
-
-async def verifier_rappels():
-    while True:
-        now = datetime.now()
-        current_time = now.strftime("%H:%M")
-        
-        if current_time in REMINDER_TIMES:
-            for rappel_id, rappel in list(rappels.items()):
-                date_fin = datetime.strptime(rappel["date_fin"], "%d/%m")
-                date_fin = date_fin.replace(year=now.year)
-                
-                if now.date() <= date_fin.date():
-                    channel = bot_instance.get_channel(REMINDER_CHANNEL_ID)
-                    if channel:
-                        try:
-                            await envoyer_rappel(None, rappel_id)
-                        except Exception as e:
-                            logging.error(f"Erreur lors de l'envoi du rappel {rappel_id}: {e}")
-                else:
-                    # Supprimer les rappels expirés
-                    del rappels[rappel_id]
-                    sauvegarder_rappels()
-        
-        # Attendre jusqu'à la prochaine minute
-        await asyncio.sleep(60)
-
-# Commandes de rappel
-class RappelCommands(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        bot.loop.create_task(self.start_tasks())
-
-    async def start_tasks(self):
-        await self.bot.wait_until_ready()
-        self._task = self.bot.loop.create_task(verifier_rappels())
-
-    def cog_unload(self):
-        if hasattr(self, '_task'):
-            self._task.cancel()
-
-    @commands.command(name="set_rappel")
-    async def set_rappel(self, ctx, type_tache: str, projet: str, chapitre: str, user: discord.Member, date: str):
-        """
-        Crée un nouveau rappel
-        Usage: !set_rappel <type_tache> <projet> <chapitre> @user <date>
-        Exemple: !set_rappel trad "Catenaccio" 45 @user 15/10
-        """
-        try:
-            # Valider le format de la date (JJ/MM)
-            datetime.strptime(date, "%d/%m")
-            
-            rappel_id = str(len(rappels) + 1)
-            rappels[rappel_id] = {
-                "type": type_tache,
-                "projet": projet,
-                "chapitre": chapitre,
-                "user_id": user.id,
-                "date_fin": date,
-                "created_by": ctx.author.id,
-                "created_at": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            }
-            
-            sauvegarder_rappels()
-            
-            await ctx.send(f"✅ Rappel créé avec succès pour {user.mention} !\n"
-                         f"Type: {type_tache}\n"
-                         f"Projet: {projet}\n"
-                         f"Chapitre: {chapitre}\n"
-                         f"Date limite: {date}")
-            
-        except ValueError:
-            await ctx.send("❌ Format de date incorrect. Utilisez le format JJ/MM (exemple: 15/10)")
-        except Exception as e:
-            await ctx.send(f"❌ Une erreur est survenue: {str(e)}")
-
-    @commands.command(name="liste_rappels")
-    async def liste_rappels(self, ctx):
-        """Affiche la liste des rappels actifs"""
-        if not rappels:
-            await ctx.send("Aucun rappel actif.")
-            return
-
-        embed = discord.Embed(title="📋 Liste des rappels actifs", color=COLORS.get("INFO", 0x00ff00))
-        
-        for rappel_id, rappel in rappels.items():
-            user = await self.bot.fetch_user(rappel["user_id"])
-            creator = await self.bot.fetch_user(rappel["created_by"])
-            
-            description = f"Type: {rappel['type']}\n"
-            description += f"Projet: {rappel['projet']}\n"
-            description += f"Chapitre: {rappel['chapitre']}\n"
-            description += f"Pour: {user.mention}\n"
-            description += f"Date limite: {rappel['date_fin']}\n"
-            description += f"Créé par: {creator.name}\n"
-            description += f"Le: {rappel['created_at']}"
-            
-            embed.add_field(name=f"Rappel #{rappel_id}", value=description, inline=False)
-
-        await ctx.send(embed=embed)
-
-    @commands.command(name="suppr_rappel")
-    async def suppr_rappel(self, ctx, rappel_id: str):
-        """
-        Supprime un rappel
-        Usage: !suppr_rappel <id>
-        """
-        if rappel_id not in rappels:
-            await ctx.send("❌ Ce rappel n'existe pas.")
-            return
-
-        rappel = rappels[rappel_id]
-        del rappels[rappel_id]
-        sauvegarder_rappels()
-
-        await ctx.send(f"✅ Le rappel #{rappel_id} a été supprimé avec succès.")
-
-def setup(bot):
-    global bot_instance
-    bot_instance = bot
-    charger_rappels()  # Charger les rappels existants
-    bot.add_cog(RappelCommands(bot))
 
 # Dictionnaire pour mapper les mangas aux salons
 MANGA_CHANNELS = {

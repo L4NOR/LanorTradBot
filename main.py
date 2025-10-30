@@ -35,18 +35,14 @@ def main():
         await site.start()
         logging.info(f"Serveur web démarré sur le port {PORT}")
     
-    # Ajout des méthodes setup au bot
+    # Ajout de la méthode setup_webserver au bot
     bot.setup_webserver = setup_webserver
-    bot.setup_cogs = setup_cogs
     
-    @bot.event
-    async def on_ready():
-        logging.info(f"{bot.user.name} est connecté!")
-        await bot.setup_webserver()
-        await bot.setup_cogs()
-        
     # Chargement des événements
     events.setup(bot)
+    
+    # Chargement des commandes
+    cmd.setup(bot)
     
     # Lancement du bot
     try:
