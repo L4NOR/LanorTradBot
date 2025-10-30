@@ -64,12 +64,29 @@ class RappelTask(commands.Cog):
         await envoyer_rappel(self.bot)
 
     @commands.command()
-    async def add_rappel(self, ctx, user: discord.Member):
+    async def add_rappel(self, ctx):
         """Créer un rappel de task pour un utilisateur en demandant toutes les informations nécessaires."""
         mangas = ["Ao No Exorcist", "Satsudou", "Tougen Anki", "Catenaccio", "Tokyo Underworld"]
         tasks = ["traduire", "qcheck", "edit", "clean"]
 
-        await ctx.send(f"Création d'un rappel pour {user.mention}. Répondez aux questions ci-dessous.")
+        await ctx.send("Création d'un rappel. Répondez aux questions ci-dessous.")
+
+        # Demande du membre cible
+        await ctx.send("Pour quel membre ? Mentionnez-le ou donnez son nom d'utilisateur.")
+        def check_user(m):
+            return m.author == ctx.author and m.channel == ctx.channel
+        try:
+            user_msg = await ctx.bot.wait_for("message", timeout=60, check=check_user)
+            if user_msg.mentions:
+                user = user_msg.mentions[0]
+            else:
+                user = discord.utils.find(lambda u: u.name == user_msg.content, ctx.guild.members)
+            if not user:
+                await ctx.send("Utilisateur non trouvé. Annulation.")
+                return
+        except asyncio.TimeoutError:
+            await ctx.send("Réponse pour le membre expirée.")
+            return
 
         # Choix du manga
         await ctx.send(f"Quel manga ? Choisissez parmi : {', '.join(mangas)}")
