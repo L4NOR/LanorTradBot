@@ -70,7 +70,7 @@ def setup(bot):
     bot_instance = bot
     bot.remove_command('help')
     
-    @bot.command()
+@bot.command()
     async def help(ctx):
         """Affiche le menu d'aide des commandes"""
         admin_roles = [1326417422663680090, 1331346420883525682]
@@ -114,6 +114,16 @@ def setup(bot):
                     "• !delete_task <manga> <chapitre> - Supprimer les tâches d'un chapitre\n"
                     "• !newchapter_collab <manga> <chapitre> <lien> - Annoncer un nouveau chapitre\n"
                     "• !actualiser <save|reload> - Enregistrer ou recharger le fichier etat_taches.json\n"
+                ),
+                inline=False
+            )
+            embed.add_field(
+                name="⏰ **Commandes Rappels**",
+                value=(
+                    "• !set_rappel <tâche> <manga> <chapitre> @user <date> - Créer un rappel\n"
+                    "• !list_rappels - Voir tous les rappels actifs\n"
+                    "• !info_rappel <id> - Détails d'un rappel\n"
+                    "• !delete_rappel <id> - Supprimer un rappel\n"
                 ),
                 inline=False
             )

@@ -8,6 +8,7 @@ from aiohttp import web
 from config import TOKEN, PREFIX, INTENTS, PORT
 import events
 import commands as cmd
+import rappels  # Nouveau module
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -16,10 +17,6 @@ def main():
     # Configuration du bot
     bot = commands.Bot(command_prefix=PREFIX, intents=INTENTS)
     
-    # Charger les cogs
-    async def setup_cogs():
-        await cmd.setup(bot)
-
     # Configuration du serveur web
     async def setup_webserver():
         app = web.Application()
@@ -43,6 +40,9 @@ def main():
     
     # Chargement des commandes
     cmd.setup(bot)
+    
+    # Chargement du système de rappels
+    rappels.setup(bot)
     
     # Lancement du bot
     try:
