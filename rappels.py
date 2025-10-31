@@ -5,6 +5,7 @@ import json
 import os
 import datetime
 import asyncio
+import pytz  # Import de pytz pour gérer les fuseaux horaires
 
 RAPPELS_FILE = "data/rappels_tasks.json"
 os.makedirs("data", exist_ok=True)
@@ -36,9 +37,11 @@ def sauvegarder_rappels():
     except Exception as e:
         print(f"Erreur lors de la sauvegarde des rappels: {e}")
 
-# Tâche de rappel
+# Tâche de rappel avec fuseau horaire français
 async def envoyer_rappel(bot):
-    now = datetime.datetime.now()
+    # Utiliser le fuseau horaire de Paris pour l'heure française
+    tz_paris = pytz.timezone('Europe/Paris')
+    now = datetime.datetime.now(tz_paris)
     heures = [12, 16, 20]
     
     if now.hour in heures and now.minute == 0:
@@ -88,15 +91,40 @@ class RappelTask(commands.Cog):
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
     async def add_rappel(self, ctx):
         """Créer un rappel de task pour un utilisateur en demandant toutes les informations nécessaires."""
-        mangas = ["Ao No Exorcist", "Satsudou", "Tougen Anki", "Catenaccio", "Tokyo Underworld"]
-        tasks = ["traduire", "qcheck", "edit", "clean"]
+        mangas = {
+            "1️⃣": "Ao No Exorcist",
+            "2️⃣": "Satsudou",
+            "3️⃣": "Tougen Anki",
+            "4️⃣": "Catenaccio",
+            "5️⃣": "Tokyo Underworld"
+        }
+        
+        tasks = {
+            "🧹": "clean",
+            "🌍": "traduire",
+            "✅": "qcheck",
+            "✏️": "edit"
+        }
 
-        await ctx.send("📝 Création d'un rappel. Répondez aux questions ci-dessous.")
+        # Variables pour stocker les choix
+        user = None
+        manga = None
+        task = None
+        chapitre = None
+        date_limite = None
 
-        # Demande du membre cible
-        await ctx.send("👤 Pour quel membre ? Mentionnez-le ou donnez son nom d'utilisateur.")
+        # Étape 1: Choix du membre
+        embed_user = discord.Embed(
+            title="📋 Création d'un rappel - Étape 1/5",
+            description="👤 **Pour quel membre souhaitez-vous créer un rappel ?**\n\nMentionnez le membre ou donnez son nom d'utilisateur.",
+            color=discord.Color.blue()
+        )
+        embed_user.set_footer(text="Vous avez 60 secondes pour répondre")
+        await ctx.send(embed=embed_user)
+
         def check_user(m):
             return m.author == ctx.author and m.channel == ctx.channel
+        
         try:
             user_msg = await self.bot.wait_for("message", timeout=60, check=check_user)
             if user_msg.mentions:
@@ -107,103 +135,187 @@ class RappelTask(commands.Cog):
                 await ctx.send("❌ Utilisateur non trouvé. Annulation.")
                 return
         except asyncio.TimeoutError:
-            await ctx.send("⏰ Réponse pour le membre expirée.")
+            await ctx.send("⏰ Temps écoulé. Création du rappel annulée.")
             return
 
-        # Choix du manga
-        await ctx.send(f"📚 Quel manga ? Choisissez parmi : {', '.join(mangas)}")
-        def check_manga(m):
-            return m.author == ctx.author and m.channel == ctx.channel and m.content in mangas
+        # Étape 2: Choix du manga
+        embed_manga = discord.Embed(
+            title="📋 Création d'un rappel - Étape 2/5",
+            description=f"📚 **Quel manga ?**\n\nRéagissez avec l'emoji correspondant :\n\n"
+                        f"1️⃣ Ao No Exorcist\n"
+                        f"2️⃣ Satsudou\n"
+                        f"3️⃣ Tougen Anki\n"
+                        f"4️⃣ Catenaccio\n"
+                        f"5️⃣ Tokyo Underworld",
+            color=discord.Color.blue()
+        )
+        embed_manga.add_field(name="👤 Membre sélectionné", value=user.mention, inline=False)
+        embed_manga.set_footer(text="Réagissez avec l'emoji de votre choix")
+        
+        manga_msg = await ctx.send(embed=embed_manga)
+        for emoji in mangas.keys():
+            await manga_msg.add_reaction(emoji)
+
+        def check_manga(reaction, user_react):
+            return user_react == ctx.author and str(reaction.emoji) in mangas.keys() and reaction.message.id == manga_msg.id
+
         try:
-            manga_msg = await self.bot.wait_for("message", timeout=60, check=check_manga)
-            manga = manga_msg.content
+            reaction, _ = await self.bot.wait_for("reaction_add", timeout=60, check=check_manga)
+            manga = mangas[str(reaction.emoji)]
+            await manga_msg.clear_reactions()
         except asyncio.TimeoutError:
-            await ctx.send("⏰ Choix du manga expiré.")
+            await ctx.send("⏰ Temps écoulé. Création du rappel annulée.")
+            await manga_msg.clear_reactions()
             return
 
-        # Choix de la tâche
-        await ctx.send(f"✏️ Quelle tâche ? Choisissez parmi : {', '.join(tasks)}")
-        def check_task(m):
-            return m.author == ctx.author and m.channel == ctx.channel and m.content in tasks
+        # Étape 3: Choix de la tâche
+        embed_task = discord.Embed(
+            title="📋 Création d'un rappel - Étape 3/5",
+            description=f"✏️ **Quelle tâche ?**\n\nRéagissez avec l'emoji correspondant :\n\n"
+                        f"🧹 Clean\n"
+                        f"🌍 Traduire\n"
+                        f"✅ QCheck\n"
+                        f"✏️ Edit",
+            color=discord.Color.blue()
+        )
+        embed_task.add_field(name="👤 Membre", value=user.mention, inline=True)
+        embed_task.add_field(name="📚 Manga", value=manga, inline=True)
+        embed_task.set_footer(text="Réagissez avec l'emoji de votre choix")
+        
+        task_msg = await ctx.send(embed=embed_task)
+        for emoji in tasks.keys():
+            await task_msg.add_reaction(emoji)
+
+        def check_task(reaction, user_react):
+            return user_react == ctx.author and str(reaction.emoji) in tasks.keys() and reaction.message.id == task_msg.id
+
         try:
-            task_msg = await self.bot.wait_for("message", timeout=60, check=check_task)
-            task = task_msg.content
+            reaction, _ = await self.bot.wait_for("reaction_add", timeout=60, check=check_task)
+            task = tasks[str(reaction.emoji)]
+            await task_msg.clear_reactions()
         except asyncio.TimeoutError:
-            await ctx.send("⏰ Choix de la tâche expiré.")
+            await ctx.send("⏰ Temps écoulé. Création du rappel annulée.")
+            await task_msg.clear_reactions()
             return
 
-        # Demande du chapitre
-        await ctx.send("📖 Pour quel chapitre ? (numéro uniquement)")
+        # Étape 4: Numéro du chapitre
+        embed_chap = discord.Embed(
+            title="📋 Création d'un rappel - Étape 4/5",
+            description="📖 **Pour quel chapitre ?**\n\nEntrez le numéro du chapitre.",
+            color=discord.Color.blue()
+        )
+        embed_chap.add_field(name="👤 Membre", value=user.mention, inline=True)
+        embed_chap.add_field(name="📚 Manga", value=manga, inline=True)
+        embed_chap.add_field(name="✏️ Tâche", value=task.capitalize(), inline=True)
+        embed_chap.set_footer(text="Vous avez 60 secondes pour répondre")
+        await ctx.send(embed=embed_chap)
+
         def check_chap(m):
             return m.author == ctx.author and m.channel == ctx.channel and m.content.isdigit()
+
         try:
             chap_msg = await self.bot.wait_for("message", timeout=60, check=check_chap)
             chapitre = int(chap_msg.content)
         except asyncio.TimeoutError:
-            await ctx.send("⏰ Réponse pour le chapitre expirée.")
+            await ctx.send("⏰ Temps écoulé. Création du rappel annulée.")
             return
 
-        # Demande de la date limite
-        await ctx.send("📅 Pour quelle date cela doit-il être réalisé ? (format : YYYY-MM-DD)")
+        # Étape 5: Date limite
+        embed_date = discord.Embed(
+            title="📋 Création d'un rappel - Étape 5/5",
+            description="📅 **Pour quelle date limite ?**\n\nFormat : `YYYY-MM-DD` (ex: 2025-11-15)",
+            color=discord.Color.blue()
+        )
+        embed_date.add_field(name="👤 Membre", value=user.mention, inline=True)
+        embed_date.add_field(name="📚 Manga", value=manga, inline=True)
+        embed_date.add_field(name="✏️ Tâche", value=task.capitalize(), inline=True)
+        embed_date.add_field(name="📖 Chapitre", value=str(chapitre), inline=True)
+        embed_date.set_footer(text="Vous avez 60 secondes pour répondre")
+        await ctx.send(embed=embed_date)
+
         def check_date(m):
             try:
                 datetime.datetime.strptime(m.content, "%Y-%m-%d")
                 return m.author == ctx.author and m.channel == ctx.channel
             except ValueError:
                 return False
+
         try:
             date_msg = await self.bot.wait_for("message", timeout=60, check=check_date)
             date_limite = date_msg.content
         except asyncio.TimeoutError:
-            await ctx.send("⏰ Réponse pour la date expirée.")
+            await ctx.send("⏰ Temps écoulé. Création du rappel annulée.")
             return
 
+        # Vérification de la date
         date_obj = datetime.datetime.strptime(date_limite, "%Y-%m-%d")
         delta = (date_obj.date() - datetime.datetime.now().date()).days
         if delta < 0:
-            await ctx.send("❌ La date limite doit être dans le futur.")
+            await ctx.send("❌ La date limite doit être dans le futur. Création annulée.")
             return
 
-        # Confirmation
-        await ctx.send(
-            f"✅ Confirmez-vous la création d'un rappel **'{task}'** pour {user.mention} "
-            f"sur le manga **'{manga}'** chapitre **{chapitre}** à réaliser avant le **{date_limite}** ?\n"
-            f"Répondez par **'oui'** ou **'non'**."
+        # Confirmation finale
+        embed_confirm = discord.Embed(
+            title="✅ Confirmation du rappel",
+            description="**Récapitulatif du rappel à créer :**\n\nRéagissez avec ✅ pour confirmer ou ❌ pour annuler.",
+            color=discord.Color.green()
         )
-        def check_confirm(m):
-            return m.author == ctx.author and m.channel == ctx.channel and m.content.lower() in ["oui", "non"]
-        try:
-            rep = await self.bot.wait_for("message", timeout=30, check=check_confirm)
-        except asyncio.TimeoutError:
-            await ctx.send("⏰ Confirmation expirée.")
-            return
+        embed_confirm.add_field(name="👤 Membre", value=user.mention, inline=True)
+        embed_confirm.add_field(name="📚 Manga", value=manga, inline=True)
+        embed_confirm.add_field(name="📖 Chapitre", value=str(chapitre), inline=True)
+        embed_confirm.add_field(name="✏️ Tâche", value=task.capitalize(), inline=True)
+        embed_confirm.add_field(name="📅 Date limite", value=date_limite, inline=True)
+        embed_confirm.add_field(name="⏰ Jours restants", value=f"{delta} jour(s)", inline=True)
+        embed_confirm.set_footer(text="Réagissez pour confirmer ou annuler")
         
-        if rep.content.lower() == "oui":
-            rappel_id = f"{user.id}_{manga}_{chapitre}_{task}"
-            rappeals_actifs[rappel_id] = {
-                "user_id": user.id,
-                "manga": manga,
-                "chapitre": chapitre,
-                "task": task,
-                "date_limite": date_limite,
-                "channel_id": ctx.channel.id
-            }
-            sauvegarder_rappels()
+        confirm_msg = await ctx.send(embed=embed_confirm)
+        await confirm_msg.add_reaction("✅")
+        await confirm_msg.add_reaction("❌")
+
+        def check_confirm(reaction, user_react):
+            return user_react == ctx.author and str(reaction.emoji) in ["✅", "❌"] and reaction.message.id == confirm_msg.id
+
+        try:
+            reaction, _ = await self.bot.wait_for("reaction_add", timeout=30, check=check_confirm)
+            await confirm_msg.clear_reactions()
             
-            embed = discord.Embed(
-                title="✅ Rappel créé !",
-                description=f"Un rappel a été créé pour {user.mention}",
-                color=discord.Color.green()
-            )
-            embed.add_field(name="Manga", value=manga, inline=True)
-            embed.add_field(name="Chapitre", value=str(chapitre), inline=True)
-            embed.add_field(name="Tâche", value=task, inline=True)
-            embed.add_field(name="Date limite", value=date_limite, inline=True)
-            embed.set_footer(text=f"ID: {rappel_id}")
-            
-            await ctx.send(embed=embed)
-        else:
-            await ctx.send("❌ Rappel annulé.")
+            if str(reaction.emoji) == "✅":
+                rappel_id = f"{user.id}_{manga}_{chapitre}_{task}"
+                rappeals_actifs[rappel_id] = {
+                    "user_id": user.id,
+                    "manga": manga,
+                    "chapitre": chapitre,
+                    "task": task,
+                    "date_limite": date_limite,
+                    "channel_id": ctx.channel.id
+                }
+                sauvegarder_rappels()
+                
+                embed_success = discord.Embed(
+                    title="✅ Rappel créé avec succès !",
+                    description=f"Un rappel a été créé pour {user.mention}",
+                    color=discord.Color.green(),
+                    timestamp=datetime.datetime.now()
+                )
+                embed_success.add_field(name="📚 Manga", value=manga, inline=True)
+                embed_success.add_field(name="📖 Chapitre", value=str(chapitre), inline=True)
+                embed_success.add_field(name="✏️ Tâche", value=task.capitalize(), inline=True)
+                embed_success.add_field(name="📅 Date limite", value=date_limite, inline=True)
+                embed_success.add_field(name="🆔 ID", value=f"`{rappel_id}`", inline=False)
+                embed_success.set_footer(text=f"Créé par {ctx.author.name}")
+                
+                await ctx.send(embed=embed_success)
+            else:
+                embed_cancel = discord.Embed(
+                    title="❌ Création annulée",
+                    description="La création du rappel a été annulée.",
+                    color=discord.Color.red()
+                )
+                await ctx.send(embed=embed_cancel)
+        except asyncio.TimeoutError:
+            await ctx.send("⏰ Temps écoulé. Création du rappel annulée.")
+            await confirm_msg.clear_reactions()
+            return
 
     @commands.command(name='list_rappels')
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
