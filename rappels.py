@@ -5,9 +5,10 @@ import json
 import os
 import datetime
 import asyncio
-import pytz  # Import de pytz pour gérer les fuseaux horaires
+import pytz
 
 RAPPELS_FILE = "data/rappels_tasks.json"
+RAPPELS_META_FILE = "data/rappels_tasks_meta.json"
 os.makedirs("data", exist_ok=True)
 
 # Structure: {"id": {"user_id": int, "manga": str, "chapitre": int, "task": str, "date_limite": str, "channel_id": int}}
@@ -24,7 +25,8 @@ def charger_rappels():
             else:
                 try:
                     rappeals_actifs = json.loads(contenu)
-                except Exception:
+                except Exception as e:
+                    print(f"Erreur lors du chargement des rappels: {e}")
                     rappeals_actifs = {}
     else:
         rappeals_actifs = {}
@@ -34,8 +36,19 @@ def sauvegarder_rappels():
     try:
         with open(RAPPELS_FILE, "w", encoding="utf-8") as f:
             json.dump(rappeals_actifs, f, ensure_ascii=False, indent=4)
+        
+        # Créer le fichier meta avec les informations de sauvegarde
+        meta = {
+            "last_saved": datetime.datetime.utcnow().isoformat() + "Z",
+            "rappel_count": len(rappeals_actifs),
+            "rappels_actifs": list(rappeals_actifs.keys())
+        }
+        with open(RAPPELS_META_FILE, "w", encoding="utf-8") as mf:
+            json.dump(meta, mf, ensure_ascii=False, indent=4)
+        
+        print(f"✅ Rappels sauvegardés avec succès ({len(rappeals_actifs)} rappels)")
     except Exception as e:
-        print(f"Erreur lors de la sauvegarde des rappels: {e}")
+        print(f"❌ Erreur lors de la sauvegarde des rappels: {e}")
 
 # Tâche de rappel avec fuseau horaire français
 async def envoyer_rappel(bot):
@@ -373,6 +386,73 @@ class RappelTask(commands.Cog):
             await ctx.send(embed=embed)
         else:
             await ctx.send(f"❌ ID de rappel **{rappel_id}** introuvable.")
+
+    @commands.command(name="actualiser_rappels")
+    @commands.has_any_role(1326417422663680090, 1330147432847114321)
+    async def actualiser_rappels(self, ctx, action: str = "save"):
+        """Commande d'administration pour sauvegarder ou recharger l'état des rappels"""
+        action = (action or "").lower()
+        
+        if action in ("save", "sauvegarder", "enregistrer"):
+            sauvegarder_rappels()
+            meta = {}
+            try:
+                if os.path.exists(RAPPELS_META_FILE):
+                    with open(RAPPELS_META_FILE, "r", encoding="utf-8") as mf:
+                        meta = json.load(mf)
+            except Exception:
+                meta = {}
+            
+            embed = discord.Embed(
+                title="💾 Actualisation des rappels",
+                description="Le fichier rappels_tasks.json a été mis à jour avec l'état actuel en mémoire.",
+                color=discord.Color(0x2ECC71),  # Vert
+                timestamp=datetime.datetime.utcnow()
+            )
+            embed.add_field(name="Nombre de rappels", value=str(len(rappeals_actifs)), inline=True)
+            embed.add_field(name="Dernière sauvegarde", value=meta.get("last_saved", "N/A"), inline=True)
+            
+            # Ajouter la liste des rappels actifs
+            if rappeals_actifs:
+                rappels_list = "\n".join([f"• {rid[:40]}..." for rid in list(rappeals_actifs.keys())[:5]])
+                if len(rappeals_actifs) > 5:
+                    rappels_list += f"\n... et {len(rappeals_actifs) - 5} autres"
+                embed.add_field(name="Rappels enregistrés", value=rappels_list, inline=False)
+            
+            embed.set_footer(text=f"Demandé par {ctx.author.name}")
+            await ctx.send(embed=embed)
+        
+        elif action in ("reload", "recharge", "recharger"):
+            charger_rappels()
+            meta = {}
+            try:
+                if os.path.exists(RAPPELS_META_FILE):
+                    with open(RAPPELS_META_FILE, "r", encoding="utf-8") as mf:
+                        meta = json.load(mf)
+            except Exception:
+                meta = {}
+            
+            embed = discord.Embed(
+                title="♻️ Rechargement des rappels",
+                description="Le fichier rappels_tasks.json a été rechargé en mémoire.",
+                color=discord.Color(0x3498DB),  # Bleu
+                timestamp=datetime.datetime.utcnow()
+            )
+            embed.add_field(name="Nombre de rappels chargés", value=str(len(rappeals_actifs)), inline=True)
+            embed.add_field(name="Dernière sauvegarde", value=meta.get("last_saved", "N/A"), inline=True)
+            
+            # Ajouter la liste des rappels chargés
+            if rappeals_actifs:
+                rappels_list = "\n".join([f"• {rid[:40]}..." for rid in list(rappeals_actifs.keys())[:5]])
+                if len(rappeals_actifs) > 5:
+                    rappels_list += f"\n... et {len(rappeals_actifs) - 5} autres"
+                embed.add_field(name="Rappels chargés", value=rappels_list, inline=False)
+            
+            embed.set_footer(text=f"Demandé par {ctx.author.name}")
+            await ctx.send(embed=embed)
+        
+        else:
+            await ctx.send("❗ Usage: !actualiser_rappels save ou !actualiser_rappels reload")
 
 # Setup pour discord.py 2.0+
 async def setup(bot):
