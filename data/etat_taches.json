@@ -6,81 +6,11 @@
     "edit": "❌ Non commencé",
     "release": "❌ Non commencé"
   },
-  "catenaccio_27": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-  "catenaccio_28": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-  "catenaccio_29": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-  "catenaccio_30": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-  "catenaccio_31": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-    "catenaccio_32": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-    "catenaccio_33": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-    "catenaccio_34": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "✅ Terminé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-    "catenaccio_35": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "❌ Non commencé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-    "catenaccio_36": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "❌ Non commencé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
     "catenaccio_37": {
     "clean": "✅ Terminé",
     "trad": "✅ Terminé",
     "check": "❌ Non commencé",
-    "edit": "❌ Non commencé",
+    "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
     "catenaccio_38": {
@@ -125,37 +55,30 @@
     "edit": "❌ Non commencé",
     "release": "❌ Non commencé"
   },
-  "tougen anki_208": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "❌ Non commencé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-  "tougen anki_209": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "❌ Non commencé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
-  "tougen anki_210": {
-    "clean": "✅ Terminé",
-    "trad": "✅ Terminé",
-    "check": "❌ Non commencé",
-    "edit": "✅ Terminé",
-    "release": "❌ Non commencé"
-  },
   "tougen anki_211": {
     "clean": "✅ Terminé",
-    "trad": "❌ Non commencé",
+    "trad": "✅ Terminé",
     "check": "❌ Non commencé",
-    "edit": "❌ Non commencé",
+    "edit": "✅ Terminé",
     "release": "❌ Non commencé"
   },
   "tougen anki_212": {
     "clean": "✅ Terminé",
-    "trad": "❌ Non commencé",
+    "trad": "✅ Terminé",
+    "check": "❌ Non commencé",
+    "edit": "❌ Non commencé",
+    "release": "❌ Non commencé"
+  },
+    "tougen anki_213": {
+    "clean": "✅ Terminé",
+    "trad": "✅ Terminé",
+    "check": "❌ Non commencé",
+    "edit": "❌ Non commencé",
+    "release": "❌ Non commencé"
+  },
+    "tougen anki_214": {
+    "clean": "✅ Terminé",
+    "trad": "✅ Terminé",
     "check": "❌ Non commencé",
     "edit": "❌ Non commencé",
     "release": "❌ Non commencé"
