@@ -11,7 +11,7 @@ RAPPELS_FILE = "data/rappels_tasks.json"
 RAPPELS_META_FILE = "data/rappels_tasks_meta.json"
 os.makedirs("data", exist_ok=True)
 
-# Structure: {"id": {"user_id": int, "manga": str, "chapitre": int, "task": str, "date_limite": str, "channel_id": int}}
+# Structure: {"id": {"user_id": int, "manga": str, "chapitres": [int], "task": str, "date_limite": str, "channel_id": int}}
 rappeals_actifs = {}
 
 # Charger les rappels depuis le fichier
@@ -37,7 +37,6 @@ def sauvegarder_rappels():
         with open(RAPPELS_FILE, "w", encoding="utf-8") as f:
             json.dump(rappeals_actifs, f, ensure_ascii=False, indent=4)
         
-        # Créer le fichier meta avec les informations de sauvegarde
         meta = {
             "last_saved": datetime.datetime.utcnow().isoformat() + "Z",
             "rappel_count": len(rappeals_actifs),
@@ -50,9 +49,29 @@ def sauvegarder_rappels():
     except Exception as e:
         print(f"❌ Erreur lors de la sauvegarde des rappels: {e}")
 
+# Fonction pour obtenir l'emoji du manga
+def get_manga_emoji(manga_name):
+    emojis = {
+        "Ao No Exorcist": "👹",
+        "Satsudou": "🩸",
+        "Tougen Anki": "😈",
+        "Catenaccio": "⚽",
+        "Tokyo Underworld": "🗼"
+    }
+    return emojis.get(manga_name, "📚")
+
+# Fonction pour obtenir l'emoji de la tâche
+def get_task_emoji(task_name):
+    emojis = {
+        "clean": "🧹",
+        "traduire": "🌍",
+        "qcheck": "✅",
+        "edit": "✏️"
+    }
+    return emojis.get(task_name, "📝")
+
 # Tâche de rappel avec fuseau horaire français
 async def envoyer_rappel(bot):
-    # Utiliser le fuseau horaire de Paris pour l'heure française
     tz_paris = pytz.timezone('Europe/Paris')
     now = datetime.datetime.now(tz_paris)
     
@@ -62,17 +81,34 @@ async def envoyer_rappel(bot):
             try:
                 date_limite = datetime.datetime.strptime(rappel["date_limite"], "%Y-%m-%d")
                 if now.date() > date_limite.date():
-                    continue  # Date dépassée
+                    continue
                 
                 channel = bot.get_channel(rappel["channel_id"])
                 if channel:
                     user = channel.guild.get_member(rappel["user_id"])
                     if user:
-                        await channel.send(
-                            f"⏰ {user.mention} Tu as une tâche **{rappel['task']}** à réaliser "
-                            f"pour le manga **{rappel['manga']}** chapitre **{rappel['chapitre']}** "
-                            f"avant le {rappel['date_limite']} !"
+                        manga_emoji = get_manga_emoji(rappel["manga"])
+                        task_emoji = get_task_emoji(rappel["task"])
+                        chapitres = rappel.get("chapitres", [rappel.get("chapitre", 0)])
+                        chapitres_str = ", ".join([f"#{c}" for c in chapitres])
+                        
+                        embed = discord.Embed(
+                            title=f"{task_emoji} Rappel de Tâche",
+                            description=f"{user.mention}, n'oublie pas ta tâche !",
+                            color=discord.Color.orange(),
+                            timestamp=datetime.datetime.now()
                         )
+                        embed.add_field(name=f"{manga_emoji} Manga", value=rappel['manga'], inline=True)
+                        embed.add_field(name="📖 Chapitres", value=chapitres_str, inline=True)
+                        embed.add_field(name=f"{task_emoji} Tâche", value=rappel['task'].capitalize(), inline=True)
+                        embed.add_field(name="📅 Date limite", value=rappel['date_limite'], inline=True)
+                        
+                        jours_restants = (date_limite.date() - now.date()).days
+                        urgence = "🔴 URGENT" if jours_restants <= 1 else "🟡 Bientôt" if jours_restants <= 3 else "🟢 À venir"
+                        embed.add_field(name="⏰ Temps restant", value=f"{urgence} - {jours_restants} jour(s)", inline=True)
+                        
+                        embed.set_footer(text="Bon courage ! 💪")
+                        await channel.send(embed=embed)
             except Exception as e:
                 print(f"Erreur lors de l'envoi du rappel {rappel_id}: {e}")
 
@@ -119,20 +155,24 @@ class RappelTask(commands.Cog):
             "✏️": "edit"
         }
 
-        # Variables pour stocker les choix
         user = None
         manga = None
         task = None
-        chapitre = None
+        chapitres = []
         date_limite = None
 
         # Étape 1: Choix du membre
         embed_user = discord.Embed(
-            title="📋 Création d'un rappel - Étape 1/5",
-            description="👤 **Pour quel membre souhaitez-vous créer un rappel ?**\n\nMentionnez le membre ou donnez son nom d'utilisateur.",
+            title="📋 Création d'un Rappel - Étape 1/5",
+            description="### 👤 Sélection du Membre\n\n**Mentionnez le membre** ou **tapez son nom d'utilisateur**",
             color=discord.Color.blue()
         )
-        embed_user.set_footer(text="Vous avez 60 secondes pour répondre")
+        embed_user.add_field(
+            name="💡 Exemple",
+            value="`@Utilisateur` ou `NomUtilisateur`",
+            inline=False
+        )
+        embed_user.set_footer(text="⏱️ Vous avez 60 secondes pour répondre", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
         await ctx.send(embed=embed_user)
 
         def check_user(m):
@@ -152,18 +192,14 @@ class RappelTask(commands.Cog):
             return
 
         # Étape 2: Choix du manga
+        manga_list = "\n".join([f"{emoji} **{name}**" for emoji, name in mangas.items()])
         embed_manga = discord.Embed(
-            title="📋 Création d'un rappel - Étape 2/5",
-            description=f"📚 **Quel manga ?**\n\nRéagissez avec l'emoji correspondant :\n\n"
-                        f"1️⃣ Ao No Exorcist\n"
-                        f"2️⃣ Satsudou\n"
-                        f"3️⃣ Tougen Anki\n"
-                        f"4️⃣ Catenaccio\n"
-                        f"5️⃣ Tokyo Underworld",
+            title="📋 Création d'un Rappel - Étape 2/5",
+            description=f"### 📚 Quel Manga ?\n\n{manga_list}",
             color=discord.Color.blue()
         )
-        embed_manga.add_field(name="👤 Membre sélectionné", value=user.mention, inline=False)
-        embed_manga.set_footer(text="Réagissez avec l'emoji de votre choix")
+        embed_manga.add_field(name="✅ Membre sélectionné", value=user.mention, inline=False)
+        embed_manga.set_footer(text="🖱️ Cliquez sur l'emoji correspondant", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
         
         manga_msg = await ctx.send(embed=embed_manga)
         for emoji in mangas.keys():
@@ -182,18 +218,14 @@ class RappelTask(commands.Cog):
             return
 
         # Étape 3: Choix de la tâche
+        task_list = "\n".join([f"{emoji} **{name.capitalize()}**" for emoji, name in tasks.items()])
         embed_task = discord.Embed(
-            title="📋 Création d'un rappel - Étape 3/5",
-            description=f"✏️ **Quelle tâche ?**\n\nRéagissez avec l'emoji correspondant :\n\n"
-                        f"🧹 Clean\n"
-                        f"🌍 Traduire\n"
-                        f"✅ QCheck\n"
-                        f"✏️ Edit",
+            title="📋 Création d'un Rappel - Étape 3/5",
+            description=f"### ✏️ Quelle Tâche ?\n\n{task_list}",
             color=discord.Color.blue()
         )
-        embed_task.add_field(name="👤 Membre", value=user.mention, inline=True)
-        embed_task.add_field(name="📚 Manga", value=manga, inline=True)
-        embed_task.set_footer(text="Réagissez avec l'emoji de votre choix")
+        embed_task.add_field(name="✅ Progression", value=f"👤 {user.mention}\n📚 {get_manga_emoji(manga)} {manga}", inline=False)
+        embed_task.set_footer(text="🖱️ Cliquez sur l'emoji correspondant", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
         
         task_msg = await ctx.send(embed=embed_task)
         for emoji in tasks.keys():
@@ -211,39 +243,64 @@ class RappelTask(commands.Cog):
             await task_msg.clear_reactions()
             return
 
-        # Étape 4: Numéro du chapitre
+        # Étape 4: Numéros des chapitres (plusieurs possibles)
         embed_chap = discord.Embed(
-            title="📋 Création d'un rappel - Étape 4/5",
-            description="📖 **Pour quel chapitre ?**\n\nEntrez le numéro du chapitre.",
+            title="📋 Création d'un Rappel - Étape 4/5",
+            description="### 📖 Pour Quel(s) Chapitre(s) ?\n\n**Entrez les numéros des chapitres** séparés par des espaces ou des virgules",
             color=discord.Color.blue()
         )
-        embed_chap.add_field(name="👤 Membre", value=user.mention, inline=True)
-        embed_chap.add_field(name="📚 Manga", value=manga, inline=True)
-        embed_chap.add_field(name="✏️ Tâche", value=task.capitalize(), inline=True)
-        embed_chap.set_footer(text="Vous avez 60 secondes pour répondre")
+        embed_chap.add_field(
+            name="💡 Exemples",
+            value="`214 215 216` ou `214, 215, 216` ou `214`",
+            inline=False
+        )
+        embed_chap.add_field(
+            name="✅ Progression",
+            value=f"👤 {user.mention}\n📚 {get_manga_emoji(manga)} {manga}\n{get_task_emoji(task)} {task.capitalize()}",
+            inline=False
+        )
+        embed_chap.set_footer(text="⏱️ Vous avez 60 secondes pour répondre", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
         await ctx.send(embed=embed_chap)
 
         def check_chap(m):
-            return m.author == ctx.author and m.channel == ctx.channel and m.content.isdigit()
+            return m.author == ctx.author and m.channel == ctx.channel
 
         try:
             chap_msg = await self.bot.wait_for("message", timeout=60, check=check_chap)
-            chapitre = int(chap_msg.content)
+            # Nettoyer et parser les chapitres
+            chap_str = chap_msg.content.replace(',', ' ')
+            chapitres = [int(c) for c in chap_str.split() if c.isdigit()]
+            
+            if not chapitres:
+                await ctx.send("❌ Aucun chapitre valide trouvé. Annulation.")
+                return
         except asyncio.TimeoutError:
             await ctx.send("⏰ Temps écoulé. Création du rappel annulée.")
             return
 
         # Étape 5: Date limite
+        chapitres_str = ", ".join([f"#{c}" for c in chapitres])
         embed_date = discord.Embed(
-            title="📋 Création d'un rappel - Étape 5/5",
-            description="📅 **Pour quelle date limite ?**\n\nFormat : `YYYY-MM-DD` (ex: 2025-11-15)",
+            title="📋 Création d'un Rappel - Étape 5/5",
+            description="### 📅 Date Limite\n\n**Entrez la date limite** au format `AAAA-MM-JJ`",
             color=discord.Color.blue()
         )
-        embed_date.add_field(name="👤 Membre", value=user.mention, inline=True)
-        embed_date.add_field(name="📚 Manga", value=manga, inline=True)
-        embed_date.add_field(name="✏️ Tâche", value=task.capitalize(), inline=True)
-        embed_date.add_field(name="📖 Chapitre", value=str(chapitre), inline=True)
-        embed_date.set_footer(text="Vous avez 60 secondes pour répondre")
+        embed_date.add_field(
+            name="💡 Exemple",
+            value="`2025-11-15`",
+            inline=False
+        )
+        embed_date.add_field(
+            name="✅ Progression",
+            value=(
+                f"👤 {user.mention}\n"
+                f"📚 {get_manga_emoji(manga)} {manga}\n"
+                f"📖 Chapitres: {chapitres_str}\n"
+                f"{get_task_emoji(task)} {task.capitalize()}"
+            ),
+            inline=False
+        )
+        embed_date.set_footer(text="⏱️ Vous avez 60 secondes pour répondre", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
         await ctx.send(embed=embed_date)
 
         def check_date(m):
@@ -267,19 +324,51 @@ class RappelTask(commands.Cog):
             await ctx.send("❌ La date limite doit être dans le futur. Création annulée.")
             return
 
-        # Confirmation finale
+        # Déterminer l'urgence
+        if delta <= 1:
+            urgence_emoji = "🔴"
+            urgence_text = "URGENT"
+            urgence_color = discord.Color.red()
+        elif delta <= 3:
+            urgence_emoji = "🟡"
+            urgence_text = "Bientôt"
+            urgence_color = discord.Color.gold()
+        else:
+            urgence_emoji = "🟢"
+            urgence_text = "À venir"
+            urgence_color = discord.Color.green()
+
+        # Confirmation finale avec embed amélioré
         embed_confirm = discord.Embed(
-            title="✅ Confirmation du rappel",
-            description="**Récapitulatif du rappel à créer :**\n\nRéagissez avec ✅ pour confirmer ou ❌ pour annuler.",
-            color=discord.Color.green()
+            title="✅ Confirmation du Rappel",
+            description="**Vérifiez les informations avant de confirmer**",
+            color=urgence_color,
+            timestamp=datetime.datetime.now()
         )
+        
+        # Informations principales
         embed_confirm.add_field(name="👤 Membre", value=user.mention, inline=True)
-        embed_confirm.add_field(name="📚 Manga", value=manga, inline=True)
-        embed_confirm.add_field(name="📖 Chapitre", value=str(chapitre), inline=True)
-        embed_confirm.add_field(name="✏️ Tâche", value=task.capitalize(), inline=True)
-        embed_confirm.add_field(name="📅 Date limite", value=date_limite, inline=True)
-        embed_confirm.add_field(name="⏰ Jours restants", value=f"{delta} jour(s)", inline=True)
-        embed_confirm.set_footer(text="Réagissez pour confirmer ou annuler")
+        embed_confirm.add_field(name=f"{get_manga_emoji(manga)} Manga", value=manga, inline=True)
+        embed_confirm.add_field(name=f"{get_task_emoji(task)} Tâche", value=task.capitalize(), inline=True)
+        
+        # Chapitres et date
+        embed_confirm.add_field(name="📖 Chapitres", value=chapitres_str, inline=True)
+        embed_confirm.add_field(name="📅 Date limite", value=f"`{date_limite}`", inline=True)
+        embed_confirm.add_field(name="⏰ Urgence", value=f"{urgence_emoji} {urgence_text}\n({delta} jour{'s' if delta > 1 else ''})", inline=True)
+        
+        embed_confirm.add_field(
+            name="━━━━━━━━━━━━━━━━━━━━",
+            value="✅ **Confirmer** | ❌ **Annuler**",
+            inline=False
+        )
+        
+        embed_confirm.set_footer(
+            text=f"Créé par {ctx.author.name} | Réagissez dans les 30 secondes",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        )
+        
+        if user.avatar:
+            embed_confirm.set_thumbnail(url=user.avatar.url)
         
         confirm_msg = await ctx.send(embed=embed_confirm)
         await confirm_msg.add_reaction("✅")
@@ -293,37 +382,49 @@ class RappelTask(commands.Cog):
             await confirm_msg.clear_reactions()
             
             if str(reaction.emoji) == "✅":
-                rappel_id = f"{user.id}_{manga}_{chapitre}_{task}"
+                # Créer un ID unique pour le rappel
+                rappel_id = f"{user.id}_{manga.replace(' ', '_')}_{'-'.join(map(str, chapitres))}_{task}"
                 rappeals_actifs[rappel_id] = {
                     "user_id": user.id,
                     "manga": manga,
-                    "chapitre": chapitre,
+                    "chapitres": chapitres,
                     "task": task,
                     "date_limite": date_limite,
                     "channel_id": ctx.channel.id
                 }
                 sauvegarder_rappels()
                 
+                # Embed de succès
                 embed_success = discord.Embed(
-                    title="✅ Rappel créé avec succès !",
-                    description=f"Un rappel a été créé pour {user.mention}",
+                    title="🎉 Rappel Créé avec Succès !",
+                    description=f"Le rappel a été créé pour {user.mention}",
                     color=discord.Color.green(),
                     timestamp=datetime.datetime.now()
                 )
-                embed_success.add_field(name="📚 Manga", value=manga, inline=True)
-                embed_success.add_field(name="📖 Chapitre", value=str(chapitre), inline=True)
-                embed_success.add_field(name="✏️ Tâche", value=task.capitalize(), inline=True)
+                
+                embed_success.add_field(name=f"{get_manga_emoji(manga)} Manga", value=manga, inline=True)
+                embed_success.add_field(name="📖 Chapitres", value=chapitres_str, inline=True)
+                embed_success.add_field(name=f"{get_task_emoji(task)} Tâche", value=task.capitalize(), inline=True)
                 embed_success.add_field(name="📅 Date limite", value=date_limite, inline=True)
-                embed_success.add_field(name="🆔 ID", value=f"`{rappel_id}`", inline=False)
-                embed_success.set_footer(text=f"Créé par {ctx.author.name}")
+                embed_success.add_field(name="⏰ Rappel quotidien", value="20h00 (heure française)", inline=True)
+                embed_success.add_field(name="🆔 ID du rappel", value=f"`{rappel_id[:50]}...`", inline=False)
+                
+                embed_success.set_footer(
+                    text=f"Créé par {ctx.author.name}",
+                    icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+                )
+                
+                if user.avatar:
+                    embed_success.set_thumbnail(url=user.avatar.url)
                 
                 await ctx.send(embed=embed_success)
             else:
                 embed_cancel = discord.Embed(
-                    title="❌ Création annulée",
+                    title="❌ Création Annulée",
                     description="La création du rappel a été annulée.",
                     color=discord.Color.red()
                 )
+                embed_cancel.set_footer(text=f"Annulé par {ctx.author.name}")
                 await ctx.send(embed=embed_cancel)
         except asyncio.TimeoutError:
             await ctx.send("⏰ Temps écoulé. Création du rappel annulée.")
@@ -333,37 +434,114 @@ class RappelTask(commands.Cog):
     @commands.command(name='list_rappels')
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
     async def list_rappels(self, ctx):
-        """Liste les rappels actifs"""
+        """Liste les rappels actifs avec pagination"""
         if not rappeals_actifs:
-            await ctx.send("📋 Aucun rappel actif.")
+            embed = discord.Embed(
+                title="📋 Rappels Actifs",
+                description="🔍 Aucun rappel actif pour le moment.",
+                color=discord.Color.blue()
+            )
+            await ctx.send(embed=embed)
             return
         
-        embed = discord.Embed(
-            title="📋 Rappels actifs",
-            color=discord.Color.blue(),
-            timestamp=datetime.datetime.now()
-        )
+        # Créer des pages d'embeds (3 rappels par page)
+        rappels_list = list(rappeals_actifs.items())
+        pages = []
+        items_per_page = 3
         
-        for rid, r in rappeals_actifs.items():
-            user = ctx.guild.get_member(r["user_id"])
-            user_mention = user.mention if user else f"ID: {r['user_id']}"
-            
-            field_value = (
-                f"👤 Utilisateur: {user_mention}\n"
-                f"📚 Manga: {r['manga']}\n"
-                f"📖 Chapitre: {r['chapitre']}\n"
-                f"✏️ Tâche: {r['task']}\n"
-                f"📅 Date limite: {r['date_limite']}"
+        for i in range(0, len(rappels_list), items_per_page):
+            embed = discord.Embed(
+                title="📋 Liste des Rappels Actifs",
+                description=f"Total: **{len(rappels_list)}** rappel(s)",
+                color=discord.Color.blue(),
+                timestamp=datetime.datetime.now()
             )
             
-            embed.add_field(
-                name=f"ID: {rid[:30]}...",
-                value=field_value,
-                inline=False
+            page_rappels = rappels_list[i:i+items_per_page]
+            
+            for rid, r in page_rappels:
+                user = ctx.guild.get_member(r["user_id"])
+                user_mention = user.mention if user else f"ID: {r['user_id']}"
+                
+                chapitres = r.get("chapitres", [r.get("chapitre", 0)])
+                chapitres_str = ", ".join([f"#{c}" for c in chapitres])
+                
+                # Calculer les jours restants
+                try:
+                    date_limite = datetime.datetime.strptime(r["date_limite"], "%Y-%m-%d")
+                    delta = (date_limite.date() - datetime.datetime.now().date()).days
+                    
+                    if delta <= 1:
+                        urgence = "🔴 URGENT"
+                    elif delta <= 3:
+                        urgence = "🟡 Bientôt"
+                    else:
+                        urgence = "🟢 À venir"
+                    
+                    temps_restant = f"{urgence} ({delta} jour{'s' if delta > 1 else ''})"
+                except:
+                    temps_restant = "N/A"
+                
+                manga_emoji = get_manga_emoji(r["manga"])
+                task_emoji = get_task_emoji(r["task"])
+                
+                field_value = (
+                    f"👤 {user_mention}\n"
+                    f"{manga_emoji} **{r['manga']}** - Chapitres {chapitres_str}\n"
+                    f"{task_emoji} Tâche: **{r['task'].capitalize()}**\n"
+                    f"📅 Date limite: `{r['date_limite']}`\n"
+                    f"⏰ {temps_restant}"
+                )
+                
+                embed.add_field(
+                    name=f"ID: `{rid[:40]}...`",
+                    value=field_value,
+                    inline=False
+                )
+                embed.add_field(name="━━━━━━━━━━━━━━━━━━━━", value="", inline=False)
+            
+            embed.set_footer(
+                text=f"Page {len(pages) + 1}/{(len(rappels_list) + items_per_page - 1) // items_per_page} | Demandé par {ctx.author.name}",
+                icon_url=ctx.author.avatar.url if ctx.author.avatar else None
             )
+            pages.append(embed)
         
-        embed.set_footer(text=f"Total: {len(rappeals_actifs)} rappel(s)")
-        await ctx.send(embed=embed)
+        # Système de pagination
+        if len(pages) == 1:
+            await ctx.send(embed=pages[0])
+            return
+        
+        current_page = 0
+        message = await ctx.send(embed=pages[current_page])
+        
+        await message.add_reaction('⬅️')
+        await message.add_reaction('➡️')
+        await message.add_reaction('❌')
+        
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ['⬅️', '➡️', '❌'] and reaction.message.id == message.id
+        
+        while True:
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
+                
+                if str(reaction.emoji) == '⬅️':
+                    if current_page > 0:
+                        current_page -= 1
+                        await message.edit(embed=pages[current_page])
+                elif str(reaction.emoji) == '➡️':
+                    if current_page < len(pages) - 1:
+                        current_page += 1
+                        await message.edit(embed=pages[current_page])
+                elif str(reaction.emoji) == '❌':
+                    await message.clear_reactions()
+                    break
+                
+                await message.remove_reaction(reaction, user)
+            
+            except asyncio.TimeoutError:
+                await message.clear_reactions()
+                break
 
     @commands.command(name='delete_rappel')
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
@@ -374,14 +552,20 @@ class RappelTask(commands.Cog):
             del rappeals_actifs[rappel_id]
             sauvegarder_rappels()
             
+            chapitres = rappel_info.get("chapitres", [rappel_info.get("chapitre", 0)])
+            chapitres_str = ", ".join([f"#{c}" for c in chapitres])
+            
             embed = discord.Embed(
-                title="🗑️ Rappel supprimé",
-                description=f"Le rappel **{rappel_id}** a été supprimé.",
-                color=discord.Color.red()
+                title="🗑️ Rappel Supprimé",
+                description=f"Le rappel a été supprimé avec succès.",
+                color=discord.Color.red(),
+                timestamp=datetime.datetime.now()
             )
-            embed.add_field(name="Manga", value=rappel_info.get("manga", "N/A"), inline=True)
-            embed.add_field(name="Chapitre", value=str(rappel_info.get("chapitre", "N/A")), inline=True)
-            embed.add_field(name="Tâche", value=rappel_info.get("task", "N/A"), inline=True)
+            embed.add_field(name=f"{get_manga_emoji(rappel_info.get('manga', ''))} Manga", value=rappel_info.get("manga", "N/A"), inline=True)
+            embed.add_field(name="📖 Chapitres", value=chapitres_str, inline=True)
+            embed.add_field(name=f"{get_task_emoji(rappel_info.get('task', ''))} Tâche", value=rappel_info.get("task", "N/A").capitalize(), inline=True)
+            embed.add_field(name="🆔 ID", value=f"`{rappel_id[:50]}...`", inline=False)
+            embed.set_footer(text=f"Supprimé par {ctx.author.name}")
             
             await ctx.send(embed=embed)
         else:
@@ -404,21 +588,21 @@ class RappelTask(commands.Cog):
                 meta = {}
             
             embed = discord.Embed(
-                title="💾 Actualisation des rappels",
-                description="Le fichier rappels_tasks.json a été mis à jour avec l'état actuel en mémoire.",
+                title="💾 Sauvegarde des Rappels",
+                description="✅ Les rappels ont été sauvegardés avec succès !",
                 color=discord.Color(0x2ECC71),
                 timestamp=datetime.datetime.utcnow()
             )
-            embed.add_field(name="Nombre de rappels", value=str(len(rappeals_actifs)), inline=True)
-            embed.add_field(name="Dernière sauvegarde", value=meta.get("last_saved", "N/A"), inline=True)
+            embed.add_field(name="📊 Nombre de rappels", value=f"**{len(rappeals_actifs)}** rappel(s)", inline=True)
+            embed.add_field(name="⏰ Dernière sauvegarde", value=meta.get("last_saved", "N/A"), inline=True)
             
             if rappeals_actifs:
-                rappels_list = "\n".join([f"• {rid[:40]}..." for rid in list(rappeals_actifs.keys())[:5]])
+                rappels_preview = "\n".join([f"• `{rid[:40]}...`" for rid in list(rappeals_actifs.keys())[:5]])
                 if len(rappeals_actifs) > 5:
-                    rappels_list += f"\n... et {len(rappeals_actifs) - 5} autres"
-                embed.add_field(name="Rappels enregistrés", value=rappels_list, inline=False)
+                    rappels_preview += f"\n... et {len(rappeals_actifs) - 5} autre(s)"
+                embed.add_field(name="📋 Rappels enregistrés", value=rappels_preview, inline=False)
             
-            embed.set_footer(text=f"Demandé par {ctx.author.name}")
+            embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
             await ctx.send(embed=embed)
         
         elif action in ("reload", "recharge", "recharger"):
@@ -432,25 +616,32 @@ class RappelTask(commands.Cog):
                 meta = {}
             
             embed = discord.Embed(
-                title="♻️ Rechargement des rappels",
-                description="Le fichier rappels_tasks.json a été rechargé en mémoire.",
+                title="♻️ Rechargement des Rappels",
+                description="✅ Les rappels ont été rechargés depuis le fichier !",
                 color=discord.Color(0x3498DB),
                 timestamp=datetime.datetime.utcnow()
             )
-            embed.add_field(name="Nombre de rappels chargés", value=str(len(rappeals_actifs)), inline=True)
-            embed.add_field(name="Dernière sauvegarde", value=meta.get("last_saved", "N/A"), inline=True)
+            embed.add_field(name="📊 Nombre de rappels chargés", value=f"**{len(rappeals_actifs)}** rappel(s)", inline=True)
+            embed.add_field(name="⏰ Dernière sauvegarde", value=meta.get("last_saved", "N/A"), inline=True)
             
             if rappeals_actifs:
-                rappels_list = "\n".join([f"• {rid[:40]}..." for rid in list(rappeals_actifs.keys())[:5]])
+                rappels_preview = "\n".join([f"• `{rid[:40]}...`" for rid in list(rappeals_actifs.keys())[:5]])
                 if len(rappeals_actifs) > 5:
-                    rappels_list += f"\n... et {len(rappeals_actifs) - 5} autres"
-                embed.add_field(name="Rappels chargés", value=rappels_list, inline=False)
+                    rappels_preview += f"\n... et {len(rappeals_actifs) - 5} autre(s)"
+                embed.add_field(name="📋 Rappels chargés", value=rappels_preview, inline=False)
             
-            embed.set_footer(text=f"Demandé par {ctx.author.name}")
+            embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
             await ctx.send(embed=embed)
         
         else:
-            await ctx.send("❗ Usage: !actualiser_rappels save ou !actualiser_rappels reload")
+            embed = discord.Embed(
+                title="❌ Action Invalide",
+                description="**Usage:** `!actualiser_rappels save` ou `!actualiser_rappels reload`",
+                color=discord.Color.red()
+            )
+            embed.add_field(name="💾 save", value="Sauvegarder l'état actuel des rappels", inline=False)
+            embed.add_field(name="♻️ reload", value="Recharger les rappels depuis le fichier", inline=False)
+            await ctx.send(embed=embed)
 
 # Setup pour discord.py 2.0+
 async def setup(bot):

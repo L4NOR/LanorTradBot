@@ -1,42 +1,10 @@
 {
-  "937386825562062858_Tougen Anki_211_qcheck": {
-    "user_id": 937386825562062858,
-    "manga": "Tougen Anki",
-    "chapitre": 211,
-    "task": "qcheck",
-    "date_limite": "2025-11-05",
-    "channel_id": 1431607377882382396
-  },
-  "608234789564186644_Tougen Anki_214_edit": {
-    "user_id": 608234789564186644,
-    "manga": "Tougen Anki",
-    "chapitre": 214,
-    "task": "edit",
-    "date_limite": "2025-11-07",
-    "channel_id": 1431607377882382396
-  },
-  "608234789564186644_Tougen Anki_213_edit": {
-    "user_id": 608234789564186644,
-    "manga": "Tougen Anki",
-    "chapitre": 213,
-    "task": "edit",
-    "date_limite": "2025-11-05",
-    "channel_id": 1431607377882382396
-  },
-  "608234789564186644_Tougen Anki_212_edit": {
-    "user_id": 608234789564186644,
-    "manga": "Tougen Anki",
-    "chapitre": 212,
-    "task": "edit",
-    "date_limite": "2025-11-05",
-    "channel_id": 1431607377882382396
-  },
-  "433305136975183882_Tougen Anki_215_traduire": {
-    "user_id": 433305136975183882,
-    "manga": "Tougen Anki",
-    "chapitre": 215,
-    "task": "traduire",
-    "date_limite": "2025-11-07",
-    "channel_id": 1431607377882382396
+  "": {
+    "user_id": ,
+    "manga": "",
+    "chapitre": ,
+    "task": "",
+    "date_limite": "",
+    "channel_id": 
   }
 }
