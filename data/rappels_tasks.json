@@ -1,10 +1,18 @@
 {
-  "": {
-    "user_id": ,
-    "manga": "",
-    "chapitre": ,
-    "task": "",
-    "date_limite": "",
-    "channel_id": 
+  "433305136775183882_Tougen_Anki_216-217-218_traduire": {
+    "user_id": 433305136775183882,
+    "manga": "Tougen Anki",
+    "chapitres": [216, 217, 218],
+    "task": "traduire",
+    "date_limite": "2025-11-14",
+    "channel_id": 1330144191816142941
+  },
+  "668234789564186444_Tougen_Anki_213-214-215_edit": {
+    "user_id": 668234789564186444,
+    "manga": "Tougen Anki",
+    "chapitres": [213, 214, 215],
+    "task": "edit",
+    "date_limite": "2025-11-12",
+    "channel_id": 1330144191816142941
   }
 }
