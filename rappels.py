@@ -108,6 +108,10 @@ async def envoyer_rappel(bot):
                         embed.add_field(name="⏰ Temps restant", value=f"{urgence} - {jours_restants} jour(s)", inline=True)
                         
                         embed.set_footer(text="Bon courage ! 💪")
+                        
+                        # Message de mention amélioré avant l'embed
+                        mention_message = f"🔔 **Rappel quotidien** {user.mention} !"
+                        await channel.send(mention_message)
                         await channel.send(embed=embed)
             except Exception as e:
                 print(f"Erreur lors de l'envoi du rappel {rappel_id}: {e}")
