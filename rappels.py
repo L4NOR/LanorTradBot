@@ -92,18 +92,9 @@ async def envoyer_rappel(bot):
                         chapitres = rappel.get("chapitres", [rappel.get("chapitre", 0)])
                         chapitres_str = ", ".join([f"#{c}" for c in chapitres])
                         
-                        # Calculer l'urgence
-                        jours_restants = (date_limite.date() - now.date()).days
-                        urgence = "🔴 URGENT" if jours_restants <= 1 else "🟡 Bientôt" if jours_restants <= 3 else "🟢 À venir"
-                        
-                        # MODIFICATION IMPORTANTE : Envoyer d'abord un message texte avec la mention
-                        mention_message = f"⏰ {user.mention} Tu as un rappel de tâche !"
-                        await channel.send(mention_message)
-                        
-                        # Puis envoyer l'embed avec les détails
                         embed = discord.Embed(
                             title=f"{task_emoji} Rappel de Tâche",
-                            description=f"N'oublie pas ta tâche pour aujourd'hui !",
+                            description=f"{user.mention}, n'oublie pas ta tâche !",
                             color=discord.Color.orange(),
                             timestamp=datetime.datetime.now()
                         )
@@ -111,9 +102,12 @@ async def envoyer_rappel(bot):
                         embed.add_field(name="📖 Chapitres", value=chapitres_str, inline=True)
                         embed.add_field(name=f"{task_emoji} Tâche", value=rappel['task'].capitalize(), inline=True)
                         embed.add_field(name="📅 Date limite", value=rappel['date_limite'], inline=True)
-                        embed.add_field(name="⏰ Temps restant", value=f"{urgence} - {jours_restants} jour(s)", inline=True)
-                        embed.set_footer(text="Bon courage ! 💪")
                         
+                        jours_restants = (date_limite.date() - now.date()).days
+                        urgence = "🔴 URGENT" if jours_restants <= 1 else "🟡 Bientôt" if jours_restants <= 3 else "🟢 À venir"
+                        embed.add_field(name="⏰ Temps restant", value=f"{urgence} - {jours_restants} jour(s)", inline=True)
+                        
+                        embed.set_footer(text="Bon courage ! 💪")
                         await channel.send(embed=embed)
             except Exception as e:
                 print(f"Erreur lors de l'envoi du rappel {rappel_id}: {e}")
