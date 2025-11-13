@@ -14,6 +14,9 @@ os.makedirs("data", exist_ok=True)
 # Structure: {"id": {"user_id": int, "manga": str, "chapitres": [int], "task": str, "date_limite": str, "channel_id": int}}
 rappeals_actifs = {}
 
+# Variable pour éviter d'envoyer plusieurs rappels dans la même minute
+last_rappel_time = None
+
 # Charger les rappels depuis le fichier
 def charger_rappels():
     global rappeals_actifs
@@ -72,73 +75,115 @@ def get_task_emoji(task_name):
 
 # Tâche de rappel avec fuseau horaire français
 async def envoyer_rappel(bot):
+    global last_rappel_time
+    
     tz_paris = pytz.timezone('Europe/Paris')
     now = datetime.datetime.now(tz_paris)
     
-    # Un seul rappel par jour à 20h00
-    if now.hour == 20 and now.minute == 0:
+    # Vérifier si c'est l'heure du rappel (20h) et qu'on n'a pas déjà envoyé aujourd'hui
+    current_date = now.date()
+    
+    # Ne s'exécuter qu'une seule fois par jour à 20h
+    if now.hour == 21 and (last_rappel_time is None or last_rappel_time != current_date):
+        print(f"🔔 Déclenchement des rappels à {now.strftime('%Y-%m-%d %H:%M:%S')}")
+        last_rappel_time = current_date
+        
         for rappel_id, rappel in list(rappeals_actifs.items()):
             try:
+                # Parser la date limite
                 date_limite = datetime.datetime.strptime(rappel["date_limite"], "%Y-%m-%d")
+                
+                # Ignorer les rappels dont la date limite est dépassée
                 if now.date() > date_limite.date():
+                    print(f"⏩ Rappel {rappel_id} ignoré (date dépassée)")
                     continue
                 
                 channel = bot.get_channel(rappel["channel_id"])
-                if channel:
-                    user = channel.guild.get_member(rappel["user_id"])
-                    if user:
-                        manga_emoji = get_manga_emoji(rappel["manga"])
-                        task_emoji = get_task_emoji(rappel["task"])
-                        chapitres = rappel.get("chapitres", [rappel.get("chapitre", 0)])
-                        chapitres_str = ", ".join([f"#{c}" for c in chapitres])
-                        
-                        embed = discord.Embed(
-                            title=f"{task_emoji} Rappel de Tâche",
-                            description=f"{user.mention}, n'oublie pas ta tâche !",
-                            color=discord.Color.orange(),
-                            timestamp=datetime.datetime.now()
-                        )
-                        embed.add_field(name=f"{manga_emoji} Manga", value=rappel['manga'], inline=True)
-                        embed.add_field(name="📖 Chapitres", value=chapitres_str, inline=True)
-                        embed.add_field(name=f"{task_emoji} Tâche", value=rappel['task'].capitalize(), inline=True)
-                        embed.add_field(name="📅 Date limite", value=rappel['date_limite'], inline=True)
-                        
-                        jours_restants = (date_limite.date() - now.date()).days
-                        urgence = "🔴 URGENT" if jours_restants <= 1 else "🟡 Bientôt" if jours_restants <= 3 else "🟢 À venir"
-                        embed.add_field(name="⏰ Temps restant", value=f"{urgence} - {jours_restants} jour(s)", inline=True)
-                        
-                        embed.set_footer(text="Bon courage ! 💪")
-                        
-                        # Message de mention amélioré avant l'embed
-                        mention_message = f"🔔 **Rappel quotidien** {user.mention} !"
-                        await channel.send(mention_message)
-                        await channel.send(embed=embed)
+                if not channel:
+                    print(f"❌ Canal {rappel['channel_id']} introuvable pour le rappel {rappel_id}")
+                    continue
+                
+                user = channel.guild.get_member(rappel["user_id"])
+                if not user:
+                    print(f"❌ Utilisateur {rappel['user_id']} introuvable pour le rappel {rappel_id}")
+                    continue
+                
+                manga_emoji = get_manga_emoji(rappel["manga"])
+                task_emoji = get_task_emoji(rappel["task"])
+                chapitres = rappel.get("chapitres", [rappel.get("chapitre", 0)])
+                chapitres_str = ", ".join([f"#{c}" for c in chapitres])
+                
+                # Calculer les jours restants
+                jours_restants = (date_limite.date() - now.date()).days
+                
+                # Déterminer l'urgence
+                if jours_restants <= 1:
+                    urgence = "🔴 URGENT"
+                    urgence_color = discord.Color.red()
+                elif jours_restants <= 3:
+                    urgence = "🟡 Bientôt"
+                    urgence_color = discord.Color.gold()
+                else:
+                    urgence = "🟢 À venir"
+                    urgence_color = discord.Color.green()
+                
+                embed = discord.Embed(
+                    title=f"{task_emoji} Rappel de Tâche",
+                    description=f"{user.mention}, n'oublie pas ta tâche !",
+                    color=urgence_color,
+                    timestamp=datetime.datetime.now()
+                )
+                embed.add_field(name=f"{manga_emoji} Manga", value=rappel['manga'], inline=True)
+                embed.add_field(name="📖 Chapitres", value=chapitres_str, inline=True)
+                embed.add_field(name=f"{task_emoji} Tâche", value=rappel['task'].capitalize(), inline=True)
+                embed.add_field(name="📅 Date limite", value=rappel['date_limite'], inline=True)
+                embed.add_field(name="⏰ Temps restant", value=f"{urgence} - {jours_restants} jour(s)", inline=True)
+                embed.set_footer(text="Bon courage ! 💪")
+                
+                # Message de mention avant l'embed
+                mention_message = f"🔔 **Rappel quotidien** {user.mention} !"
+                await channel.send(mention_message)
+                await channel.send(embed=embed)
+                
+                print(f"✅ Rappel envoyé pour {user.name} - {rappel['manga']} ch.{chapitres_str}")
+            
             except Exception as e:
-                print(f"Erreur lors de l'envoi du rappel {rappel_id}: {e}")
+                print(f"❌ Erreur lors de l'envoi du rappel {rappel_id}: {e}")
+                import traceback
+                traceback.print_exc()
 
 # Classe Cog pour les rappels
 class RappelTask(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         charger_rappels()
+        print(f"📋 {len(rappeals_actifs)} rappel(s) chargé(s)")
 
     async def cog_load(self):
         """Appelé quand le cog est chargé"""
         self.rappel_loop.start()
+        print("✅ Boucle de rappels démarrée")
 
     async def cog_unload(self):
         """Appelé quand le cog est déchargé"""
         self.rappel_loop.cancel()
+        print("🛑 Boucle de rappels arrêtée")
 
     @tasks.loop(minutes=1)
     async def rappel_loop(self):
         """Boucle qui vérifie les rappels toutes les minutes"""
-        await envoyer_rappel(self.bot)
+        try:
+            await envoyer_rappel(self.bot)
+        except Exception as e:
+            print(f"❌ Erreur dans rappel_loop: {e}")
+            import traceback
+            traceback.print_exc()
 
     @rappel_loop.before_loop
     async def before_rappel_loop(self):
         """Attend que le bot soit prêt avant de démarrer la boucle"""
         await self.bot.wait_until_ready()
+        print("🤖 Bot prêt, démarrage de la surveillance des rappels...")
 
     @commands.command(name='add_rappel')
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
@@ -410,7 +455,7 @@ class RappelTask(commands.Cog):
                 embed_success.add_field(name="📖 Chapitres", value=chapitres_str, inline=True)
                 embed_success.add_field(name=f"{get_task_emoji(task)} Tâche", value=task.capitalize(), inline=True)
                 embed_success.add_field(name="📅 Date limite", value=date_limite, inline=True)
-                embed_success.add_field(name="⏰ Rappel quotidien", value="20h00 (heure française)", inline=True)
+                embed_success.add_field(name="⏰ Rappel quotidien", value="21h00 (heure française)", inline=True)
                 embed_success.add_field(name="🆔 ID du rappel", value=f"`{rappel_id[:50]}...`", inline=False)
                 
                 embed_success.set_footer(
@@ -646,6 +691,14 @@ class RappelTask(commands.Cog):
             embed.add_field(name="💾 save", value="Sauvegarder l'état actuel des rappels", inline=False)
             embed.add_field(name="♻️ reload", value="Recharger les rappels depuis le fichier", inline=False)
             await ctx.send(embed=embed)
+
+    @commands.command(name='test_rappel')
+    @commands.has_any_role(1326417422663680090, 1330147432847114321)
+    async def test_rappel(self, ctx):
+        """Teste l'envoi d'un rappel immédiatement (pour debug)"""
+        await ctx.send("🧪 Test de l'envoi des rappels en cours...")
+        await envoyer_rappel(self.bot)
+        await ctx.send("✅ Test terminé ! Vérifiez si les rappels ont été envoyés.")
 
 # Setup pour discord.py 2.0+
 async def setup(bot):
