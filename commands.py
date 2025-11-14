@@ -650,54 +650,161 @@ def setup(bot):
     
     @bot.command(name="actualiser")
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
-    async def actualiser(ctx, action: str = "save"):
-        """Commande d'administration pour sauvegarder ou recharger l'état des tâches"""
-        action = (action or "").lower()
+    async def actualiser(ctx):
+        """Commande d'administration pour sauvegarder et envoyer les fichiers de tâches ou rappels"""
+        # ID de l'utilisateur qui recevra les fichiers
+        TARGET_USER_ID = 608234789564186644
         
-        if action in ("save", "sauvegarder", "enregistrer"):
-            sauvegarder_etat_taches()
-            meta = {}
-            try:
-                if os.path.exists(META_FILE):
-                    with open(META_FILE, "r", encoding="utf-8") as mf:
-                        meta = json.load(mf)
-            except Exception:
-                meta = {}
+        # Embed de sélection
+        embed_select = discord.Embed(
+            title="🔄 Actualisation des Données",
+            description="Que souhaitez-vous actualiser et recevoir ?",
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+        embed_select.add_field(
+            name="📋 Options disponibles",
+            value=(
+                "📝 **Tasks** - Fichiers de tâches des chapitres\n"
+                "⏰ **Rappels** - Fichiers de rappels\n"
+                "❌ **Annuler** - Annuler l'opération"
+            ),
+            inline=False
+        )
+        embed_select.set_footer(text="Réagissez avec l'emoji correspondant")
+        
+        message = await ctx.send(embed=embed_select)
+        
+        # Ajouter les réactions
+        await message.add_reaction("📝")
+        await message.add_reaction("⏰")
+        await message.add_reaction("❌")
+        
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ["📝", "⏰", "❌"] and reaction.message.id == message.id
+        
+        try:
+            reaction, user = await bot.wait_for('reaction_add', timeout=30.0, check=check)
+            await message.clear_reactions()
             
-            embed = discord.Embed(
-                title="💾 Actualisation des tâches",
-                description="Le fichier etat_taches.json a été mis à jour avec l'état actuel en mémoire.",
+            if str(reaction.emoji) == "❌":
+                embed_cancel = discord.Embed(
+                    title="❌ Opération Annulée",
+                    description="L'actualisation a été annulée.",
+                    color=discord.Color.red()
+                )
+                await ctx.send(embed=embed_cancel, delete_after=5)
+                return
+            
+            # Déterminer quel type de fichier envoyer
+            if str(reaction.emoji) == "📝":
+                file_type = "tasks"
+                main_file = TASKS_FILE
+                meta_file = META_FILE
+                data = etat_taches_global
+                emoji = "📋"
+            else:  # ⏰
+                file_type = "rappels"
+                # Import des données de rappels depuis rappels.py
+                import rappels
+                main_file = rappels.RAPPELS_FILE
+                meta_file = rappels.RAPPELS_META_FILE
+                data = rappels.rappeals_actifs
+                emoji = "⏰"
+            
+            # Sauvegarder les données actuelles
+            if file_type == "tasks":
+                sauvegarder_etat_taches()
+            else:
+                rappels.sauvegarder_rappels()
+            
+            # Récupérer l'utilisateur cible
+            target_user = await bot.fetch_user(TARGET_USER_ID)
+            if not target_user:
+                await ctx.send("❌ Impossible de trouver l'utilisateur cible.")
+                return
+            
+            # Créer l'embed de confirmation
+            embed_sending = discord.Embed(
+                title=f"{emoji} Envoi en cours...",
+                description=f"Préparation et envoi des fichiers **{file_type}** à {target_user.mention}",
+                color=discord.Color.gold()
+            )
+            await message.edit(embed=embed_sending)
+            
+            # Préparer les fichiers à envoyer
+            files_to_send = []
+            
+            # Fichier principal
+            if os.path.exists(main_file):
+                files_to_send.append(discord.File(main_file))
+            
+            # Fichier meta
+            if os.path.exists(meta_file):
+                files_to_send.append(discord.File(meta_file))
+            
+            # Créer l'embed pour le MP
+            embed_dm = discord.Embed(
+                title=f"{emoji} Actualisation des {file_type.capitalize()}",
+                description=f"Fichiers mis à jour le {datetime.now().strftime('%d/%m/%Y à %H:%M:%S')}",
                 color=discord.Color(COLORS.get("success", 0x2ECC71)),
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now()
             )
-            embed.add_field(name="Nombre de tâches", value=str(len(etat_taches_global)), inline=True)
-            embed.add_field(name="Dernière sauvegarde", value=meta.get("last_saved", "N/A"), inline=True)
-            embed.set_footer(text=f"Demandé par {ctx.author.name}")
-            await ctx.send(embed=embed)
-        
-        elif action in ("reload", "recharge", "recharger"):
-            charger_etat_taches()
-            meta = {}
-            try:
-                if os.path.exists(META_FILE):
-                    with open(META_FILE, "r", encoding="utf-8") as mf:
-                        meta = json.load(mf)
-            except Exception:
-                meta = {}
+            embed_dm.add_field(
+                name="📊 Statistiques",
+                value=f"**{len(data)}** élément(s) dans le fichier",
+                inline=True
+            )
+            embed_dm.add_field(
+                name="📁 Fichiers joints",
+                value=f"• {os.path.basename(main_file)}\n• {os.path.basename(meta_file)}",
+                inline=False
+            )
+            embed_dm.set_footer(
+                text=f"Demandé par {ctx.author.name} depuis {ctx.guild.name}",
+                icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+            )
             
-            embed = discord.Embed(
-                title="♻️ Rechargement des tâches",
-                description="Le fichier etat_taches.json a été rechargé en mémoire.",
-                color=discord.Color(COLORS.get("info", 0x3498DB)),
-                timestamp=datetime.utcnow()
-            )
-            embed.add_field(name="Nombre de tâches chargées", value=str(len(etat_taches_global)), inline=True)
-            embed.add_field(name="Dernière sauvegarde", value=meta.get("last_saved", "N/A"), inline=True)
-            embed.set_footer(text=f"Demandé par {ctx.author.name}")
-            await ctx.send(embed=embed)
+            # Envoyer en MP
+            try:
+                await target_user.send(embed=embed_dm, files=files_to_send)
+                
+                # Confirmation dans le salon
+                embed_success = discord.Embed(
+                    title=f"✅ {file_type.capitalize()} Actualisés",
+                    description=f"Les fichiers ont été sauvegardés et envoyés avec succès !",
+                    color=discord.Color(COLORS.get("success", 0x2ECC71)),
+                    timestamp=datetime.now()
+                )
+                embed_success.add_field(
+                    name="📊 Éléments sauvegardés",
+                    value=f"**{len(data)}** élément(s)",
+                    inline=True
+                )
+                embed_success.add_field(
+                    name="📨 Envoyé à",
+                    value=target_user.mention,
+                    inline=True
+                )
+                embed_success.set_footer(text=f"Demandé par {ctx.author.name}")
+                await message.edit(embed=embed_success)
+            
+            except discord.Forbidden:
+                embed_error = discord.Embed(
+                    title="❌ Erreur d'Envoi",
+                    description=f"Impossible d'envoyer un MP à {target_user.mention}. Ses MPs sont peut-être désactivés.",
+                    color=discord.Color.red()
+                )
+                await message.edit(embed=embed_error)
         
-        else:
-            await ctx.send("❗ Usage: !actualiser save ou !actualiser reload")
+        except asyncio.TimeoutError:
+            await message.clear_reactions()
+            embed_timeout = discord.Embed(
+                title="⏰ Temps Écoulé",
+                description="L'opération a été annulée (temps d'attente dépassé).",
+                color=discord.Color.orange()
+            )
+            await message.edit(embed=embed_timeout)
 
 def generate_progress_bar(progress, total, size=10):
     """Génère une barre de progression visuelle"""
