@@ -7,6 +7,7 @@ import logging
 import asyncio
 import json
 import os
+import random
 
 bot_instance = None
 
@@ -19,6 +20,18 @@ chapitres_planifies = []
 
 # Ajout d'une structure globale pour stocker l'état des tâches
 etat_taches_global = {}
+
+# Messages aléatoires pour les tâches individuelles
+MESSAGES_ALEATOIRES = [
+    "Hé, psst... Si j'étais vous, j'irais voir l'avancée des chapitres ! 👀",
+    "Une petite mise à jour vient d'être faite... Allez jeter un œil ! 🔍",
+    "Quelque chose bouge du côté des chapitres... 🤔",
+    "Tiens tiens, une tâche vient d'être complétée ! Curieux ? Utilisez !avancee 📊",
+    "Psst... Il se passe des choses intéressantes ! Allez voir l'avancée ! 🎯",
+    "Une nouvelle mise à jour ! N'hésitez pas à checker l'avancée des projets ! ✨",
+    "Oh oh, du progrès ! Vous devriez aller voir ça... 👁️",
+    "Quelqu'un a bossé dur ! Allez voir l'état d'avancement ! 💪"
+]
 
 # Charger les tâches depuis le fichier JSON au démarrage
 def charger_etat_taches():
@@ -62,6 +75,11 @@ MANGA_ROLES = {
     "Tougen Anki": 1326778962143215677
 }
 
+# Fonction pour vérifier si un chapitre est complet
+def est_chapitre_complet(tasks):
+    """Vérifie si toutes les tâches (clean, trad, check, edit) sont terminées"""
+    taches_requises = ["clean", "trad", "check", "edit"]
+    return all(tasks.get(tache) == "✅ Terminé" for tache in taches_requises)
 
 
 def setup(bot):
@@ -276,7 +294,7 @@ def setup(bot):
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
     async def task(ctx, action: str, manga: str, *chapitres: str):
         """Met à jour l'état d'une tâche pour un ou plusieurs chapitres"""
-        actions_valides = ["clean", "trad", "check", "edit", "release"]
+        actions_valides = ["clean", "trad", "check", "edit"]
         
         if action.lower() not in actions_valides:
             await ctx.send(f"❌ Action invalide. Actions possibles : {', '.join(actions_valides)}.")
@@ -284,6 +302,7 @@ def setup(bot):
         
         chapitres_traites = []
         chapitres_erreur = []
+        chapitres_complets = []
         
         for chapitre_str in chapitres:
             chapitre_str = chapitre_str.strip().rstrip(',')
@@ -297,12 +316,16 @@ def setup(bot):
                         "clean": "❌ Non commencé",
                         "trad": "❌ Non commencé",
                         "check": "❌ Non commencé",
-                        "edit": "❌ Non commencé",
-                        "release": "❌ Non commencé"
+                        "edit": "❌ Non commencé"
                     }
                 
                 etat_taches_global[chapitre_key][action.lower()] = "✅ Terminé"
                 chapitres_traites.append(str(chapitre))
+                
+                # Vérifier si le chapitre est maintenant complet
+                if est_chapitre_complet(etat_taches_global[chapitre_key]):
+                    chapitres_complets.append(str(chapitre))
+                
             except ValueError:
                 chapitres_erreur.append(chapitre_str)
                 continue
@@ -327,13 +350,35 @@ def setup(bot):
             thread_channel = bot.get_channel(thread_id)
             
             if thread_channel:
-                mention_role = f"<@&{role_id}>"
-                chapitres_mention = ", ".join(chapitres_traites)
-                await thread_channel.send(
-                    f"{mention_role} Une nouvelle tâche **{action.upper()}** vient d'être effectuée "
-                    f"pour **{manga_nom_formate}** chapitres : **{chapitres_mention}**.\n"
-                    f"Utilisez la commande !avancee pour voir l'évolution du projet. 👀"
-                )
+                # Si des chapitres sont complets, envoyer une notification avec mention
+                if chapitres_complets:
+                    mention_role = f"<@&{role_id}>"
+                    chapitres_mention = ", ".join(chapitres_complets)
+                    
+                    embed = discord.Embed(
+                        title="🎉 CHAPITRE(S) TERMINÉ(S) ! 🎉",
+                        description=f"Le(s) chapitre(s) **{chapitres_mention}** de **{manga_nom_formate}** est/sont maintenant complet(s) !",
+                        color=discord.Color.gold(),
+                        timestamp=datetime.now()
+                    )
+                    embed.add_field(
+                        name="✅ Toutes les tâches terminées",
+                        value="🧹 Clean\n🌍 Traduction\n✅ Check\n✏️ Edit",
+                        inline=False
+                    )
+                    embed.add_field(
+                        name="📊 Voir l'avancée complète",
+                        value="Utilisez la commande `!avancee` pour voir tous les projets !",
+                        inline=False
+                    )
+                    embed.set_footer(text="Excellent travail à toute l'équipe ! 💪")
+                    
+                    await thread_channel.send(f"{mention_role}", embed=embed)
+                
+                # Sinon, envoyer un message aléatoire sans mention
+                else:
+                    message_aleatoire = random.choice(MESSAGES_ALEATOIRES)
+                    await thread_channel.send(message_aleatoire)
     
     @bot.command()
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
@@ -354,6 +399,11 @@ def setup(bot):
         
         for tache, etat in etat_taches.items():
             embed.add_field(name=tache.capitalize(), value=etat, inline=False)
+        
+        # Ajouter un indicateur si le chapitre est complet
+        if est_chapitre_complet(etat_taches):
+            embed.add_field(name="🎉 Statut", value="✅ Chapitre complet !", inline=False)
+            embed.color = discord.Color.gold()
         
         await ctx.send(embed=embed)
     
@@ -431,17 +481,21 @@ def setup(bot):
                 progress = sum(1 for task in tasks.values() if task == "✅ Terminé")
                 progress_bar = generate_progress_bar(progress, len(tasks))
                 
+                # Ajouter un emoji si le chapitre est complet
+                chapter_title = f"📑 Chapitre {chapter}"
+                if est_chapitre_complet(tasks):
+                    chapter_title += " ✅"
+                
                 field_value = (
                     f"{progress_bar} ({progress}/{len(tasks)})\n"
                     f"Clean: {tasks['clean']}\n"
                     f"Trad: {tasks['trad']}\n"
                     f"Check: {tasks['check']}\n"
-                    f"Edit: {tasks['edit']}\n"
-                    f"Release: {tasks['release']}"
+                    f"Edit: {tasks['edit']}"
                 )
                 
                 progress_embed.add_field(
-                    name=f"📑 Chapitre {chapter}",
+                    name=chapter_title,
                     value=field_value,
                     inline=False
                 )
@@ -536,17 +590,21 @@ def setup(bot):
                 progress = sum(1 for task in tasks.values() if task == "✅ Terminé")
                 progress_bar = generate_progress_bar(progress, len(tasks))
                 
+                # Ajouter un emoji si le chapitre est complet
+                chapter_title = f"📖 Chapitre {chapitre}"
+                if est_chapitre_complet(tasks):
+                    chapter_title += " ✅"
+                
                 field_value = (
                     f"{progress_bar} ({progress}/{len(tasks)})\n"
                     f"Clean: {tasks['clean']}\n"
                     f"Trad: {tasks['trad']}\n"
                     f"Check: {tasks['check']}\n"
-                    f"Edit: {tasks['edit']}\n"
-                    f"Release: {tasks['release']}"
+                    f"Edit: {tasks['edit']}"
                 )
                 
                 embed.add_field(
-                    name=f"📖 Chapitre {chapitre}",
+                    name=chapter_title,
                     value=field_value,
                     inline=False
                 )
