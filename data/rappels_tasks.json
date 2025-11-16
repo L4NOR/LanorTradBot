@@ -38,5 +38,17 @@
         "task": "edit",
         "date_limite": "2025-11-28",
         "channel_id": 1431607377882382396
+    },
+    "937386825562062858_Tougen_Anki_216-217-218_qcheck": {
+        "user_id": 937386825562062858,
+        "manga": "Tougen Anki",
+        "chapitres": [
+            216,
+            217,
+            218
+        ],
+        "task": "qcheck",
+        "date_limite": "2025-11-20",
+        "channel_id": 1330221808753840159
     }
 }
