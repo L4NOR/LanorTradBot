@@ -65,24 +65,6 @@
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
-    "tougen anki_213": {
-        "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
-        "check": "✅ Terminé",
-        "edit": "✅ Terminé"
-    },
-    "tougen anki_214": {
-        "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
-        "check": "✅ Terminé",
-        "edit": "✅ Terminé"
-    },
-    "tougen anki_215": {
-        "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
-        "check": "✅ Terminé",
-        "edit": "✅ Terminé"
-    },
     "tougen anki_216": {
         "clean": "✅ Terminé",
         "trad": "✅ Terminé",
@@ -144,7 +126,13 @@
         "edit": "❌ Non commencé"
     },
     "tougen anki_217": {
-        "clean": "❌ Non commencé",
+        "clean": "✅ Terminé",
+        "trad": "✅ Terminé",
+        "check": "❌ Non commencé",
+        "edit": "✅ Terminé"
+    },
+    " tougen anki _218": {
+        "clean": "✅ Terminé",
         "trad": "✅ Terminé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
