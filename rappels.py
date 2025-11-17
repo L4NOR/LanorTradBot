@@ -6,6 +6,7 @@ import os
 import datetime
 import asyncio
 import pytz
+import logging
 
 RAPPELS_FILE = "data/rappels_tasks.json"
 RAPPELS_META_FILE = "data/rappels_tasks_meta.json"
@@ -28,6 +29,7 @@ def charger_rappels():
             else:
                 try:
                     rappeals_actifs = json.loads(contenu)
+                    print(f"📋 {len(rappeals_actifs)} rappel(s) chargé(s)")
                 except Exception as e:
                     print(f"Erreur lors du chargement des rappels: {e}")
                     rappeals_actifs = {}
@@ -80,32 +82,46 @@ async def envoyer_rappel(bot):
     tz_paris = pytz.timezone('Europe/Paris')
     now = datetime.datetime.now(tz_paris)
     
-    # Vérifier si c'est l'heure du rappel (20h) et qu'on n'a pas déjà envoyé aujourd'hui
+    # Vérifier si c'est l'heure du rappel (21h) et qu'on n'a pas déjà envoyé aujourd'hui
     current_date = now.date()
     
-    # Ne s'exécuter qu'une seule fois par jour à 20h
+    # Ne s'exécuter qu'une seule fois par jour à 21h
     if now.hour == 21 and (last_rappel_time is None or last_rappel_time != current_date):
         print(f"🔔 Déclenchement des rappels à {now.strftime('%Y-%m-%d %H:%M:%S')}")
         last_rappel_time = current_date
         
+        rappels_envoyes = 0
+        rappels_ignores = 0
+        rappels_erreurs = 0
+        
         for rappel_id, rappel in list(rappeals_actifs.items()):
             try:
                 # Parser la date limite
-                date_limite = datetime.datetime.strptime(rappel["date_limite"], "%Y-%m-%d")
+                date_limite_str = rappel.get("date_limite", "")
+                if not date_limite_str:
+                    print(f"⚠️ Rappel {rappel_id} n'a pas de date limite définie")
+                    rappels_erreurs += 1
+                    continue
                 
-                # Ignorer les rappels dont la date limite est dépassée
+                date_limite = datetime.datetime.strptime(date_limite_str, "%Y-%m-%d")
+                
+                # CORRECTION: Comparer uniquement les dates, pas les heures
+                # Et envoyer le rappel SI on est avant ou égal à la date limite
                 if now.date() > date_limite.date():
-                    print(f"⏩ Rappel {rappel_id} ignoré (date dépassée)")
+                    print(f"⏩ Rappel {rappel_id} ignoré (date dépassée: {date_limite_str})")
+                    rappels_ignores += 1
                     continue
                 
                 channel = bot.get_channel(rappel["channel_id"])
                 if not channel:
                     print(f"❌ Canal {rappel['channel_id']} introuvable pour le rappel {rappel_id}")
+                    rappels_erreurs += 1
                     continue
                 
                 user = channel.guild.get_member(rappel["user_id"])
                 if not user:
                     print(f"❌ Utilisateur {rappel['user_id']} introuvable pour le rappel {rappel_id}")
+                    rappels_erreurs += 1
                     continue
                 
                 manga_emoji = get_manga_emoji(rappel["manga"])
@@ -136,7 +152,7 @@ async def envoyer_rappel(bot):
                 embed.add_field(name=f"{manga_emoji} Manga", value=rappel['manga'], inline=True)
                 embed.add_field(name="📖 Chapitres", value=chapitres_str, inline=True)
                 embed.add_field(name=f"{task_emoji} Tâche", value=rappel['task'].capitalize(), inline=True)
-                embed.add_field(name="📅 Date limite", value=rappel['date_limite'], inline=True)
+                embed.add_field(name="📅 Date limite", value=date_limite_str, inline=True)
                 embed.add_field(name="⏰ Temps restant", value=f"{urgence} - {jours_restants} jour(s)", inline=True)
                 embed.set_footer(text="Bon courage ! 💪")
                 
@@ -145,12 +161,16 @@ async def envoyer_rappel(bot):
                 await channel.send(mention_message)
                 await channel.send(embed=embed)
                 
-                print(f"✅ Rappel envoyé pour {user.name} - {rappel['manga']} ch.{chapitres_str}")
+                print(f"✅ Rappel envoyé pour {user.name} - {rappel['manga']} ch.{chapitres_str} (deadline: {date_limite_str})")
+                rappels_envoyes += 1
             
             except Exception as e:
                 print(f"❌ Erreur lors de l'envoi du rappel {rappel_id}: {e}")
                 import traceback
                 traceback.print_exc()
+                rappels_erreurs += 1
+        
+        print(f"📊 Résumé: {rappels_envoyes} envoyé(s), {rappels_ignores} ignoré(s), {rappels_erreurs} erreur(s)")
 
 # Classe Cog pour les rappels
 class RappelTask(commands.Cog):
