@@ -130,7 +130,6 @@ def setup(bot):
                     "• !task_status <manga> <chapitre> - Afficher l'état des tâches\n"
                     "• !task_all - Afficher toutes les tâches en cours\n"
                     "• !delete_task <manga> <chapitre> - Supprimer les tâches d'un chapitre\n"
-                    "• !newchapter_collab <manga> <chapitre> <lien> - Annoncer un nouveau chapitre\n"
                     "• !actualiser <save|reload> - Enregistrer ou recharger le fichier etat_taches.json\n"
                 ),
                 inline=False
@@ -508,60 +507,6 @@ def setup(bot):
             timeout_embed = embed.copy()
             timeout_embed.description += "\n\n⏰ Le temps de sélection est écoulé."
             await message.edit(embed=timeout_embed)
-    
-    @bot.command(name='newchapter_collab')
-    @commands.has_permissions(administrator=True)
-    async def announce_new_collab_chapter(ctx, manga_name: str, *chapters_and_link: str):
-        """Annonce un ou plusieurs nouveaux chapitres collaboratifs"""
-        manga_name_lower = manga_name.lower()
-        allowed_mangas = {
-            'catenaccio': 1332429989085184010,
-            'uzugami': 1332430247894847529
-        }
-        
-        if manga_name_lower not in allowed_mangas:
-            await ctx.send("❌ Manga non reconnu. Options disponibles : Catenaccio, Uzugami")
-            return
-        
-        if len(chapters_and_link) < 2:
-            await ctx.send("❌ Format invalide. Exemple : !newchapter_collab Catenaccio 24 25 26 https://lien.com")
-            return
-        
-        *chapter_numbers, link = chapters_and_link
-        
-        role = ctx.guild.get_role(allowed_mangas[manga_name_lower])
-        if not role:
-            await ctx.send("❌ Le rôle spécifié n'a pas été trouvé.")
-            return
-        
-        chapters_str = ", ".join([f"#{c}" for c in chapter_numbers])
-        
-        announcement_text = (
-            f"{role.mention}\n"
-            "───────────────────────\n"
-            f"Nouveau(x) chapitre(s) de {manga_name.upper()} disponible(s) !\n"
-            f"Chapitres : {chapters_str}\n"
-            "Retrouvez tous les détails ci-dessous ⬇️"
-        )
-        
-        embed = discord.Embed(
-            title=f"🔥 NOUVEAU(x) CHAPITRE(s) DE {manga_name.upper()} 🔥",
-            description="Préparez-vous à plonger dans de nouvelles aventures palpitantes !\n\n━━━━━━━━━━━━━━━━━━━━━━━",
-            color=0x3498DB
-        )
-        embed.add_field(name="📖 Chapitres", value=chapters_str, inline=True)
-        embed.add_field(name="⏰ Disponible", value="MAINTENANT !", inline=True)
-        embed.add_field(name="📚 Lien de lecture", value=f"[Cliquez ici pour lire !]({link})", inline=False)
-        embed.add_field(name="━━━━━━━━━━━━━━━━━━━━━━━", value="📱 Aperçu", inline=False)
-        embed.add_field(name="", value=f"https://discord.com/invite/KKsp4AG8BV", inline=False)
-        embed.set_footer(text="N'oubliez pas de partager vos théories et réactions ! 🎉")
-        
-        announcement = await ctx.send(announcement_text, embed=embed)
-        
-        for reaction in ['🔥', '👀', '❤️']:
-            await announcement.add_reaction(reaction)
-        
-        await ctx.message.delete()
     
     @bot.command(name="task_all")
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
