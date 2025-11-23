@@ -1,16 +1,41 @@
 {
-    "608234789564186644_Catenaccio_39-40-41-42-43-44-45-46_edit": {
+    "433305136975183882_Tougen_Anki_222-223-224_traduire": {
+        "user_id": 433305136975183882,
+        "manga": "Tougen Anki",
+        "chapitres": [
+            222,
+            223,
+            224
+        ],
+        "task": "traduire",
+        "date_limite": "2025-11-28",
+        "channel_id": 1431607377882382396
+    },
+    "608234789564186644_Tougen_Anki_219-220-221_edit": {
+        "user_id": 608234789564186644,
+        "manga": "Tougen Anki",
+        "chapitres": [
+            219,
+            220,
+            221
+        ],
+        "task": "edit",
+        "date_limite": "2025-11-26",
+        "channel_id": 1431607377882382396
+    },
+    "608234789564186644_Catenaccio_41-42-43-44-45-46_edit": {
         "user_id": 608234789564186644,
         "manga": "Catenaccio",
         "chapitres": [
-            39,
-            40,
             41,
             42,
             43,
             44,
             45,
             46
-        ]
+        ],
+        "task": "edit",
+        "date_limite": "2025-11-28",
+        "channel_id": 1431607377882382396
     }
 }
