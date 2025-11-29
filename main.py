@@ -8,6 +8,7 @@ from aiohttp import web
 from config import TOKEN, PREFIX, INTENTS, PORT
 import events
 import commands as cmd
+import announcements
 
 logging.basicConfig(level=logging.INFO)
 
@@ -33,6 +34,9 @@ async def main():
 
     # Charger les commandes (synchrone)
     cmd.setup(bot)
+
+    # Charger le module d'annonces (commande interactive)
+    announcements.setup(bot)
 
     # Charger les rappels (asynchrone)
     import rappels
