@@ -22,18 +22,20 @@ def setup(bot):
             return m.author == author and m.channel == channel
 
         try:
-            await ctx.send("📚 Quel est le nom de l'œuvre ? (ex: Tougen Anki)")
+            embed_prompt = discord.Embed(title="📚 Quel est le nom de l'œuvre ?", description="(ex: Tougen Anki)", color=discord.Color.blue())
+            await ctx.send(embed=embed_prompt)
             msg = await bot.wait_for('message', check=check, timeout=60)
             manga_name = msg.content.strip()
-
-            await ctx.send("🔢 S'agit-il d'un one-shot ? (oui/non). Répondez `oui` si c'est un one-shot.")
+            embed_prompt = discord.Embed(title="🔢 One-shot ?", description="Répondez `oui` si c'est un one-shot.", color=discord.Color.blue())
+            await ctx.send(embed=embed_prompt)
             msg = await bot.wait_for('message', check=check, timeout=30)
             is_oneshot = msg.content.strip().lower() in ("oui", "o", "yes", "y")
 
             if is_oneshot:
                 chapters_str = "One-shot"
             else:
-                await ctx.send("📝 Indiquez le(s) numéro(s) de chapitre séparés par des espaces ou des virgules (ex: `216 217 218`).")
+                embed_prompt = discord.Embed(title="📝 Numéros de chapitres", description="Indiquez le(s) numéro(s) de chapitre séparés par des espaces ou des virgules (ex: `216 217 218`).", color=discord.Color.blue())
+                await ctx.send(embed=embed_prompt)
                 msg = await bot.wait_for('message', check=check, timeout=60)
                 raw = msg.content.strip()
                 # Nettoyage : remplacer virgules par espaces puis normaliser
@@ -45,14 +47,16 @@ def setup(bot):
                     await ctx.send("Aucun chapitre fourni. Annulation.")
                     return
 
-            await ctx.send("🔗 Fournissez le lien vers la page de lecture (URL complète)")
+            embed_prompt = discord.Embed(title="🔗 Lien de lecture", description="Fournissez le lien vers la page de lecture (URL complète)", color=discord.Color.blue())
+            await ctx.send(embed=embed_prompt)
             msg = await bot.wait_for('message', check=check, timeout=60)
             link = msg.content.strip()
             if not (link.startswith('http://') or link.startswith('https://')):
-                await ctx.send("Le lien ne semble pas valide (doit commencer par http:// ou https://). Annulation.")
+                embed_err = discord.Embed(title="❌ Lien invalide", description="Le lien ne semble pas valide (doit commencer par http:// ou https://). Annulation.", color=discord.Color.red())
+                await ctx.send(embed=embed_err)
                 return
-
-            await ctx.send("✍️ Souhaitez-vous ajouter une description optionnelle ? Envoyez le texte ou `non` pour ignorer.")
+            embed_prompt = discord.Embed(title="✍️ Description optionnelle", description="Envoyez le texte ou `non` pour ignorer.", color=discord.Color.blue())
+            await ctx.send(embed=embed_prompt)
             msg = await bot.wait_for('message', check=check, timeout=120)
             descr = msg.content.strip()
             if descr.lower() in ("non", "n", "no"):
@@ -63,9 +67,12 @@ def setup(bot):
             chapter_param = chapters_str if not is_oneshot else "One-shot"
             embed = await utils.create_chapter_announcement_embed(manga_name, chapter_param, link, description=descr)
 
-            target_channel = ctx.guild.get_channel(CHANNELS.get('chapter_announcements'))
+            # Poster uniquement dans le canal dédié (ID forcé)
+            TARGET_CHANNEL_ID = 1326213946188890142
+            target_channel = ctx.guild.get_channel(TARGET_CHANNEL_ID)
             if not target_channel:
-                await ctx.send("⚠️ Le canal d'annonces n'a pas été trouvé dans la configuration.")
+                embed_err = discord.Embed(title="⚠️ Canal introuvable", description=f"Le canal cible `{TARGET_CHANNEL_ID}` n'a pas été trouvé sur ce serveur.", color=discord.Color.orange())
+                await ctx.send(embed=embed_err)
                 return
 
             sent = await target_channel.send(embed=embed)
@@ -78,14 +85,18 @@ def setup(bot):
                 except Exception:
                     pass
 
-            await ctx.send(f"✅ Annonce publiée dans {target_channel.mention} !")
+            embed_success = discord.Embed(title="✅ Annonce publiée", description=f"Annonce publiée dans {target_channel.mention}.", color=discord.Color.green())
+            await ctx.send(embed=embed_success)
 
         except asyncio.TimeoutError:
-            await ctx.send("⏱️ Temps écoulé. Commande annulée.")
+            embed_err = discord.Embed(title="⏱️ Temps écoulé", description="Commande annulée par timeout.", color=discord.Color.red())
+            await ctx.send(embed=embed_err)
         except commands.MissingAnyRole:
-            await ctx.send("❌ Vous n'avez pas la permission d'utiliser cette commande.")
+            embed_err = discord.Embed(title="❌ Permission manquante", description="Vous n'avez pas la permission d'utiliser cette commande.", color=discord.Color.red())
+            await ctx.send(embed=embed_err)
         except Exception as e:
-            await ctx.send(f"❌ Erreur lors de la création de l'annonce : {e}")
+            embed_err = discord.Embed(title="❌ Erreur", description=f"Erreur lors de la création de l'annonce : {e}", color=discord.Color.red())
+            await ctx.send(embed=embed_err)
 
     @bot.command(name="test_announce")
     @commands.has_any_role(*ADMIN_ROLES)
@@ -100,18 +111,21 @@ def setup(bot):
             return m.author == author and m.channel == channel
 
         try:
-            await ctx.send("📚 [TEST] Quel est le nom de l'œuvre ? (ex: Tougen Anki)")
+            embed_prompt = discord.Embed(title="📚 [TEST] Quel est le nom de l'œuvre ?", description="(ex: Tougen Anki)", color=discord.Color.blue())
+            await ctx.send(embed=embed_prompt)
             msg = await bot.wait_for('message', check=check, timeout=60)
             manga_name = msg.content.strip()
 
-            await ctx.send("🔢 [TEST] S'agit-il d'un one-shot ? (oui/non). Répondez `oui` si c'est un one-shot.")
+            embed_prompt = discord.Embed(title="🔢 [TEST] One-shot ?", description="Répondez `oui` si c'est un one-shot.", color=discord.Color.blue())
+            await ctx.send(embed=embed_prompt)
             msg = await bot.wait_for('message', check=check, timeout=30)
             is_oneshot = msg.content.strip().lower() in ("oui", "o", "yes", "y")
 
             if is_oneshot:
                 chapters_str = "One-shot"
             else:
-                await ctx.send("📝 [TEST] Indiquez le(s) numéro(s) de chapitre séparés par des espaces ou des virgules (ex: `216 217 218`).")
+                embed_prompt = discord.Embed(title="📝 [TEST] Numéros de chapitres", description="Indiquez le(s) numéro(s) de chapitre séparés par des espaces ou des virgules (ex: `216 217 218`).", color=discord.Color.blue())
+                await ctx.send(embed=embed_prompt)
                 msg = await bot.wait_for('message', check=check, timeout=60)
                 raw = msg.content.strip()
                 raw_norm = raw.replace(',', ' ')
@@ -121,14 +135,17 @@ def setup(bot):
                     await ctx.send("Aucun chapitre fourni. Annulation.")
                     return
 
-            await ctx.send("🔗 [TEST] Fournissez le lien vers la page de lecture (URL complète)")
+            embed_prompt = discord.Embed(title="🔗 [TEST] Lien de lecture", description="Fournissez le lien vers la page de lecture (URL complète)", color=discord.Color.blue())
+            await ctx.send(embed=embed_prompt)
             msg = await bot.wait_for('message', check=check, timeout=60)
             link = msg.content.strip()
             if not (link.startswith('http://') or link.startswith('https://')):
-                await ctx.send("Le lien ne semble pas valide (doit commencer par http:// ou https://). Annulation.")
+                embed_err = discord.Embed(title="❌ Lien invalide", description="Le lien ne semble pas valide (doit commencer par http:// ou https://). Annulation.", color=discord.Color.red())
+                await ctx.send(embed=embed_err)
                 return
 
-            await ctx.send("✍️ [TEST] Souhaitez-vous ajouter une description optionnelle ? Envoyez le texte ou `non` pour ignorer.")
+            embed_prompt = discord.Embed(title="✍️ [TEST] Description optionnelle", description="Envoyez le texte ou `non` pour ignorer.", color=discord.Color.blue())
+            await ctx.send(embed=embed_prompt)
             msg = await bot.wait_for('message', check=check, timeout=120)
             descr = msg.content.strip()
             if descr.lower() in ("non", "n", "no"):
@@ -139,7 +156,8 @@ def setup(bot):
 
             target_channel = ctx.guild.get_channel(TEST_CHANNEL_ID)
             if not target_channel:
-                await ctx.send(f"⚠️ Le canal de test `{TEST_CHANNEL_ID}` n'a pas été trouvé sur ce serveur.")
+                embed_err = discord.Embed(title="⚠️ Canal de test introuvable", description=f"Le canal de test `{TEST_CHANNEL_ID}` n'a pas été trouvé sur ce serveur.", color=discord.Color.orange())
+                await ctx.send(embed=embed_err)
                 return
 
             sent = await target_channel.send(embed=embed)
@@ -150,11 +168,15 @@ def setup(bot):
                 except Exception:
                     pass
 
-            await ctx.send(f"✅ Annonce de test publiée dans {target_channel.mention} !")
+            embed_success = discord.Embed(title="✅ Annonce de test publiée", description=f"Annonce de test publiée dans {target_channel.mention}.", color=discord.Color.green())
+            await ctx.send(embed=embed_success)
 
         except asyncio.TimeoutError:
-            await ctx.send("⏱️ Temps écoulé. Commande de test annulée.")
+            embed_err = discord.Embed(title="⏱️ Temps écoulé", description="Commande de test annulée par timeout.", color=discord.Color.red())
+            await ctx.send(embed=embed_err)
         except commands.MissingAnyRole:
-            await ctx.send("❌ Vous n'avez pas la permission d'utiliser cette commande.")
+            embed_err = discord.Embed(title="❌ Permission manquante", description="Vous n'avez pas la permission d'utiliser cette commande.", color=discord.Color.red())
+            await ctx.send(embed=embed_err)
         except Exception as e:
-            await ctx.send(f"❌ Erreur lors de la création de l'annonce de test : {e}")
+            embed_err = discord.Embed(title="❌ Erreur", description=f"Erreur lors de la création de l'annonce de test : {e}", color=discord.Color.red())
+            await ctx.send(embed=embed_err)
