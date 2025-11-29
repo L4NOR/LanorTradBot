@@ -78,7 +78,7 @@ def setup(bot):
             sent = await target_channel.send(embed=embed)
 
             # Ajout de réactions d'engagement (optionnel)
-            reactions = ['🔥', '👀', '❤', '🙂']
+            reactions = ['🔥', '👀', '❤']
             for r in reactions:
                 try:
                     await sent.add_reaction(r)
@@ -161,7 +161,7 @@ def setup(bot):
                 return
 
             sent = await target_channel.send(embed=embed)
-            reactions = ['🔥', '👀', '❤', '🙂']
+            reactions = ['🔥', '👀', '❤']
             for r in reactions:
                 try:
                     await sent.add_reaction(r)
