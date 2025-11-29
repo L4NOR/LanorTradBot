@@ -214,7 +214,8 @@ class RappelTask(commands.Cog):
             "2️⃣": "Satsudou",
             "3️⃣": "Tougen Anki",
             "4️⃣": "Catenaccio",
-            "5️⃣": "Tokyo Underworld"
+            "5️⃣": "Tokyo Underworld",
+            "6️⃣": "Autre"
         }
         
         tasks = {
@@ -263,7 +264,7 @@ class RappelTask(commands.Cog):
         # Étape 2: Choix du manga
         manga_list = "\n".join([f"{emoji} **{name}**" for emoji, name in mangas.items()])
         embed_manga = discord.Embed(
-            title="📋 Création d'un Rappel - Étape 2/5",
+            title="📋 Création d'un Rappel - Étape 2/6",
             description=f"### 📚 Quel Manga ?\n\n{manga_list}",
             color=discord.Color.blue()
         )
@@ -286,10 +287,68 @@ class RappelTask(commands.Cog):
             await manga_msg.clear_reactions()
             return
 
+        # Étape 2.5: Si "Autre" est sélectionné, demander le titre
+        if manga == "Autre":
+            embed_custom_manga = discord.Embed(
+                title="📋 Création d'un Rappel - Étape 2.5/6",
+                description="### 📚 Titre de l'Œuvre/Manga\n\n**Entrez le titre de cette autre œuvre/manga**",
+                color=discord.Color.blue()
+            )
+            embed_custom_manga.add_field(
+                name="💡 Exemple",
+                value="`Jujutsu Kaisen` ou `Demon Slayer` ou `Chainsaw Man`",
+                inline=False
+            )
+            embed_custom_manga.set_footer(text="⏱️ Vous avez 60 secondes pour répondre", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+            await ctx.send(embed=embed_custom_manga)
+
+            def check_custom_manga(m):
+                return m.author == ctx.author and m.channel == ctx.channel
+
+            try:
+                custom_manga_msg = await self.bot.wait_for("message", timeout=60, check=check_custom_manga)
+                manga = custom_manga_msg.content.strip()
+                
+                if not manga or len(manga) == 0:
+                    await ctx.send("❌ Le titre ne peut pas être vide. Annulation.")
+                    return
+            except asyncio.TimeoutError:
+                await ctx.send("⏰ Temps écoulé. Création du rappel annulée.")
+                return
+
+            # Étape 2.6: Demander si c'est un one-shot
+            embed_oneshot = discord.Embed(
+                title="📋 Création d'un Rappel - Étape 2.6/6",
+                description="### 📖 Est-ce un One-shot ?\n\nRéagissez avec ✅ si c'est un one-shot, ❌ sinon",
+                color=discord.Color.blue()
+            )
+            embed_oneshot.add_field(name="📚 Œuvre", value=manga, inline=False)
+            embed_oneshot.set_footer(text="🖱️ Cliquez sur l'emoji correspondant", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+            
+            oneshot_msg = await ctx.send(embed=embed_oneshot)
+            await oneshot_msg.add_reaction("✅")
+            await oneshot_msg.add_reaction("❌")
+
+            def check_oneshot(reaction, user_react):
+                return user_react == ctx.author and str(reaction.emoji) in ["✅", "❌"] and reaction.message.id == oneshot_msg.id
+
+            try:
+                reaction, _ = await self.bot.wait_for("reaction_add", timeout=60, check=check_oneshot)
+                is_oneshot = str(reaction.emoji) == "✅"
+                await oneshot_msg.clear_reactions()
+                
+                # Si c'est un one-shot, modifier le manga pour indiquer que c'est un one-shot
+                if is_oneshot:
+                    manga = f"{manga} (One-shot)"
+            except asyncio.TimeoutError:
+                await ctx.send("⏰ Temps écoulé. Création du rappel annulée.")
+                await oneshot_msg.clear_reactions()
+                return
+
         # Étape 3: Choix de la tâche
         task_list = "\n".join([f"{emoji} **{name.capitalize()}**" for emoji, name in tasks.items()])
         embed_task = discord.Embed(
-            title="📋 Création d'un Rappel - Étape 3/5",
+            title="📋 Création d'un Rappel - Étape 3/7",
             description=f"### ✏️ Quelle Tâche ?\n\n{task_list}",
             color=discord.Color.blue()
         )
@@ -314,7 +373,7 @@ class RappelTask(commands.Cog):
 
         # Étape 4: Numéros des chapitres (plusieurs possibles)
         embed_chap = discord.Embed(
-            title="📋 Création d'un Rappel - Étape 4/5",
+            title="📋 Création d'un Rappel - Étape 4/7",
             description="### 📖 Pour Quel(s) Chapitre(s) ?\n\n**Entrez les numéros des chapitres** séparés par des espaces ou des virgules",
             color=discord.Color.blue()
         )
@@ -350,7 +409,7 @@ class RappelTask(commands.Cog):
         # Étape 5: Date limite
         chapitres_str = ", ".join([f"#{c}" for c in chapitres])
         embed_date = discord.Embed(
-            title="📋 Création d'un Rappel - Étape 5/5",
+            title="📋 Création d'un Rappel - Étape 5/7",
             description="### 📅 Date Limite\n\n**Entrez la date limite** au format `AAAA-MM-JJ`",
             color=discord.Color.blue()
         )
