@@ -123,17 +123,23 @@
         "clean": "✅ Terminé",
         "trad": "✅ Terminé",
         "check": "❌ Non commencé",
-        "edit": "❌ Non commencé"
+        "edit": "✅ Terminé"
     },
     "tougen anki_220": {
         "clean": "✅ Terminé",
         "trad": "✅ Terminé",
         "check": "❌ Non commencé",
-        "edit": "❌ Non commencé"
+        "edit": "✅ Terminé"
     },
     "tougen anki _221": {
         "clean": "✅ Terminé",
         "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "ao no exorcist_164": {
+        "clean": "✅ Terminé",
+        "trad": "✅ Terminé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     }

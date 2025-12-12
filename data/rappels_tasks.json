@@ -13,5 +13,28 @@
         "task": "edit",
         "date_limite": "2025-11-28",
         "channel_id": 1431607377882382396
+    },
+    "937386825562062858_Tougen_Anki_219-220_qcheck": {
+        "user_id": 937386825562062858,
+        "manga": "Tougen Anki",
+        "chapitres": [
+            219,
+            220
+        ],
+        "task": "qcheck",
+        "date_limite": "2025-12-11",
+        "channel_id": 1330221808753840159
+    },
+    "433305136975183882_Tougen_Anki_221-222-223_traduire": {
+        "user_id": 433305136975183882,
+        "manga": "Tougen Anki",
+        "chapitres": [
+            221,
+            222,
+            223
+        ],
+        "task": "traduire",
+        "date_limite": "2025-12-14",
+        "channel_id": 1330221808753840159
     }
 }
