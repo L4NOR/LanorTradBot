@@ -99,6 +99,7 @@ def setup(bot):
             description=(
                 "Bienvenue dans le menu d'aide ! Voici les commandes disponibles pour interagir avec le bot.\n\n"
                 "🔹 **Commandes Générales** : Accessibles à tous.\n"
+                "🎁 **Commandes Giveaway** : Pour les invitations et concours.\n"
                 "🔧 **Commandes Admin** : Réservées aux administrateurs."
             ),
             color=discord.Color.blue(),
@@ -117,20 +118,54 @@ def setup(bot):
             inline=False
         )
         
+        embed.add_field(
+            name="🎁 **Commandes Giveaway**",
+            value=(
+                "• !my_invites - Voir vos statistiques d'invitations\n"
+                "• !enter_giveaway <id> - Participer à un giveaway\n"
+                "• !leaderboard_invites - Classement des invitations\n"
+                "• !list_giveaways - Liste tous les giveaways\n"
+                "• !giveaway_info <id> - Informations d'un giveaway\n"
+            ),
+            inline=False
+        )
+        
         if any(role in user_roles for role in admin_roles):
             embed.add_field(
-                name="🔧 **Commandes Admin**",
+                name="🔧 **Commandes Admin - Général**",
                 value=(
                     "• !clear <nombre> - Supprimer des messages\n"
                     "• !kick @utilisateur [raison] - Expulser un membre\n"
                     "• !ban @utilisateur [raison] - Bannir un membre\n"
                     "• !unban nom_utilisateur#tag - Débannir un membre\n"
                     "• !warn @utilisateur [raison] - Avertir un membre\n"
+                ),
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🔧 **Commandes Admin - Tâches**",
+                value=(
                     "• !task <action> <manga> <chapitre> - Mettre à jour l'état d'une tâche\n"
                     "• !task_status <manga> <chapitre> - Afficher l'état des tâches\n"
                     "• !task_all - Afficher toutes les tâches en cours\n"
                     "• !delete_task <manga> <chapitre> - Supprimer les tâches d'un chapitre\n"
                     "• !actualiser <save|reload> - Enregistrer ou recharger le fichier etat_taches.json\n"
+                ),
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🔧 **Commandes Admin - Giveaway**",
+                value=(
+                    "• !create_giveaway - Créer un nouveau giveaway (interactif)\n"
+                    "• !end_giveaway <id> - Terminer un giveaway manuellement\n"
+                    "• !delete_giveaway <id> - Supprimer un giveaway\n"
+                    "• !giveaway_participants <id> - Liste des participants\n"
+                    "• !add_invites @user <nombre> - Ajouter des invitations\n"
+                    "• !remove_invites @user <nombre> - Retirer des invitations\n"
+                    "• !reset_user_invites @user - Réinitialiser les invitations\n"
+                    "• !server_invite_stats - Statistiques globales d'invitations\n"
                 ),
                 inline=False
             )
@@ -612,6 +647,7 @@ def setup(bot):
             value=(
                 "📝 **Tasks** - Fichiers de tâches des chapitres\n"
                 "⏰ **Rappels** - Fichiers de rappels\n"
+                "📨 **Invitations** - Fichiers d'invitations du giveaway\n"
                 "❌ **Annuler** - Annuler l'opération"
             ),
             inline=False
@@ -623,10 +659,11 @@ def setup(bot):
         # Ajouter les réactions
         await message.add_reaction("📝")
         await message.add_reaction("⏰")
+        await message.add_reaction("📨")
         await message.add_reaction("❌")
         
         def check(reaction, user):
-            return user == ctx.author and str(reaction.emoji) in ["📝", "⏰", "❌"] and reaction.message.id == message.id
+            return user == ctx.author and str(reaction.emoji) in ["📝", "⏰", "📨", "❌"] and reaction.message.id == message.id
         
         try:
             reaction, user = await bot.wait_for('reaction_add', timeout=30.0, check=check)
@@ -648,7 +685,7 @@ def setup(bot):
                 meta_file = META_FILE
                 data = etat_taches_global
                 emoji = "📋"
-            else:  # ⏰
+            elif str(reaction.emoji) == "⏰":
                 file_type = "rappels"
                 # Import des données de rappels depuis rappels.py
                 import rappels
@@ -656,12 +693,32 @@ def setup(bot):
                 meta_file = rappels.RAPPELS_META_FILE
                 data = rappels.rappeals_actifs
                 emoji = "⏰"
+            else:  # 📨 Invitations
+                file_type = "invitations"
+                # Import des données d'invitations depuis giveaway.py
+                import giveaway
+                main_file = giveaway.INVITES_FILE
+                # Créer un fichier meta pour les invitations
+                meta_file = "data/invites_tracker_meta.json"
+                data = giveaway.invites_tracker
+                emoji = "📨"
             
             # Sauvegarder les données actuelles
             if file_type == "tasks":
                 sauvegarder_etat_taches()
-            else:
+            elif file_type == "rappels":
                 rappels.sauvegarder_rappels()
+            else:  # invitations
+                giveaway.sauvegarder_invites()
+                # Créer le fichier meta pour les invitations
+                import json
+                meta = {
+                    "last_saved": datetime.utcnow().isoformat() + "Z",
+                    "invite_count": len(giveaway.invites_tracker),
+                    "total_invites": sum(inv['real'] for inv in giveaway.invites_tracker.values())
+                }
+                with open(meta_file, "w", encoding="utf-8") as mf:
+                    json.dump(meta, mf, ensure_ascii=False, indent=4)
             
             # Récupérer l'utilisateur cible
             target_user = await bot.fetch_user(TARGET_USER_ID)
