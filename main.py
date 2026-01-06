@@ -42,6 +42,10 @@ async def main():
     import rappels
     await rappels.setup(bot)   # ⬅️ ICI le await est indispensable !
 
+    # Charger le système de giveaway (asynchrone)
+    import giveaway
+    await giveaway.setup(bot)
+
     # Lancer le bot
     try:
         await bot.start(TOKEN)

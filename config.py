@@ -17,6 +17,8 @@ INTENTS = discord.Intents.default()
 INTENTS.message_content = True  # Nécessaire pour lire le contenu des messages
 INTENTS.members = True  # Nécessaire pour les événements liés aux membres
 INTENTS.reactions = True  # Nécessaire pour les réactions
+INTENTS.guilds = True   # Nécessaire pour les événements liés aux guildes
+INTENTS.invites = True  # Nécessaire pour gérer les invitations
 
 # IDs des canaux
 CHANNELS = {
