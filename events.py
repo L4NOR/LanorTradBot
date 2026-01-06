@@ -5,6 +5,10 @@ import datetime
 from config import CHANNELS, MESSAGES, ROLES, COLORS
 import logging
 
+# Dictionnaire pour stocker le dernier ping par canal (cooldown)
+last_ping_time = {}
+PING_COOLDOWN_SECONDS = 300  # 5 minutes de cooldown entre les pings
+
 def setup(bot):
     @bot.event
     async def on_ready():
@@ -82,6 +86,8 @@ def setup(bot):
     @bot.event
     async def on_message(message):
         """Événement déclenché à chaque message"""
+        global last_ping_time
+        
         # Ignorer les messages du bot lui-même
         if message.author == bot.user:
             return
@@ -91,10 +97,29 @@ def setup(bot):
             # Ne pas pinger pour les messages du bot lui-même ou de LanorTrad
             if message.author.name != "LanorTrad":
                 try:
+                    # Vérifier le cooldown
+                    current_time = datetime.datetime.now()
+                    channel_id = message.channel.id
+                    
+                    # Si le canal a déjà été pingé récemment, vérifier le cooldown
+                    if channel_id in last_ping_time:
+                        time_since_last_ping = (current_time - last_ping_time[channel_id]).total_seconds()
+                        
+                        # Si le cooldown n'est pas écoulé, ne pas pinger
+                        if time_since_last_ping < PING_COOLDOWN_SECONDS:
+                            logging.info(f"Cooldown actif pour le canal {message.channel.name}. "
+                                       f"Temps restant: {PING_COOLDOWN_SECONDS - time_since_last_ping:.0f}s")
+                            # Traiter quand même les commandes
+                            await bot.process_commands(message)
+                            return
+                    
+                    # Envoyer le ping si le cooldown est écoulé ou si c'est le premier ping
                     role = message.guild.get_role(ROLES["partenaires_ping"])
                     if role:
                         logging.info(f"Envoi d'un ping pour le rôle {role.name} dans le canal {message.channel.name}")
                         await message.channel.send(f"{role.mention}")
+                        # Mettre à jour le dernier temps de ping
+                        last_ping_time[channel_id] = current_time
                 except Exception as e:
                     logging.error(f"Erreur lors de l'envoi du ping pour les partenaires : {e}")
         
@@ -103,10 +128,24 @@ def setup(bot):
             # Ne pas pinger pour les messages du bot lui-même ou de LanorTrad
             if message.author.name != "LanorTrad":
                 try:
+                    # Vérifier le cooldown
+                    current_time = datetime.datetime.now()
+                    channel_id = message.channel.id
+                    
+                    if channel_id in last_ping_time:
+                        time_since_last_ping = (current_time - last_ping_time[channel_id]).total_seconds()
+                        
+                        if time_since_last_ping < PING_COOLDOWN_SECONDS:
+                            logging.info(f"Cooldown actif pour le canal {message.channel.name}. "
+                                       f"Temps restant: {PING_COOLDOWN_SECONDS - time_since_last_ping:.0f}s")
+                            await bot.process_commands(message)
+                            return
+                    
                     role = message.guild.get_role(ROLES.get("lanortrad_ping"))
                     if role:
                         logging.info(f"Envoi d'un ping pour le rôle {role.name} dans le canal {message.channel.name}")
                         await message.channel.send(f"{role.mention}")
+                        last_ping_time[channel_id] = current_time
                 except Exception as e:
                     logging.error(f"Erreur lors de l'envoi du ping pour LanorTrad : {e}")
         
@@ -118,7 +157,8 @@ def setup(bot):
         if message.author.name == "LanorTrad" and not is_allowed_command:
             return
         
-        # Nécessaire pour que les commandes fonctionnent également
+        # CORRECTION CRITIQUE : Nécessaire pour que les commandes fonctionnent
+        # Cette ligne DOIT être appelée pour traiter les commandes
         await bot.process_commands(message)
     
     @bot.event
