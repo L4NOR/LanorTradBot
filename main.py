@@ -1,4 +1,3 @@
-# main.py
 import discord
 from discord.ext import commands
 import os
@@ -40,11 +39,35 @@ async def main():
 
     # Charger les rappels (asynchrone)
     import rappels
-    await rappels.setup(bot)   # ⬅️ ICI le await est indispensable !
+    await rappels.setup(bot)
 
     # Charger le système de giveaway (asynchrone)
     import giveaway
     await giveaway.setup(bot)
+    
+    # ========== NOUVEAUX MODULES COMMUNAUTAIRES ==========
+    
+    # Charger le système communautaire (reviews, théories)
+    import community
+    await community.setup(bot)
+    logging.info("✅ Module Community chargé")
+    
+    # Charger le système de badges/achievements
+    import achievements
+    await achievements.setup(bot)
+    logging.info("✅ Module Achievements chargé")
+    
+    # Charger le système de shop
+    import shop
+    await shop.setup(bot)
+    logging.info("✅ Module Shop chargé")
+    
+    # Charger le gestionnaire de données admin
+    import admin_data
+    await admin_data.setup(bot)
+    logging.info("✅ Module Admin Data chargé")
+    
+    # =======================================================
 
     # Lancer le bot
     try:
