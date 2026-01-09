@@ -1,145 +1,997 @@
 {
-    "satsudou_18": {
+    "tougen anki_221": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_222": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_223": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_224": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_225": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_226": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_227": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_228": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_229": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_230": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_231": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_232": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_233": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_234": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_235": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_236": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_237": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_238": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_239": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_240": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_241": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_242": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_243": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_244": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_245": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_246": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_247": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_248": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_249": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_250": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_251": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_252": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_253": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_254": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tougen anki_255": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
     "catenaccio_37": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
-        "edit": "✅ Terminé"
+        "edit": "❌ Non commencé"
     },
     "catenaccio_38": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
-        "edit": "✅ Terminé"
+        "edit": "❌ Non commencé"
     },
     "catenaccio_39": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
-        "edit": "✅ Terminé"
+        "edit": "❌ Non commencé"
     },
     "catenaccio_40": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
-        "edit": "✅ Terminé"
+        "edit": "❌ Non commencé"
     },
     "catenaccio_41": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
-        "edit": "✅ Terminé"
+        "edit": "❌ Non commencé"
     },
     "catenaccio_42": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
-        "edit": "✅ Terminé"
+        "edit": "❌ Non commencé"
     },
     "catenaccio_43": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
-        "edit": "✅ Terminé"
+        "edit": "❌ Non commencé"
     },
     "catenaccio_44": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
-        "edit": "✅ Terminé"
+        "edit": "❌ Non commencé"
     },
     "catenaccio_45": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
-        "edit": "✅ Terminé"
+        "edit": "❌ Non commencé"
     },
     "catenaccio_46": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
-        "edit": "✅ Terminé"
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_47": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_48": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_49": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_50": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_51": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_52": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_53": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_54": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_55": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_56": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_57": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_58": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_59": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_60": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_61": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_62": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_63": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_64": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_65": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_66": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_67": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_68": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_69": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_70": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_71": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_72": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_73": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_74": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_75": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_76": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_77": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_78": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_79": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_80": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_81": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_82": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_18": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_19": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_20": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_21": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_22": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_23": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_24": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_25": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_26": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_27": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_28": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_29": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_30": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_31": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_32": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_33": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_34": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_35": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_36": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_37": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_38": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "satsudou_39": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
     },
     "tokyo underworld_35": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
-        "edit": "✅ Terminé"
+        "edit": "❌ Non commencé"
     },
     "tokyo underworld_36": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
-        "edit": "✅ Terminé"
+        "edit": "❌ Non commencé"
     },
     "tokyo underworld_37": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
     "tokyo underworld_38": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
     "tokyo underworld_39": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
     "tokyo underworld_40": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
     "tokyo underworld_41": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
     "tokyo underworld_42": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
     "tokyo underworld_43": {
-        "clean": "❌ Non commencé",
-        "trad": "✅ Terminé",
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
-    "tougen anki _221": {
+    "tokyo underworld_44": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
-    "tougen anki _222": {
+    "tokyo underworld_45": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
-    "tougen anki _223": {
+    "tokyo underworld_46": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
-    "tougen anki _224": {
+    "tokyo underworld_47": {
         "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_48": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_49": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_50": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_51": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_52": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_53": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_54": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_55": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_56": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_57": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_58": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_59": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_60": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_61": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_62": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_63": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_64": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_65": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_66": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_67": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_68": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_69": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_70": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_71": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_72": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_73": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_74": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_75": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_76": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_77": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_78": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_79": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_80": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_81": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_82": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_83": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_84": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_85": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_86": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_87": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_88": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_89": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_90": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_91": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_92": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_93": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_94": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_95": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_96": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "tokyo underworld_97": {
+        "clean": "✅ Terminé",
+        "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     }

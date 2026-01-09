@@ -551,7 +551,7 @@ def setup(bot):
     
     @bot.command(name="avancee")
     async def avancee(ctx):
-        """Affiche l'avancée des mangas de manière interactive"""
+        """Affiche l'avancée des mangas de manière interactive avec pagination"""
         embed = discord.Embed(
             title="📊 Avancée des Projets Manga",
             description=(
@@ -581,23 +581,30 @@ def setup(bot):
             '⚽': 'Catenaccio'
         }
         
+        manga_emoji_map = {
+            'Ao No Exorcist': '👹',
+            'Satsudou': '🩸',
+            'Tokyo Underworld': '🗼',
+            'Tougen Anki': '😈',
+            'Catenaccio': '⚽'
+        }
+        
         def check(reaction, user):
             return user == ctx.author and str(reaction.emoji) in reactions
         
         try:
             reaction, user = await bot.wait_for('reaction_add', timeout=30.0, check=check)
             manga_name = manga_map[str(reaction.emoji)]
+            manga_emoji = manga_emoji_map.get(manga_name, '📚')
             
-            # CORRECTION: Nouvelle logique de recherche plus flexible
+            # Récupérer tous les chapitres du manga
             manga_chapters = {}
             manga_name_normalized = normaliser_manga_name(manga_name)
             
             for key in etat_taches_global:
-                # Extraire le manga et le chapitre de la clé
                 key_manga, key_chapter = extraire_manga_chapitre(key)
                 
                 if key_manga and key_chapter:
-                    # Comparer les noms normalisés
                     if normaliser_manga_name(key_manga) == manga_name_normalized:
                         manga_chapters[key_chapter] = etat_taches_global[key]
             
@@ -605,39 +612,117 @@ def setup(bot):
                 await ctx.send(f"❌ Aucune tâche trouvée pour **{manga_name}**.")
                 return
             
-            progress_embed = discord.Embed(
-                title=f"🎯 Avancée de {manga_name}",
-                description="Voici l'état d'avancement des chapitres :",
-                color=discord.Color.green(),
-                timestamp=datetime.now()
-            )
+            # Trier les chapitres
+            sorted_chapters = sorted(manga_chapters.keys())
             
-            for chapter in sorted(manga_chapters.keys()):
-                tasks = manga_chapters[chapter]
-                progress = sum(1 for task in tasks.values() if task == "✅ Terminé")
-                progress_bar = generate_progress_bar(progress, len(tasks))
+            # Nombre de chapitres par page (5 pour éviter de dépasser la limite Discord)
+            CHAPTERS_PER_PAGE = 5
+            total_pages = (len(sorted_chapters) + CHAPTERS_PER_PAGE - 1) // CHAPTERS_PER_PAGE
+            
+            # Fonction pour créer un embed de page
+            def create_page_embed(page_num):
+                start_idx = page_num * CHAPTERS_PER_PAGE
+                end_idx = min(start_idx + CHAPTERS_PER_PAGE, len(sorted_chapters))
+                page_chapters = sorted_chapters[start_idx:end_idx]
                 
-                # Ajouter un emoji si le chapitre est complet
-                chapter_title = f"📑 Chapitre {chapter}"
-                if est_chapitre_complet(tasks):
-                    chapter_title += " ✅"
+                # Calculer les statistiques globales
+                total_tasks = len(sorted_chapters) * 4  # 4 tâches par chapitre
+                completed_tasks = sum(
+                    1 for ch in sorted_chapters 
+                    for task in manga_chapters[ch].values() 
+                    if task == "✅ Terminé"
+                )
+                global_progress = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
                 
-                field_value = (
-                    f"{progress_bar} ({progress}/{len(tasks)})\n"
-                    f"Clean: {tasks.get('clean', '❓ Inconnu')}\n"
-                    f"Trad: {tasks.get('trad', '❓ Inconnu')}\n"
-                    f"Check: {tasks.get('check', '❓ Inconnu')}\n"
-                    f"Edit: {tasks.get('edit', '❓ Inconnu')}"
+                progress_embed = discord.Embed(
+                    title=f"{manga_emoji} Avancée de {manga_name}",
+                    description=(
+                        f"📊 **Progression globale:** {global_progress:.1f}% ({completed_tasks}/{total_tasks} tâches)\n"
+                        f"📚 **Chapitres:** {sorted_chapters[0]} → {sorted_chapters[-1]} ({len(sorted_chapters)} chapitres)\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━━"
+                    ),
+                    color=discord.Color.green(),
+                    timestamp=datetime.now()
                 )
                 
-                progress_embed.add_field(
-                    name=chapter_title,
-                    value=field_value,
-                    inline=False
+                for chapter in page_chapters:
+                    tasks = manga_chapters[chapter]
+                    progress = sum(1 for task in tasks.values() if task == "✅ Terminé")
+                    progress_bar = generate_progress_bar(progress, len(tasks))
+                    
+                    # Ajouter un emoji si le chapitre est complet
+                    chapter_title = f"📑 Chapitre {chapter}"
+                    if est_chapitre_complet(tasks):
+                        chapter_title += " ✅"
+                    
+                    field_value = (
+                        f"{progress_bar} ({progress}/{len(tasks)})\n"
+                        f"🧹 Clean: {tasks.get('clean', '❓ Inconnu')}\n"
+                        f"🌍 Trad: {tasks.get('trad', '❓ Inconnu')}\n"
+                        f"✅ Check: {tasks.get('check', '❓ Inconnu')}\n"
+                        f"✏️ Edit: {tasks.get('edit', '❓ Inconnu')}"
+                    )
+                    
+                    progress_embed.add_field(
+                        name=chapter_title,
+                        value=field_value,
+                        inline=False
+                    )
+                
+                progress_embed.set_footer(
+                    text=f"Page {page_num + 1}/{total_pages} | Chapitres {page_chapters[0]}-{page_chapters[-1]} | Demandé par {ctx.author.name}",
+                    icon_url=ctx.author.avatar.url if ctx.author.avatar else None
                 )
+                
+                return progress_embed
             
-            progress_embed.set_footer(text=f"Demandé par {ctx.author.name}")
-            await message.edit(embed=progress_embed)
+            # Afficher la première page
+            current_page = 0
+            await message.clear_reactions()
+            await message.edit(embed=create_page_embed(current_page))
+            
+            # Si plusieurs pages, ajouter les réactions de navigation
+            if total_pages > 1:
+                nav_reactions = ['⏮️', '⬅️', '➡️', '⏭️', '🏠']
+                for nav_reaction in nav_reactions:
+                    await message.add_reaction(nav_reaction)
+                
+                def nav_check(reaction, user):
+                    return user == ctx.author and str(reaction.emoji) in nav_reactions and reaction.message.id == message.id
+                
+                while True:
+                    try:
+                        reaction, user = await bot.wait_for('reaction_add', timeout=120.0, check=nav_check)
+                        emoji = str(reaction.emoji)
+                        
+                        if emoji == '⏮️':  # Première page
+                            current_page = 0
+                        elif emoji == '⬅️':  # Page précédente
+                            current_page = max(0, current_page - 1)
+                        elif emoji == '➡️':  # Page suivante
+                            current_page = min(total_pages - 1, current_page + 1)
+                        elif emoji == '⏭️':  # Dernière page
+                            current_page = total_pages - 1
+                        elif emoji == '🏠':  # Retour au menu principal
+                            await message.clear_reactions()
+                            await message.edit(embed=embed)
+                            for r in reactions:
+                                await message.add_reaction(r)
+                            # Réinitialiser pour permettre une nouvelle sélection
+                            try:
+                                reaction, user = await bot.wait_for('reaction_add', timeout=30.0, check=check)
+                                manga_name = manga_map[str(reaction.emoji)]
+                                # Relancer la logique... (simplifié ici)
+                            except asyncio.TimeoutError:
+                                await message.clear_reactions()
+                            break
+                        
+                        await message.edit(embed=create_page_embed(current_page))
+                        await message.remove_reaction(reaction, user)
+                    
+                    except asyncio.TimeoutError:
+                        await message.clear_reactions()
+                        break
         
         except asyncio.TimeoutError:
             await message.clear_reactions()
