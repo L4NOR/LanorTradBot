@@ -113,421 +113,100 @@ def setup(bot):
     bot_instance = bot
     bot.remove_command('help')
     
-@bot.command()
+    @bot.command()
     async def help(ctx):
-        """Affiche le menu d'aide interactif avec pagination"""
+        """Affiche le menu d'aide des commandes"""
         admin_roles = [1326417422663680090, 1331346420883525682]
         user_roles = [role.id for role in ctx.author.roles]
-        is_admin = any(role in user_roles for role in admin_roles)
         
-        # Page 1: Menu Principal
-        embed_main = discord.Embed(
-            title="📚 Centre d'Aide LanorTrad",
+        embed = discord.Embed(
+            title="📚 **Menu d'Aide - LanorTrad Bot**",
             description=(
-                "Bienvenue dans le système d'aide interactif !\n"
-                "Naviguez entre les pages avec les réactions ci-dessous.\n\n"
-                "**Catégories disponibles:**"
+                "Bienvenue dans le menu d'aide ! Voici les commandes disponibles pour interagir avec le bot.\n\n"
+                "🔹 **Commandes Générales** : Accessibles à tous.\n"
+                "🎁 **Commandes Giveaway** : Pour les invitations et concours.\n"
+                "🔧 **Commandes Admin** : Réservées aux administrateurs."
             ),
-            color=discord.Color.from_rgb(88, 101, 242),
+            color=discord.Color.blue(),
             timestamp=datetime.now()
         )
         
-        embed_main.add_field(
-            name="1️⃣ Commandes Générales",
-            value="Informations, progression, profil",
-            inline=True
-        )
-        embed_main.add_field(
-            name="2️⃣ Communauté",
-            value="Reviews, théories, interactions",
-            inline=True
-        )
-        embed_main.add_field(
-            name="3️⃣ Shop & Économie",
-            value="Achats, inventaire, points",
-            inline=True
-        )
-        embed_main.add_field(
-            name="4️⃣ Giveaways",
-            value="Concours et invitations",
-            inline=True
-        )
-        embed_main.add_field(
-            name="5️⃣ Badges",
-            value="Achievements et collections",
-            inline=True
-        )
-        
-        if is_admin:
-            embed_main.add_field(
-                name="🔧 Admin",
-                value="Commandes administrateur",
-                inline=True
-            )
-        
-        embed_main.set_thumbnail(url=ctx.guild.icon.url if ctx.guild.icon else None)
-        embed_main.set_footer(text="Page 1 | Utilisez les réactions pour naviguer")
-        
-        # Page 2: Commandes Générales
-        embed_general = discord.Embed(
-            title="1️⃣ Commandes Générales",
-            description="Commandes accessibles à tous les membres",
-            color=discord.Color.from_rgb(87, 242, 135),
-            timestamp=datetime.now()
-        )
-        
-        embed_general.add_field(
-            name="ℹ️ Informations",
+        embed.add_field(
+            name="🎮 **Commandes Générales**",
             value=(
-                "`!help` - Affiche ce menu d'aide\n"
-                "`!info` - Informations du serveur\n"
-                "`!userinfo [@user]` - Profil d'un membre\n"
-                "`!ping` - Latence du bot"
+                "• !help - Afficher ce menu d'aide\n"
+                "• !info - Informations du serveur\n"
+                "• !userinfo - Détails du profil utilisateur\n"
+                "• !ping - Vérifier la latence\n"
+                "• !avancee - Voir l'avancée des chapitres\n"
             ),
             inline=False
         )
         
-        embed_general.add_field(
-            name="📊 Progression",
+        embed.add_field(
+            name="🎁 **Commandes Giveaway**",
             value=(
-                "`!avancee` - Voir l'avancée des projets\n"
-                "`!task_status <manga> <ch>` - État d'un chapitre"
+                "• !my_invites - Voir vos statistiques d'invitations\n"
+                "• !enter_giveaway <id> - Participer à un giveaway\n"
+                "• !leaderboard_invites - Classement des invitations\n"
+                "• !list_giveaways - Liste tous les giveaways\n"
+                "• !giveaway_info <id> - Informations d'un giveaway\n"
             ),
             inline=False
         )
         
-        embed_general.set_footer(text="Page 2 | 1️⃣ Général")
+        if any(role in user_roles for role in admin_roles):
+            embed.add_field(
+                name="🔧 **Commandes Admin - Général**",
+                value=(
+                    "• !clear <nombre> - Supprimer des messages\n"
+                    "• !kick @utilisateur [raison] - Expulser un membre\n"
+                    "• !ban @utilisateur [raison] - Bannir un membre\n"
+                    "• !unban nom_utilisateur#tag - Débannir un membre\n"
+                    "• !warn @utilisateur [raison] - Avertir un membre\n"
+                ),
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🔧 **Commandes Admin - Tâches**",
+                value=(
+                    "• !task <action> <manga> <chapitre> - Mettre à jour l'état d'une tâche\n"
+                    "• !task_status <manga> <chapitre> - Afficher l'état des tâches\n"
+                    "• !task_all - Afficher toutes les tâches en cours\n"
+                    "• !delete_task <manga> <chapitre> - Supprimer les tâches d'un chapitre\n"
+                    "• !fix_tasks - Normaliser les clés des tâches\n"
+                    "• !actualiser <save|reload> - Enregistrer ou recharger le fichier etat_taches.json\n"
+                ),
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🔧 **Commandes Admin - Giveaway**",
+                value=(
+                    "• !create_giveaway - Créer un nouveau giveaway (interactif)\n"
+                    "• !end_giveaway <id> - Terminer un giveaway manuellement\n"
+                    "• !delete_giveaway <id> - Supprimer un giveaway\n"
+                    "• !giveaway_participants <id> - Liste des participants\n"
+                    "• !add_invites @user <nombre> - Ajouter des invitations\n"
+                    "• !remove_invites @user <nombre> - Retirer des invitations\n"
+                    "• !reset_user_invites @user - Réinitialiser les invitations\n"
+                    "• !server_invite_stats - Statistiques globales d'invitations\n"
+                ),
+                inline=False
+            )
         
-        # Page 3: Communauté
-        embed_community = discord.Embed(
-            title="2️⃣ Commandes Communauté",
-            description="Interagissez avec la communauté !",
-            color=discord.Color.from_rgb(254, 231, 92),
-            timestamp=datetime.now()
+        embed.add_field(name="━━━━━━━━━━━━━━━━━━━━━━━", value="", inline=False)
+        
+        embed.set_footer(
+            text=f"Demandé par {ctx.author.name} | LanorTrad Bot",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
         )
         
-        embed_community.add_field(
-            name="⭐ Reviews",
-            value=(
-                "`!review <manga> <ch> <note 1-5> [comm]` - Laisser une review\n"
-                "`!chapter_reviews <manga> <ch>` - Voir les reviews\n"
-                "`!my_reviews` - Vos reviews"
-            ),
-            inline=False
-        )
+        if ctx.guild.icon:
+            embed.set_thumbnail(url=ctx.guild.icon.url)
         
-        embed_community.add_field(
-            name="💭 Théories",
-            value=(
-                "`!theory <manga> <théorie>` - Poster une théorie\n"
-                "`!theories [manga]` - Liste des théories\n"
-                "`!theory_info <id>` - Détails d'une théorie"
-            ),
-            inline=False
-        )
-        
-        embed_community.set_footer(text="Page 3 | 2️⃣ Communauté")
-        
-        # Page 4: Shop
-        embed_shop = discord.Embed(
-            title="3️⃣ Shop & Économie",
-            description="Dépensez vos points durement gagnés !",
-            color=discord.Color.from_rgb(235, 69, 158),
-            timestamp=datetime.now()
-        )
-        
-        embed_shop.add_field(
-            name="🛒 Shopping",
-            value=(
-                "`!shop [catégorie]` - Voir le shop\n"
-                "`!buy <item>` - Acheter un item\n"
-                "`!inventory [@user]` - Voir l'inventaire\n"
-                "`!use <item>` - Utiliser un item"
-            ),
-            inline=False
-        )
-        
-        embed_shop.set_footer(text="Page 4 | 3️⃣ Shop")
-        
-        # Page 5: Giveaways
-        embed_giveaway = discord.Embed(
-            title="4️⃣ Giveaways & Invitations",
-            description="Participez aux concours !",
-            color=discord.Color.from_rgb(255, 115, 66),
-            timestamp=datetime.now()
-        )
-        
-        embed_giveaway.add_field(
-            name="🎁 Giveaways",
-            value=(
-                "`!list_giveaways` - Liste des giveaways actifs\n"
-                "`!giveaway_info <id>` - Infos d'un giveaway\n"
-                "Réagissez avec 🎉 pour participer !"
-            ),
-            inline=False
-        )
-        
-        embed_giveaway.add_field(
-            name="📨 Invitations",
-            value=(
-                "`!my_invites` - Vos statistiques d'invites\n"
-                "`!leaderboard_invites` - Top invitations"
-            ),
-            inline=False
-        )
-        
-        embed_giveaway.set_footer(text="Page 5 | 4️⃣ Giveaways")
-        
-        # Page 6: Badges
-        embed_badges = discord.Embed(
-            title="5️⃣ Badges & Achievements",
-            description="Collectionnez tous les badges !",
-            color=discord.Color.from_rgb(153, 170, 181),
-            timestamp=datetime.now()
-        )
-        
-        embed_badges.add_field(
-            name="🏆 Badges",
-            value=(
-                "`!badges [@user]` - Voir les badges\n"
-                "`!all_badges` - Tous les badges disponibles\n"
-                "`!badge_info <nom>` - Détails d'un badge\n"
-                "`!display_badge <nom>` - Afficher un badge (max 3)\n"
-                "`!remove_badge <nom>` - Retirer de l'affichage\n"
-                "`!leaderboard_badges` - Top badges"
-            ),
-            inline=False
-        )
-        
-        embed_badges.set_footer(text="Page 6 | 5️⃣ Badges")
-        
-        pages = [embed_main, embed_general, embed_community, embed_shop, embed_giveaway, embed_badges]
-        
-        # Pages Admin
-        if is_admin:
-            embed_admin1 = discord.Embed(
-                title="🔧 Commandes Admin - Modération",
-                description="Gestion du serveur et des membres",
-                color=discord.Color.from_rgb(237, 66, 69),
-                timestamp=datetime.now()
-            )
-            
-            embed_admin1.add_field(
-                name="⚖️ Modération",
-                value=(
-                    "`!clear <nb>` - Supprimer des messages\n"
-                    "`!kick @user [raison]` - Expulser\n"
-                    "`!ban @user [raison]` - Bannir\n"
-                    "`!unban user#tag` - Débannir\n"
-                    "`!warn @user [raison]` - Avertir"
-                ),
-                inline=False
-            )
-            
-            embed_admin1.add_field(
-                name="📝 Annonces",
-                value=(
-                    "`!announce_chapter` - Annoncer un chapitre (interactif)\n"
-                    "`!test_announce` - Test d'annonce"
-                ),
-                inline=False
-            )
-            
-            embed_admin1.set_footer(text="Page Admin 1 | 🔧 Modération")
-            
-            embed_admin2 = discord.Embed(
-                title="🔧 Commandes Admin - Tâches",
-                description="Gestion des projets et chapitres",
-                color=discord.Color.from_rgb(237, 66, 69),
-                timestamp=datetime.now()
-            )
-            
-            embed_admin2.add_field(
-                name="📋 Gestion des Tâches",
-                value=(
-                    "`!task <action> <manga> <ch...>` - Mettre à jour\n"
-                    "`!task_status <manga> <ch>` - Voir l'état\n"
-                    "`!task_all` - Toutes les tâches\n"
-                    "`!delete_task <manga> <ch>` - Supprimer\n"
-                    "`!fix_tasks` - Normaliser les clés"
-                ),
-                inline=False
-            )
-            
-            embed_admin2.add_field(
-                name="⏰ Rappels",
-                value=(
-                    "`!add_rappel` - Créer un rappel (interactif)\n"
-                    "`!list_rappels` - Liste des rappels\n"
-                    "`!delete_rappel <id>` - Supprimer un rappel\n"
-                    "`!test_rappel` - Tester l'envoi"
-                ),
-                inline=False
-            )
-            
-            embed_admin2.set_footer(text="Page Admin 2 | 🔧 Tâches & Rappels")
-            
-            embed_admin3 = discord.Embed(
-                title="🔧 Commandes Admin - Giveaways",
-                description="Gestion des concours",
-                color=discord.Color.from_rgb(237, 66, 69),
-                timestamp=datetime.now()
-            )
-            
-            embed_admin3.add_field(
-                name="🎁 Gestion Giveaways",
-                value=(
-                    "`!create_giveaway` - Créer (interactif)\n"
-                    "`!giveaway <durée> <gagnants> <prix>` - Créer rapide\n"
-                    "`!end_giveaway <id>` - Terminer\n"
-                    "`!delete_giveaway <id>` - Supprimer\n"
-                    "`!reroll <id> [count]` - Retirer des gagnants\n"
-                    "`!giveaway_participants <id>` - Liste participants"
-                ),
-                inline=False
-            )
-            
-            embed_admin3.add_field(
-                name="📨 Invitations",
-                value=(
-                    "`!add_invites @user <nb>` - Ajouter\n"
-                    "`!remove_invites @user <nb>` - Retirer\n"
-                    "`!reset_user_invites @user` - Reset\n"
-                    "`!server_invite_stats` - Stats globales"
-                ),
-                inline=False
-            )
-            
-            embed_admin3.set_footer(text="Page Admin 3 | 🔧 Giveaways")
-            
-            embed_admin4 = discord.Embed(
-                title="🔧 Commandes Admin - Communauté",
-                description="Gestion badges, shop et chapitres",
-                color=discord.Color.from_rgb(237, 66, 69),
-                timestamp=datetime.now()
-            )
-            
-            embed_admin4.add_field(
-                name="📚 Chapitres",
-                value=(
-                    "`!newchapter <msg_id> <manga> <ch>` - Lier un chapitre"
-                ),
-                inline=False
-            )
-            
-            embed_admin4.add_field(
-                name="🏆 Badges",
-                value=(
-                    "`!give_badge @user <badge>` - Donner un badge"
-                ),
-                inline=False
-            )
-            
-            embed_admin4.add_field(
-                name="🛒 Shop",
-                value=(
-                    "`!shop_add` - Ajouter un item (interactif)\n"
-                    "`!shop_remove <item>` - Retirer un item\n"
-                    "`!give_item @user <item>` - Donner un item\n"
-                    "`!set_points @user <nb>` - Définir les points\n"
-                    "`!add_points_admin @user <nb>` - Ajouter des points"
-                ),
-                inline=False
-            )
-            
-            embed_admin4.add_field(
-                name="💭 Théories",
-                value=(
-                    "`!theory_status <id> <status>` - Changer statut\n"
-                    "Status: confirmed, debunked, active"
-                ),
-                inline=False
-            )
-            
-            embed_admin4.set_footer(text="Page Admin 4 | 🔧 Communauté & Shop")
-            
-            embed_admin5 = discord.Embed(
-                title="🔧 Commandes Admin - Données",
-                description="Gestion et sauvegarde des données",
-                color=discord.Color.from_rgb(237, 66, 69),
-                timestamp=datetime.now()
-            )
-            
-            embed_admin5.add_field(
-                name="💾 Gestionnaire de Données",
-                value=(
-                    "`!data` - Menu interactif\n"
-                    "`!data save <cible>` - Sauvegarder\n"
-                    "`!data reload <cible>` - Recharger\n"
-                    "`!data export <cible>` - Exporter en MP\n"
-                    "`!data status` - Statut des modules\n"
-                    "`!data_list` - Liste des modules"
-                ),
-                inline=False
-            )
-            
-            embed_admin5.add_field(
-                name="📦 Cibles Disponibles",
-                value=(
-                    "`all` - Tout\n"
-                    "`community` - Communauté\n"
-                    "`achievements` - Badges\n"
-                    "`shop` - Shop\n"
-                    "`giveaway` - Giveaways\n"
-                    "`workflow` - Tâches & rappels"
-                ),
-                inline=False
-            )
-            
-            embed_admin5.add_field(
-                name="⚡ Raccourcis",
-                value=(
-                    "`!backup` - Sauvegarde + Export complet\n"
-                    "`!actualiser [save|reload]` - Tâches/Rappels (legacy)"
-                ),
-                inline=False
-            )
-            
-            embed_admin5.set_footer(text="Page Admin 5 | 🔧 Données")
-            
-            pages.extend([embed_admin1, embed_admin2, embed_admin3, embed_admin4, embed_admin5])
-        
-        # Envoyer et gérer la pagination
-        current_page = 0
-        message = await ctx.send(embed=pages[current_page])
-        
-        # Ajouter les réactions
-        reactions = ['⬅️', '➡️', '🏠', '❌']
-        for reaction in reactions:
-            await message.add_reaction(reaction)
-        
-        def check(reaction, user):
-            return user == ctx.author and str(reaction.emoji) in reactions and reaction.message.id == message.id
-        
-        while True:
-            try:
-                reaction, user = await bot.wait_for('reaction_add', timeout=120.0, check=check)
-                
-                if str(reaction.emoji) == '⬅️':
-                    if current_page > 0:
-                        current_page -= 1
-                        await message.edit(embed=pages[current_page])
-                elif str(reaction.emoji) == '➡️':
-                    if current_page < len(pages) - 1:
-                        current_page += 1
-                        await message.edit(embed=pages[current_page])
-                elif str(reaction.emoji) == '🏠':
-                    current_page = 0
-                    await message.edit(embed=pages[current_page])
-                elif str(reaction.emoji) == '❌':
-                    await message.clear_reactions()
-                    break
-                
-                await message.remove_reaction(reaction, user)
-            
-            except asyncio.TimeoutError:
-                await message.clear_reactions()
-                break
+        await ctx.send(embed=embed)
     
     @bot.command()
     @commands.has_permissions(manage_messages=True)
