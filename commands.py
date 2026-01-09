@@ -82,6 +82,31 @@ def est_chapitre_complet(tasks):
     return all(tasks.get(tache) == "✅ Terminé" for tache in taches_requises)
 
 
+# Fonction helper pour normaliser le nom du manga (pour la recherche)
+def normaliser_manga_name(name):
+    """Normalise le nom du manga pour la comparaison"""
+    return name.lower().strip()
+
+
+# Fonction helper pour extraire manga et chapitre d'une clé
+def extraire_manga_chapitre(key):
+    """Extrait le nom du manga et le numéro de chapitre d'une clé"""
+    if "_" not in key:
+        return None, None
+    
+    # Utiliser rsplit pour gérer les noms avec underscores
+    parts = key.rsplit("_", 1)
+    if len(parts) != 2:
+        return None, None
+    
+    manga_name = parts[0].strip()
+    chapter_str = parts[1].strip()
+    
+    if chapter_str.isdigit():
+        return manga_name, int(chapter_str)
+    return manga_name, None
+
+
 def setup(bot):
     charger_etat_taches()
     global bot_instance
@@ -150,6 +175,7 @@ def setup(bot):
                     "• !task_status <manga> <chapitre> - Afficher l'état des tâches\n"
                     "• !task_all - Afficher toutes les tâches en cours\n"
                     "• !delete_task <manga> <chapitre> - Supprimer les tâches d'un chapitre\n"
+                    "• !fix_tasks - Normaliser les clés des tâches\n"
                     "• !actualiser <save|reload> - Enregistrer ou recharger le fichier etat_taches.json\n"
                 ),
                 inline=False
@@ -338,12 +364,16 @@ def setup(bot):
         chapitres_erreur = []
         chapitres_complets = []
         
+        # CORRECTION: Normaliser le nom du manga (enlever les espaces en trop)
+        manga_normalized = manga.strip()
+        
         for chapitre_str in chapitres:
             chapitre_str = chapitre_str.strip().rstrip(',')
             
             try:
                 chapitre = int(chapitre_str)
-                chapitre_key = f"{manga.lower()}_{chapitre}"
+                # CORRECTION: Utiliser le nom normalisé pour la clé
+                chapitre_key = f"{manga_normalized.lower()}_{chapitre}"
                 
                 if chapitre_key not in etat_taches_global:
                     etat_taches_global[chapitre_key] = {
@@ -368,7 +398,7 @@ def setup(bot):
         
         reponse = []
         if chapitres_traites:
-            reponse.append(f"✅ Tâche **{action}** mise à jour pour **{manga}** chapitres : **{', '.join(chapitres_traites)}**")
+            reponse.append(f"✅ Tâche **{action}** mise à jour pour **{manga_normalized}** chapitres : **{', '.join(chapitres_traites)}**")
         if chapitres_erreur:
             reponse.append(f"❌ Chapitres invalides ignorés : {', '.join(chapitres_erreur)}")
         if not chapitres_traites and not chapitres_erreur:
@@ -376,7 +406,7 @@ def setup(bot):
         
         await ctx.send('\n'.join(reponse))
         
-        manga_nom_formate = manga.strip()
+        manga_nom_formate = manga_normalized
         
         if manga_nom_formate in MANGA_CHANNELS and manga_nom_formate in MANGA_ROLES:
             thread_id = MANGA_CHANNELS[manga_nom_formate]
@@ -418,9 +448,18 @@ def setup(bot):
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
     async def task_status(ctx, manga: str, chapitre: int):
         """Affiche l'état des tâches pour un chapitre donné"""
-        chapitre_key = f"{manga.lower()}_{chapitre}"
+        # CORRECTION: Normaliser et chercher avec flexibilité
+        manga_normalized = normaliser_manga_name(manga)
+        chapitre_key = None
         
-        if chapitre_key not in etat_taches_global:
+        # Chercher la clé correspondante
+        for key in etat_taches_global:
+            key_manga, key_chap = extraire_manga_chapitre(key)
+            if key_manga and normaliser_manga_name(key_manga) == manga_normalized and key_chap == chapitre:
+                chapitre_key = key
+                break
+        
+        if chapitre_key is None:
             await ctx.send(f"❌ Aucun état trouvé pour le chapitre **{chapitre}** de **{manga}**.")
             return
         
@@ -445,14 +484,70 @@ def setup(bot):
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
     async def delete_task(ctx, manga: str, chapitre: int):
         """Supprime toutes les tâches associées à un chapitre donné"""
-        chapitre_key = f"{manga.lower()}_{chapitre}"
+        # CORRECTION: Normaliser et chercher avec flexibilité
+        manga_normalized = normaliser_manga_name(manga)
+        chapitre_key = None
         
-        if chapitre_key in etat_taches_global:
+        # Chercher la clé correspondante
+        for key in etat_taches_global:
+            key_manga, key_chap = extraire_manga_chapitre(key)
+            if key_manga and normaliser_manga_name(key_manga) == manga_normalized and key_chap == chapitre:
+                chapitre_key = key
+                break
+        
+        if chapitre_key and chapitre_key in etat_taches_global:
             del etat_taches_global[chapitre_key]
             sauvegarder_etat_taches()
             await ctx.send(f"✅ Toutes les tâches pour le chapitre **{chapitre}** de **{manga}** ont été supprimées.")
         else:
             await ctx.send(f"❌ Aucune tâche trouvée pour le chapitre **{chapitre}** de **{manga}**.")
+    
+    @bot.command(name="fix_tasks")
+    @commands.has_any_role(1326417422663680090, 1330147432847114321)
+    async def fix_tasks(ctx):
+        """Normalise les clés des tâches (corrige les espaces)"""
+        global etat_taches_global
+        
+        old_count = len(etat_taches_global)
+        new_tasks = {}
+        fixed_count = 0
+        
+        for key, value in etat_taches_global.items():
+            # Extraire manga et chapitre
+            key_manga, key_chap = extraire_manga_chapitre(key)
+            
+            if key_manga and key_chap:
+                # Créer la nouvelle clé normalisée
+                new_key = f"{key_manga}_{key_chap}"
+                
+                if new_key != key:
+                    fixed_count += 1
+                
+                # Si la clé existe déjà, fusionner (garder les tâches terminées)
+                if new_key in new_tasks:
+                    for task_name, task_status in value.items():
+                        if task_status == "✅ Terminé":
+                            new_tasks[new_key][task_name] = task_status
+                else:
+                    new_tasks[new_key] = value
+            else:
+                # Garder les clés non reconnues telles quelles
+                new_tasks[key] = value
+        
+        etat_taches_global = new_tasks
+        sauvegarder_etat_taches()
+        
+        embed = discord.Embed(
+            title="🔧 Normalisation des Tâches",
+            description=f"Les clés des tâches ont été normalisées !",
+            color=discord.Color.green(),
+            timestamp=datetime.now()
+        )
+        embed.add_field(name="📊 Tâches avant", value=str(old_count), inline=True)
+        embed.add_field(name="📊 Tâches après", value=str(len(etat_taches_global)), inline=True)
+        embed.add_field(name="🔧 Clés corrigées", value=str(fixed_count), inline=True)
+        
+        await ctx.send(embed=embed)
     
     @bot.command(name="avancee")
     async def avancee(ctx):
@@ -493,11 +588,18 @@ def setup(bot):
             reaction, user = await bot.wait_for('reaction_add', timeout=30.0, check=check)
             manga_name = manga_map[str(reaction.emoji)]
             
+            # CORRECTION: Nouvelle logique de recherche plus flexible
             manga_chapters = {}
+            manga_name_normalized = normaliser_manga_name(manga_name)
+            
             for key in etat_taches_global:
-                if key.startswith(manga_name.lower() + "_"):
-                    chapter_num = int(key.split("_")[1])
-                    manga_chapters[chapter_num] = etat_taches_global[key]
+                # Extraire le manga et le chapitre de la clé
+                key_manga, key_chapter = extraire_manga_chapitre(key)
+                
+                if key_manga and key_chapter:
+                    # Comparer les noms normalisés
+                    if normaliser_manga_name(key_manga) == manga_name_normalized:
+                        manga_chapters[key_chapter] = etat_taches_global[key]
             
             if not manga_chapters:
                 await ctx.send(f"❌ Aucune tâche trouvée pour **{manga_name}**.")
@@ -522,10 +624,10 @@ def setup(bot):
                 
                 field_value = (
                     f"{progress_bar} ({progress}/{len(tasks)})\n"
-                    f"Clean: {tasks['clean']}\n"
-                    f"Trad: {tasks['trad']}\n"
-                    f"Check: {tasks['check']}\n"
-                    f"Edit: {tasks['edit']}"
+                    f"Clean: {tasks.get('clean', '❓ Inconnu')}\n"
+                    f"Trad: {tasks.get('trad', '❓ Inconnu')}\n"
+                    f"Check: {tasks.get('check', '❓ Inconnu')}\n"
+                    f"Edit: {tasks.get('edit', '❓ Inconnu')}"
                 )
                 
                 progress_embed.add_field(
@@ -551,17 +653,22 @@ def setup(bot):
             await ctx.send("📋 Aucune tâche en cours actuellement.")
             return
         
+        # CORRECTION: Utiliser la nouvelle logique d'extraction
         tasks_by_manga = {}
         for chapitre_key, tasks in etat_taches_global.items():
-            manga, chapitre = chapitre_key.rsplit("_", 1)
-            if manga not in tasks_by_manga:
-                tasks_by_manga[manga] = {}
-            tasks_by_manga[manga][chapitre] = tasks
+            key_manga, key_chapter = extraire_manga_chapitre(chapitre_key)
+            
+            if key_manga and key_chapter:
+                # Normaliser le nom du manga pour le regroupement
+                manga_display = key_manga.title()  # Mettre en majuscule proprement
+                if manga_display not in tasks_by_manga:
+                    tasks_by_manga[manga_display] = {}
+                tasks_by_manga[manga_display][str(key_chapter)] = tasks
         
         embeds = []
         for manga, chapitres in tasks_by_manga.items():
             embed = discord.Embed(
-                title=f"📋 Tâches en cours - {manga.capitalize()}",
+                title=f"📋 Tâches en cours - {manga}",
                 color=discord.Color.blue(),
                 timestamp=datetime.now()
             )
@@ -577,10 +684,10 @@ def setup(bot):
                 
                 field_value = (
                     f"{progress_bar} ({progress}/{len(tasks)})\n"
-                    f"Clean: {tasks['clean']}\n"
-                    f"Trad: {tasks['trad']}\n"
-                    f"Check: {tasks['check']}\n"
-                    f"Edit: {tasks['edit']}"
+                    f"Clean: {tasks.get('clean', '❓ Inconnu')}\n"
+                    f"Trad: {tasks.get('trad', '❓ Inconnu')}\n"
+                    f"Check: {tasks.get('check', '❓ Inconnu')}\n"
+                    f"Edit: {tasks.get('edit', '❓ Inconnu')}"
                 )
                 
                 embed.add_field(
