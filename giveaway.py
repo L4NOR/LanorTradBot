@@ -246,45 +246,11 @@ class GiveawaySystem(commands.Cog):
         if user_id in giveaway_found.get("participants", {}):
             return  # Déjà inscrit, ne rien faire
         
-        # Vérifier les conditions d'invitations
+        # Récupérer les invitations pour calculer les entrées
         user_invites = get_user_invites(payload.user_id)
         real_invites = user_invites["real"]
-        min_invites = giveaway_found.get("min_invites", 0)
         
-        if real_invites < min_invites:
-            # Retirer la réaction et envoyer un message privé
-            try:
-                message = await channel.fetch_message(payload.message_id)
-                await message.remove_reaction(GIVEAWAY_EMOJI, member)
-                
-                # Envoyer un MP à l'utilisateur
-                embed = discord.Embed(
-                    title="❌ Participation Refusée",
-                    description=f"Vous n'avez pas assez d'invitations pour participer au giveaway **{giveaway_found['prize']}**.",
-                    color=discord.Color.red()
-                )
-                embed.add_field(
-                    name="📊 Vos invitations",
-                    value=f"**{real_invites}** / {min_invites} requises",
-                    inline=True
-                )
-                embed.add_field(
-                    name="💡 Comment obtenir des invitations ?",
-                    value="Invitez des amis sur le serveur avec votre lien d'invitation !",
-                    inline=False
-                )
-                embed.set_footer(text="Utilisez !my_invites pour voir vos statistiques")
-                
-                try:
-                    await member.send(embed=embed)
-                except discord.Forbidden:
-                    pass  # L'utilisateur a les MPs désactivés
-                    
-            except Exception as e:
-                print(f"❌ Erreur lors du retrait de réaction: {e}")
-            return
-        
-        # L'utilisateur est éligible ! Ajouter la participation
+        # Ajouter la participation
         entries = get_participation_entries(real_invites)
         
         if "participants" not in giveaway_found:
@@ -312,11 +278,14 @@ class GiveawaySystem(commands.Cog):
             )
             embed.add_field(name="🎫 Vos chances", value=f"**{entries}** entrée(s)", inline=True)
             embed.add_field(name="📨 Vos invitations", value=f"**{real_invites}**", inline=True)
-            embed.add_field(
-                name="💡 Astuce",
-                value="Plus vous avez d'invitations, plus vous avez de chances de gagner !",
-                inline=False
-            )
+            
+            if entries == 1:
+                embed.add_field(
+                    name="💡 Astuce",
+                    value="Invitez des amis pour augmenter vos chances de gagner !",
+                    inline=False
+                )
+            
             embed.set_footer(text="Bonne chance ! 🍀")
             
             await member.send(embed=embed)
@@ -390,16 +359,7 @@ class GiveawaySystem(commands.Cog):
                     f"👥 **{len(participants)}** participant(s)\n"
                     f"🎫 **{total_entries}** entrée(s) totales"
                 ),
-                inline=True
-            )
-            
-            embed.add_field(
-                name="📋 Conditions",
-                value=(
-                    f"📨 **{giveaway.get('min_invites', 0)}** invitations minimum\n"
-                    f"📊 Niveau **{giveaway.get('min_level', 0)}**+ requis"
-                ),
-                inline=True
+                inline=False
             )
             
             embed.add_field(
@@ -415,14 +375,13 @@ class GiveawaySystem(commands.Cog):
             )
             
             embed.add_field(
-                name="⚡ Système de chances",
+                name="⚡ Bonus Invitations",
                 value=(
+                    "Invitez des amis pour augmenter vos chances !\n"
                     "• 0-4 invites = 1 entrée\n"
                     "• 5-9 invites = 2 entrées\n"
                     "• 10-19 invites = 3 entrées\n"
-                    "• 20-29 invites = 5 entrées\n"
-                    "• 30-49 invites = 7 entrées\n"
-                    "• 50+ invites = 10 entrées"
+                    "• 20+ invites = encore plus !"
                 ),
                 inline=False
             )
@@ -638,7 +597,7 @@ class GiveawaySystem(commands.Cog):
         try:
             # Étape 1: Nom du prix
             embed = discord.Embed(
-                title="🎁 Création d'un Giveaway - Étape 1/5",
+                title="🎁 Création d'un Giveaway - Étape 1/4",
                 description="### 🏆 Quel est le prix à gagner ?",
                 color=discord.Color.blue()
             )
@@ -651,7 +610,7 @@ class GiveawaySystem(commands.Cog):
             
             # Étape 2: Nombre de gagnants
             embed = discord.Embed(
-                title="🎁 Création d'un Giveaway - Étape 2/5",
+                title="🎁 Création d'un Giveaway - Étape 2/4",
                 description="### 👥 Combien de gagnants ?",
                 color=discord.Color.blue()
             )
@@ -666,22 +625,9 @@ class GiveawaySystem(commands.Cog):
                 await ctx.send("❌ Le nombre de gagnants doit être au moins 1.")
                 return
             
-            # Étape 3: Invitations minimum
+            # Étape 3: Durée
             embed = discord.Embed(
-                title="🎁 Création d'un Giveaway - Étape 3/5",
-                description="### 📨 Combien d'invitations minimum pour participer ?",
-                color=discord.Color.blue()
-            )
-            embed.add_field(name="💡 Exemple", value="`0` (tout le monde) ou `5`", inline=False)
-            embed.add_field(name="✅ Progression", value=f"🏆 {prize}\n👥 {num_winners} gagnant(s)", inline=False)
-            await ctx.send(embed=embed)
-            
-            msg = await self.bot.wait_for("message", timeout=60, check=check)
-            min_invites = int(msg.content.strip())
-            
-            # Étape 4: Durée
-            embed = discord.Embed(
-                title="🎁 Création d'un Giveaway - Étape 4/5",
+                title="🎁 Création d'un Giveaway - Étape 3/4",
                 description="### ⏰ Durée du giveaway ?",
                 color=discord.Color.blue()
             )
@@ -697,7 +643,7 @@ class GiveawaySystem(commands.Cog):
             )
             embed.add_field(
                 name="✅ Progression",
-                value=f"🏆 {prize}\n👥 {num_winners} gagnant(s)\n📨 {min_invites} invitations min.",
+                value=f"🏆 {prize}\n👥 {num_winners} gagnant(s)",
                 inline=False
             )
             await ctx.send(embed=embed)
@@ -730,9 +676,9 @@ class GiveawaySystem(commands.Cog):
             else:
                 duration_display = f"{duration_seconds // 60} minute(s)"
             
-            # Étape 5: Description (optionnelle)
+            # Étape 4: Description (optionnelle)
             embed = discord.Embed(
-                title="🎁 Création d'un Giveaway - Étape 5/5",
+                title="🎁 Création d'un Giveaway - Étape 4/4",
                 description="### 📝 Description (optionnelle)",
                 color=discord.Color.blue()
             )
@@ -752,7 +698,6 @@ class GiveawaySystem(commands.Cog):
             
             embed.add_field(name="🏆 Prix", value=prize, inline=True)
             embed.add_field(name="👥 Gagnants", value=str(num_winners), inline=True)
-            embed.add_field(name="📨 Invitations min.", value=str(min_invites), inline=True)
             embed.add_field(name="⏰ Durée", value=duration_display, inline=True)
             embed.add_field(name="📅 Fin", value=f"<t:{int(end_time.timestamp())}:F>", inline=True)
             
@@ -803,13 +748,7 @@ class GiveawaySystem(commands.Cog):
             giveaway_embed.add_field(
                 name="📊 Participation",
                 value="👥 **0** participant(s)\n🎫 **0** entrée(s) totales",
-                inline=True
-            )
-            
-            giveaway_embed.add_field(
-                name="📋 Conditions",
-                value=f"📨 **{min_invites}** invitations minimum",
-                inline=True
+                inline=False
             )
             
             giveaway_embed.add_field(name="━━━━━━━━━━━━━━━━━━━━", value="", inline=False)
@@ -821,8 +760,9 @@ class GiveawaySystem(commands.Cog):
             )
             
             giveaway_embed.add_field(
-                name="⚡ Système de chances",
+                name="⚡ Bonus Invitations",
                 value=(
+                    "Invitez des amis pour augmenter vos chances !\n"
                     "• 0-4 invites = 1 entrée\n"
                     "• 5-9 invites = 2 entrées\n"
                     "• 10-19 invites = 3 entrées\n"
@@ -845,8 +785,6 @@ class GiveawaySystem(commands.Cog):
             giveaways_actifs[giveaway_id] = {
                 "prize": prize,
                 "num_winners": num_winners,
-                "min_invites": min_invites,
-                "min_level": 0,
                 "description": description,
                 "end_time": end_time.isoformat(),
                 "channel_id": ctx.channel.id,
@@ -948,8 +886,6 @@ class GiveawaySystem(commands.Cog):
         giveaways_actifs[giveaway_id] = {
             "prize": prize,
             "num_winners": winners,
-            "min_invites": 0,
-            "min_level": 0,
             "description": None,
             "end_time": end_time.isoformat(),
             "channel_id": ctx.channel.id,
@@ -1153,7 +1089,6 @@ class GiveawaySystem(commands.Cog):
         
         embed.add_field(name="🏷️ Statut", value=status_text.get(gw["status"], "Inconnu"), inline=True)
         embed.add_field(name="👥 Gagnants", value=str(gw["num_winners"]), inline=True)
-        embed.add_field(name="📨 Invites min.", value=str(gw.get("min_invites", 0)), inline=True)
         embed.add_field(name="👥 Participants", value=str(len(participants)), inline=True)
         embed.add_field(name="🎫 Entrées", value=str(total_entries), inline=True)
         embed.add_field(name="⏰ Fin", value=f"<t:{int(end_time.timestamp())}:R>", inline=True)
