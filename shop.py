@@ -189,11 +189,15 @@ DEFAULT_SHOP_ITEMS = {
 
 # Catégories avec emojis
 CATEGORIES = {
-    "roles": {"name": "🎭 Rôles", "emoji": "🎭"},
-    "boosts": {"name": "⚡ Boosts", "emoji": "⚡"},
-    "cosmetics": {"name": "✨ Cosmétiques", "emoji": "✨"},
-    "privileges": {"name": "👑 Privilèges", "emoji": "👑"},
-    "lottery": {"name": "🎲 Loterie", "emoji": "🎲"}
+    "roles": {"name": "🎭 Rôles", "emoji": "🎭", "description": "Rôles personnalisés et exclusifs"},
+    "boosts": {"name": "⚡ Boosts", "emoji": "⚡", "description": "Multiplicateurs et avantages temporaires"},
+    "cosmetics": {"name": "✨ Cosmétiques", "emoji": "✨", "description": "Personnalisez votre profil"},
+    "privileges": {"name": "👑 Privilèges", "emoji": "👑", "description": "Accès et droits spéciaux"},
+    "lottery": {"name": "🎲 Loterie", "emoji": "🎲", "description": "Tentez votre chance !"},
+    "manga_packs": {"name": "📚 Packs Manga", "emoji": "📚", "description": "Packs fans par manga"},
+    "social": {"name": "💬 Social", "emoji": "💬", "description": "Interactions communautaires"},
+    "utility": {"name": "🔧 Utilitaires", "emoji": "🔧", "description": "Tokens et modifications"},
+    "limited": {"name": "🌟 Édition Limitée", "emoji": "🌟", "description": "Items rares et exclusifs"}
 }
 
 # Données en mémoire
