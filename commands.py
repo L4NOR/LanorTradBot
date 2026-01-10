@@ -75,36 +75,200 @@ MANGA_ROLES = {
     "Tougen Anki": 1326778962143215677
 }
 
-# Fonction pour vérifier si un chapitre est complet
 def est_chapitre_complet(tasks):
     """Vérifie si toutes les tâches (clean, trad, check, edit) sont terminées"""
     taches_requises = ["clean", "trad", "check", "edit"]
     return all(tasks.get(tache) == "✅ Terminé" for tache in taches_requises)
 
-
-# Fonction helper pour normaliser le nom du manga (pour la recherche)
 def normaliser_manga_name(name):
     """Normalise le nom du manga pour la comparaison"""
     return name.lower().strip()
 
-
-# Fonction helper pour extraire manga et chapitre d'une clé
 def extraire_manga_chapitre(key):
     """Extrait le nom du manga et le numéro de chapitre d'une clé"""
     if "_" not in key:
         return None, None
-    
-    # Utiliser rsplit pour gérer les noms avec underscores
     parts = key.rsplit("_", 1)
     if len(parts) != 2:
         return None, None
-    
     manga_name = parts[0].strip()
     chapter_str = parts[1].strip()
-    
     if chapter_str.isdigit():
         return manga_name, int(chapter_str)
     return manga_name, None
+
+
+# ==================== CONFIGURATION DU MENU HELP ====================
+
+HELP_CATEGORIES = {
+    "general": {
+        "emoji": "🎮",
+        "name": "Général",
+        "description": "Commandes de base accessibles à tous",
+        "color": 0x3498DB,
+        "commands": [
+            {"name": "help", "usage": "!help [commande]", "desc": "Affiche ce menu d'aide interactif"},
+            {"name": "info", "usage": "!info", "desc": "Informations sur le serveur"},
+            {"name": "userinfo", "usage": "!userinfo [@membre]", "desc": "Détails du profil d'un membre"},
+            {"name": "ping", "usage": "!ping", "desc": "Vérifie la latence du bot"},
+            {"name": "avancee", "usage": "!avancee", "desc": "Voir l'avancée des chapitres manga"},
+        ]
+    },
+    "community": {
+        "emoji": "💬",
+        "name": "Communauté",
+        "description": "Reviews, théories et interactions",
+        "color": 0x9B59B6,
+        "commands": [
+            {"name": "review", "usage": "!review <manga> <chap> <1-5> [msg]", "desc": "Laisser une review sur un chapitre"},
+            {"name": "my_reviews", "usage": "!my_reviews", "desc": "Voir toutes vos reviews"},
+            {"name": "chapter_reviews", "usage": "!chapter_reviews <manga> <chap>", "desc": "Voir les reviews d'un chapitre"},
+            {"name": "theory", "usage": "!theory <manga> <théorie>", "desc": "Poster une théorie"},
+            {"name": "theories", "usage": "!theories [manga]", "desc": "Lister les théories populaires"},
+            {"name": "theory_info", "usage": "!theory_info <id>", "desc": "Détails d'une théorie"},
+        ]
+    },
+    "badges": {
+        "emoji": "🏆",
+        "name": "Badges",
+        "description": "Système de badges et récompenses",
+        "color": 0xF1C40F,
+        "commands": [
+            {"name": "badges", "usage": "!badges [@membre]", "desc": "Voir les badges d'un membre"},
+            {"name": "all_badges", "usage": "!all_badges", "desc": "Liste tous les badges disponibles"},
+            {"name": "badge_info", "usage": "!badge_info <nom>", "desc": "Détails d'un badge spécifique"},
+            {"name": "display_badge", "usage": "!display_badge <nom>", "desc": "Afficher un badge (max 3)"},
+            {"name": "remove_badge", "usage": "!remove_badge <nom>", "desc": "Retirer un badge affiché"},
+            {"name": "leaderboard_badges", "usage": "!leaderboard_badges", "desc": "Top collectionneurs de badges"},
+        ]
+    },
+    "shop": {
+        "emoji": "🛒",
+        "name": "Shop",
+        "description": "Boutique et système de points",
+        "color": 0x2ECC71,
+        "commands": [
+            {"name": "shop", "usage": "!shop [catégorie]", "desc": "Parcourir la boutique"},
+            {"name": "buy", "usage": "!buy <item>", "desc": "Acheter un item"},
+            {"name": "inventory", "usage": "!inventory [@membre]", "desc": "Voir votre inventaire"},
+            {"name": "use", "usage": "!use <item>", "desc": "Utiliser un item consommable"},
+        ]
+    },
+    "giveaway": {
+        "emoji": "🎁",
+        "name": "Giveaways",
+        "description": "Concours et système d'invitations",
+        "color": 0xE91E63,
+        "commands": [
+            {"name": "my_invites", "usage": "!my_invites", "desc": "Voir vos stats d'invitations"},
+            {"name": "leaderboard_invites", "usage": "!leaderboard_invites", "desc": "Classement des invitations"},
+            {"name": "list_giveaways", "usage": "!list_giveaways", "desc": "Liste des giveaways actifs"},
+            {"name": "giveaway_info", "usage": "!giveaway_info <id>", "desc": "Détails d'un giveaway"},
+        ]
+    },
+    "admin_tasks": {
+        "emoji": "📋",
+        "name": "Tâches",
+        "description": "Gestion des tâches de traduction",
+        "color": 0xE74C3C,
+        "admin": True,
+        "commands": [
+            {"name": "task", "usage": "!task <action> <manga> <chap...>", "desc": "MAJ tâche (clean/trad/check/edit)"},
+            {"name": "task_status", "usage": "!task_status <manga> <chap>", "desc": "État des tâches d'un chapitre"},
+            {"name": "task_all", "usage": "!task_all", "desc": "Toutes les tâches en cours"},
+            {"name": "delete_task", "usage": "!delete_task <manga> <chap>", "desc": "Supprimer tâches d'un chapitre"},
+            {"name": "fix_tasks", "usage": "!fix_tasks", "desc": "Normaliser les clés des tâches"},
+            {"name": "actualiser", "usage": "!actualiser", "desc": "Sauvegarder/exporter les données"},
+        ]
+    },
+    "admin_rappels": {
+        "emoji": "⏰",
+        "name": "Rappels",
+        "description": "Gestion des rappels de deadlines",
+        "color": 0xFF9800,
+        "admin": True,
+        "commands": [
+            {"name": "add_rappel", "usage": "!add_rappel", "desc": "Créer un rappel (interactif)"},
+            {"name": "list_rappels", "usage": "!list_rappels", "desc": "Liste des rappels actifs"},
+            {"name": "delete_rappel", "usage": "!delete_rappel <id>", "desc": "Supprimer un rappel"},
+            {"name": "actualiser_rappels", "usage": "!actualiser_rappels <action>", "desc": "Save/reload rappels"},
+            {"name": "test_rappel", "usage": "!test_rappel", "desc": "Tester l'envoi des rappels"},
+        ]
+    },
+    "admin_giveaway": {
+        "emoji": "🎉",
+        "name": "Admin Giveaways",
+        "description": "Gestion des giveaways",
+        "color": 0x9C27B0,
+        "admin": True,
+        "commands": [
+            {"name": "create_giveaway", "usage": "!create_giveaway", "desc": "Créer un giveaway (interactif)"},
+            {"name": "giveaway", "usage": "!giveaway <durée> <gagnants> <prix>", "desc": "Giveaway rapide"},
+            {"name": "end_giveaway", "usage": "!end_giveaway <id>", "desc": "Terminer un giveaway"},
+            {"name": "delete_giveaway", "usage": "!delete_giveaway <id>", "desc": "Supprimer un giveaway"},
+            {"name": "reroll", "usage": "!reroll <id> [nb]", "desc": "Retirer nouveaux gagnants"},
+            {"name": "giveaway_participants", "usage": "!giveaway_participants <id>", "desc": "Liste participants"},
+            {"name": "add_invites", "usage": "!add_invites @user <nb>", "desc": "Ajouter invitations"},
+            {"name": "remove_invites", "usage": "!remove_invites @user <nb>", "desc": "Retirer invitations"},
+            {"name": "reset_user_invites", "usage": "!reset_user_invites @user", "desc": "Reset invitations"},
+            {"name": "server_invite_stats", "usage": "!server_invite_stats", "desc": "Stats globales invitations"},
+        ]
+    },
+    "admin_community": {
+        "emoji": "👥",
+        "name": "Admin Communauté",
+        "description": "Gestion communautaire",
+        "color": 0x00BCD4,
+        "admin": True,
+        "commands": [
+            {"name": "newchapter", "usage": "!newchapter <msg_id> <manga> <chap>", "desc": "Lier chapitre au système"},
+            {"name": "theory_status", "usage": "!theory_status <id> <status>", "desc": "Changer statut théorie"},
+            {"name": "give_badge", "usage": "!give_badge @user <badge>", "desc": "Donner un badge"},
+            {"name": "announce_chapter", "usage": "!announce_chapter", "desc": "Annoncer chapitre (interactif)"},
+            {"name": "test_announce", "usage": "!test_announce", "desc": "Tester une annonce"},
+        ]
+    },
+    "admin_shop": {
+        "emoji": "💰",
+        "name": "Admin Shop",
+        "description": "Gestion de la boutique",
+        "color": 0x4CAF50,
+        "admin": True,
+        "commands": [
+            {"name": "shop_add", "usage": "!shop_add", "desc": "Ajouter un item (interactif)"},
+            {"name": "shop_remove", "usage": "!shop_remove <item>", "desc": "Retirer un item"},
+            {"name": "give_item", "usage": "!give_item @user <item>", "desc": "Donner un item"},
+            {"name": "set_points", "usage": "!set_points @user <montant>", "desc": "Définir points d'un membre"},
+            {"name": "add_points_admin", "usage": "!add_points_admin @user <nb>", "desc": "Ajouter/retirer points"},
+        ]
+    },
+    "admin_mod": {
+        "emoji": "🛡️",
+        "name": "Modération",
+        "description": "Commandes de modération",
+        "color": 0x607D8B,
+        "admin": True,
+        "commands": [
+            {"name": "clear", "usage": "!clear <nombre>", "desc": "Supprimer des messages"},
+            {"name": "kick", "usage": "!kick @user [raison]", "desc": "Expulser un membre"},
+            {"name": "ban", "usage": "!ban @user [raison]", "desc": "Bannir un membre"},
+            {"name": "unban", "usage": "!unban nom#tag", "desc": "Débannir un membre"},
+            {"name": "warn", "usage": "!warn @user [raison]", "desc": "Avertir un membre"},
+        ]
+    },
+    "admin_data": {
+        "emoji": "💾",
+        "name": "Données",
+        "description": "Gestion centralisée des données",
+        "color": 0x795548,
+        "admin": True,
+        "commands": [
+            {"name": "data", "usage": "!data [action] [cible]", "desc": "Gestionnaire données"},
+            {"name": "data_list", "usage": "!data_list", "desc": "Liste modules de données"},
+            {"name": "backup", "usage": "!backup", "desc": "Sauvegarde + export complet"},
+        ]
+    },
+}
 
 
 def setup(bot):
@@ -113,116 +277,295 @@ def setup(bot):
     bot_instance = bot
     bot.remove_command('help')
     
+    # ==================== NOUVELLE COMMANDE HELP ====================
+    
     @bot.command()
-    async def help(ctx):
-        """Affiche le menu d'aide des commandes"""
-        admin_roles = [1326417422663680090, 1331346420883525682]
+    async def help(ctx, *, command_name: str = None):
+        """Affiche le menu d'aide interactif"""
+        admin_roles = [1326417422663680090, 1330147432847114321, 1331346420883525682]
         user_roles = [role.id for role in ctx.author.roles]
+        is_admin = any(role in user_roles for role in admin_roles)
         
-        embed = discord.Embed(
-            title="📚 **Menu d'Aide - LanorTrad Bot**",
-            description=(
-                "Bienvenue dans le menu d'aide ! Voici les commandes disponibles pour interagir avec le bot.\n\n"
-                "🔹 **Commandes Générales** : Accessibles à tous.\n"
-                "🎁 **Commandes Giveaway** : Pour les invitations et concours.\n"
-                "🔧 **Commandes Admin** : Réservées aux administrateurs."
-            ),
-            color=discord.Color.blue(),
-            timestamp=datetime.now()
+        # Si une commande spécifique est demandée
+        if command_name:
+            await show_command_help(ctx, command_name, is_admin)
+            return
+        
+        # Menu principal
+        embed = create_main_help_embed(ctx, is_admin)
+        message = await ctx.send(embed=embed)
+        
+        # Ajouter les réactions
+        categories_to_show = get_available_categories(is_admin)
+        
+        await message.add_reaction("🏠")
+        for cat_key in categories_to_show:
+            cat = HELP_CATEGORIES[cat_key]
+            await message.add_reaction(cat["emoji"])
+        await message.add_reaction("❌")
+        
+        def check(reaction, user):
+            return user == ctx.author and reaction.message.id == message.id
+        
+        while True:
+            try:
+                reaction, user = await bot.wait_for("reaction_add", timeout=120, check=check)
+                emoji = str(reaction.emoji)
+                
+                await message.remove_reaction(reaction, user)
+                
+                if emoji == "❌":
+                    await message.delete()
+                    return
+                
+                if emoji == "🏠":
+                    await message.edit(embed=create_main_help_embed(ctx, is_admin))
+                    continue
+                
+                for cat_key, cat in HELP_CATEGORIES.items():
+                    if cat["emoji"] == emoji:
+                        if cat.get("admin") and not is_admin:
+                            continue
+                        await message.edit(embed=create_category_embed(ctx, cat_key, cat))
+                        break
+                
+            except asyncio.TimeoutError:
+                try:
+                    await message.clear_reactions()
+                    timeout_embed = create_main_help_embed(ctx, is_admin)
+                    timeout_embed.set_footer(text="⏰ Menu expiré • !help pour réouvrir")
+                    await message.edit(embed=timeout_embed)
+                except:
+                    pass
+                break
+    
+    def get_available_categories(is_admin):
+        """Retourne les catégories disponibles"""
+        categories = []
+        for cat_key, cat in HELP_CATEGORIES.items():
+            if cat.get("admin") and not is_admin:
+                continue
+            categories.append(cat_key)
+        return categories
+    
+    def create_main_help_embed(ctx, is_admin):
+        """Crée l'embed principal du menu d'aide"""
+        embed = discord.Embed(color=0x5865F2, timestamp=datetime.now())
+        
+        embed.set_author(
+            name="📚 Centre d'Aide • LanorTrad Bot",
+            icon_url=ctx.guild.icon.url if ctx.guild.icon else None
         )
         
+        # Header avec ASCII art simplifié
+        description = (
+            "```ansi\n"
+            "\u001b[1;36m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;36m║\u001b[0m   \u001b[1;37mBienvenue dans le menu d'aide !\u001b[0m   \u001b[1;36m║\u001b[0m\n"
+            "\u001b[1;36m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```\n"
+            "🔹 Cliquez sur un **emoji** pour voir une catégorie\n"
+            "🔹 Utilisez `!help <commande>` pour des détails\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        )
+        embed.description = description
+        
+        # Catégories publiques
+        public_cats = ""
+        for cat_key in ["general", "community", "badges", "shop", "giveaway"]:
+            cat = HELP_CATEGORIES[cat_key]
+            cmd_count = len(cat["commands"])
+            public_cats += f"{cat['emoji']} **{cat['name']}** › `{cmd_count}` cmds\n"
+        
         embed.add_field(
-            name="🎮 **Commandes Générales**",
+            name="🌐 __Commandes Publiques__",
+            value=public_cats,
+            inline=True
+        )
+        
+        # Catégories admin
+        if is_admin:
+            admin_cats_1 = ""
+            admin_cats_2 = ""
+            admin_list = [k for k, v in HELP_CATEGORIES.items() if v.get("admin")]
+            
+            for i, cat_key in enumerate(admin_list):
+                cat = HELP_CATEGORIES[cat_key]
+                cmd_count = len(cat["commands"])
+                line = f"{cat['emoji']} **{cat['name']}** › `{cmd_count}`\n"
+                if i < len(admin_list) // 2 + 1:
+                    admin_cats_1 += line
+                else:
+                    admin_cats_2 += line
+            
+            embed.add_field(
+                name="🔧 __Administration__",
+                value=admin_cats_1,
+                inline=True
+            )
+            if admin_cats_2:
+                embed.add_field(
+                    name="​",  # Caractère invisible
+                    value=admin_cats_2,
+                    inline=True
+                )
+        
+        # Stats
+        total_cmds = sum(len(cat["commands"]) for cat in HELP_CATEGORIES.values() 
+                        if not cat.get("admin") or is_admin)
+        total_public = sum(len(cat["commands"]) for cat in HELP_CATEGORIES.values() 
+                          if not cat.get("admin"))
+        
+        embed.add_field(
+            name="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
             value=(
-                "• !help - Afficher ce menu d'aide\n"
-                "• !info - Informations du serveur\n"
-                "• !userinfo - Détails du profil utilisateur\n"
-                "• !ping - Vérifier la latence\n"
-                "• !avancee - Voir l'avancée des chapitres\n"
+                f"📊 **{total_cmds}** commandes disponibles "
+                f"({total_public} publiques)\n"
+                f"🏠 `Accueil` • ❌ `Fermer`"
             ),
             inline=False
         )
-        
-        embed.add_field(
-            name="🎁 **Commandes Giveaway**",
-            value=(
-                "• !my_invites - Voir vos statistiques d'invitations\n"
-                "• !enter_giveaway <id> - Participer à un giveaway\n"
-                "• !leaderboard_invites - Classement des invitations\n"
-                "• !list_giveaways - Liste tous les giveaways\n"
-                "• !giveaway_info <id> - Informations d'un giveaway\n"
-            ),
-            inline=False
-        )
-        
-        if any(role in user_roles for role in admin_roles):
-            embed.add_field(
-                name="🔧 **Commandes Admin - Général**",
-                value=(
-                    "• !clear <nombre> - Supprimer des messages\n"
-                    "• !kick @utilisateur [raison] - Expulser un membre\n"
-                    "• !ban @utilisateur [raison] - Bannir un membre\n"
-                    "• !unban nom_utilisateur#tag - Débannir un membre\n"
-                    "• !warn @utilisateur [raison] - Avertir un membre\n"
-                ),
-                inline=False
-            )
-            
-            embed.add_field(
-                name="🔧 **Commandes Admin - Tâches**",
-                value=(
-                    "• !task <action> <manga> <chapitre> - Mettre à jour l'état d'une tâche\n"
-                    "• !task_status <manga> <chapitre> - Afficher l'état des tâches\n"
-                    "• !task_all - Afficher toutes les tâches en cours\n"
-                    "• !delete_task <manga> <chapitre> - Supprimer les tâches d'un chapitre\n"
-                    "• !fix_tasks - Normaliser les clés des tâches\n"
-                    "• !actualiser <save|reload> - Enregistrer ou recharger le fichier etat_taches.json\n"
-                ),
-                inline=False
-            )
-            
-            embed.add_field(
-                name="🔧 **Commandes Admin - Giveaway**",
-                value=(
-                    "• !create_giveaway - Créer un nouveau giveaway (interactif)\n"
-                    "• !end_giveaway <id> - Terminer un giveaway manuellement\n"
-                    "• !delete_giveaway <id> - Supprimer un giveaway\n"
-                    "• !giveaway_participants <id> - Liste des participants\n"
-                    "• !add_invites @user <nombre> - Ajouter des invitations\n"
-                    "• !remove_invites @user <nombre> - Retirer des invitations\n"
-                    "• !reset_user_invites @user - Réinitialiser les invitations\n"
-                    "• !server_invite_stats - Statistiques globales d'invitations\n"
-                ),
-                inline=False
-            )
-        
-        embed.add_field(name="━━━━━━━━━━━━━━━━━━━━━━━", value="", inline=False)
         
         embed.set_footer(
-            text=f"Demandé par {ctx.author.name} | LanorTrad Bot",
+            text=f"Demandé par {ctx.author.name} │ Préfixe: !",
             icon_url=ctx.author.avatar.url if ctx.author.avatar else None
         )
         
         if ctx.guild.icon:
             embed.set_thumbnail(url=ctx.guild.icon.url)
         
+        return embed
+    
+    def create_category_embed(ctx, cat_key, cat):
+        """Crée l'embed d'une catégorie"""
+        embed = discord.Embed(color=cat["color"], timestamp=datetime.now())
+        
+        embed.set_author(
+            name=f"{cat['emoji']} {cat['name']}",
+            icon_url=ctx.guild.icon.url if ctx.guild.icon else None
+        )
+        
+        if cat.get("admin"):
+            embed.description = f"🔒 *Réservé aux administrateurs*\n\n{cat['description']}\n"
+        else:
+            embed.description = f"*{cat['description']}*\n"
+        
+        # Construire la liste des commandes
+        cmd_list = ""
+        for cmd in cat["commands"]:
+            cmd_list += f"**`{cmd['usage']}`**\n"
+            cmd_list += f"└ {cmd['desc']}\n\n"
+        
+        # Split si trop long
+        if len(cmd_list) > 1024:
+            mid = len(cat["commands"]) // 2
+            
+            first = ""
+            for cmd in cat["commands"][:mid]:
+                first += f"**`{cmd['usage']}`**\n└ {cmd['desc']}\n\n"
+            
+            second = ""
+            for cmd in cat["commands"][mid:]:
+                second += f"**`{cmd['usage']}`**\n└ {cmd['desc']}\n\n"
+            
+            embed.add_field(name="📖 Commandes", value=first.strip(), inline=False)
+            embed.add_field(name="​", value=second.strip(), inline=False)
+        else:
+            embed.add_field(name="📖 Commandes", value=cmd_list.strip(), inline=False)
+        
+        embed.add_field(
+            name="━━━━━━━━━━━━━━━━━━━━",
+            value="🏠 `Accueil` • ❌ `Fermer`\n`!help <cmd>` pour plus de détails",
+            inline=False
+        )
+        
+        embed.set_footer(
+            text=f"{len(cat['commands'])} commande(s) │ {ctx.author.name}",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        )
+        
+        return embed
+    
+    async def show_command_help(ctx, command_name, is_admin):
+        """Aide détaillée d'une commande"""
+        command_name = command_name.lower().strip().lstrip('!')
+        
+        found_cmd = None
+        found_cat = None
+        
+        for cat_key, cat in HELP_CATEGORIES.items():
+            if cat.get("admin") and not is_admin:
+                continue
+            for cmd in cat["commands"]:
+                if cmd["name"].lower() == command_name:
+                    found_cmd = cmd
+                    found_cat = cat
+                    break
+            if found_cmd:
+                break
+        
+        if not found_cmd:
+            embed = discord.Embed(
+                title="❌ Commande Introuvable",
+                description=(
+                    f"La commande `{command_name}` n'existe pas "
+                    f"ou vous n'y avez pas accès.\n\n"
+                    f"Utilisez `!help` pour voir toutes les commandes."
+                ),
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed, delete_after=10)
+            return
+        
+        embed = discord.Embed(
+            title=f"📖 Commande: !{found_cmd['name']}",
+            color=found_cat["color"],
+            timestamp=datetime.now()
+        )
+        
+        embed.add_field(
+            name="📝 Description",
+            value=found_cmd["desc"],
+            inline=False
+        )
+        embed.add_field(
+            name="⌨️ Syntaxe",
+            value=f"```{found_cmd['usage']}```",
+            inline=False
+        )
+        embed.add_field(
+            name="📁 Catégorie",
+            value=f"{found_cat['emoji']} {found_cat['name']}",
+            inline=True
+        )
+        embed.add_field(
+            name="🔐 Permission",
+            value="🔒 Admin" if found_cat.get("admin") else "🔓 Tous",
+            inline=True
+        )
+        
+        embed.set_footer(
+            text=f"Demandé par {ctx.author.name}",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        )
+        
         await ctx.send(embed=embed)
+    
+    # ==================== AUTRES COMMANDES ====================
     
     @bot.command()
     @commands.has_permissions(manage_messages=True)
     async def clear(ctx, amount: int):
         """Supprime un nombre spécifié de messages"""
         if amount <= 0:
-            await ctx.send("Le nombre de messages à supprimer doit être supérieur à 0.")
+            await ctx.send("Le nombre de messages doit être > 0.")
             return
         
         deleted = await ctx.channel.purge(limit=amount + 1)
-        clear_message = f"🗑️ {ctx.author.mention} a supprimé des messages dans ce salon."
-        await ctx.send(clear_message, delete_after=5)
         
         embed = discord.Embed(
             title="🗑️ Messages supprimés",
-            description=f'{len(deleted)-1} messages ont été supprimés.',
+            description=f'**{len(deleted)-1}** messages ont été supprimés.',
             color=discord.Color.red()
         )
         await ctx.send(embed=embed, delete_after=5)
@@ -231,13 +574,11 @@ def setup(bot):
     @commands.has_permissions(kick_members=True)
     async def kick(ctx, member: discord.Member, *, reason=None):
         """Expulse un membre du serveur"""
-        kick_message = f"👢 {ctx.author.mention} a expulsé {member.mention} du serveur."
-        await ctx.send(kick_message)
         await member.kick(reason=reason)
         
         embed = discord.Embed(
             title="👢 Membre expulsé",
-            description=f"{member.mention} a été expulsé par {ctx.author.mention}.\nRaison: {reason or 'Aucune raison spécifiée'}",
+            description=f"{member.mention} a été expulsé.\n**Raison:** {reason or 'Non spécifiée'}",
             color=discord.Color.red()
         )
         await ctx.send(embed=embed)
@@ -246,13 +587,11 @@ def setup(bot):
     @commands.has_permissions(ban_members=True)
     async def ban(ctx, member: discord.Member, *, reason=None):
         """Bannit un membre du serveur"""
-        ban_message = f"🔨 {ctx.author.mention} a banni {member.mention} du serveur."
-        await ctx.send(ban_message)
         await member.ban(reason=reason)
         
         embed = discord.Embed(
             title="🔨 Membre banni",
-            description=f"{member.mention} a été banni par {ctx.author.mention}.\nRaison: {reason or 'Aucune raison spécifiée'}",
+            description=f"{member.mention} a été banni.\n**Raison:** {reason or 'Non spécifiée'}",
             color=discord.Color.red()
         )
         await ctx.send(embed=embed)
@@ -266,15 +605,12 @@ def setup(bot):
         
         for ban_entry in banned_users:
             user = ban_entry.user
-            
             if (user.name, user.discriminator) == (member_name, member_discriminator):
                 await ctx.guild.unban(user)
-                unban_message = f"🔓 {ctx.author.mention} a débanni {user.mention}."
-                await ctx.send(unban_message)
                 
                 embed = discord.Embed(
                     title="🔓 Membre débanni",
-                    description=f"{user.mention} a été débanni par {ctx.author.mention}.",
+                    description=f"{user.mention} a été débanni.",
                     color=discord.Color.green()
                 )
                 await ctx.send(embed=embed)
@@ -284,12 +620,9 @@ def setup(bot):
     @commands.has_permissions(kick_members=True)
     async def warn(ctx, member: discord.Member, *, reason=None):
         """Avertit un membre"""
-        warn_message = f"⚠️ {ctx.author.mention} a averti {member.mention}."
-        await ctx.send(warn_message)
-        
         embed = discord.Embed(
             title="⚠️ Avertissement",
-            description=f"{member.mention} a reçu un avertissement de {ctx.author.mention}.\nRaison: {reason or 'Aucune raison spécifiée'}",
+            description=f"{member.mention} a reçu un avertissement.\n**Raison:** {reason or 'Non spécifiée'}",
             color=discord.Color.orange()
         )
         await ctx.send(embed=embed)
@@ -297,17 +630,14 @@ def setup(bot):
     @bot.command()
     async def info(ctx):
         """Affiche les informations du serveur"""
-        info_message = f"ℹ️ {ctx.author.mention} a demandé les informations du serveur."
-        await ctx.send(info_message)
-        
         embed = discord.Embed(
-            title=f"ℹ️ Informations sur {ctx.guild.name}",
+            title=f"ℹ️ {ctx.guild.name}",
             color=discord.Color.blue(),
             timestamp=datetime.now()
         )
-        embed.add_field(name="📊 Membres", value=ctx.guild.member_count)
-        embed.add_field(name="📅 Créé le", value=ctx.guild.created_at.strftime("%d/%m/%Y"))
-        embed.add_field(name="👑 Propriétaire", value=ctx.guild.owner.mention)
+        embed.add_field(name="📊 Membres", value=ctx.guild.member_count, inline=True)
+        embed.add_field(name="📅 Créé le", value=ctx.guild.created_at.strftime("%d/%m/%Y"), inline=True)
+        embed.add_field(name="👑 Propriétaire", value=ctx.guild.owner.mention, inline=True)
         
         if ctx.guild.icon:
             embed.set_thumbnail(url=ctx.guild.icon.url)
@@ -318,19 +648,16 @@ def setup(bot):
     async def userinfo(ctx, member: discord.Member = None):
         """Affiche les informations d'un utilisateur"""
         member = member or ctx.author
-        userinfo_message = f"ℹ️ {ctx.author.mention} a demandé les informations de {member.mention}."
-        await ctx.send(userinfo_message)
-        
         roles = [role.mention for role in member.roles if role.name != "@everyone"]
         
         embed = discord.Embed(
-            title=f"ℹ️ Informations sur {member.name}",
+            title=f"ℹ️ {member.name}",
             color=member.color,
             timestamp=datetime.now()
         )
-        embed.add_field(name="📅 A rejoint le", value=member.joined_at.strftime("%d/%m/%Y"))
-        embed.add_field(name="🔰 Compte créé le", value=member.created_at.strftime("%d/%m/%Y"))
-        embed.add_field(name="🏷️ Rôles", value=" ".join(roles) if roles else "Aucun rôle", inline=False)
+        embed.add_field(name="📅 A rejoint", value=member.joined_at.strftime("%d/%m/%Y"), inline=True)
+        embed.add_field(name="🔰 Compte créé", value=member.created_at.strftime("%d/%m/%Y"), inline=True)
+        embed.add_field(name="🏷️ Rôles", value=" ".join(roles[:10]) if roles else "Aucun", inline=False)
         
         if member.avatar:
             embed.set_thumbnail(url=member.avatar.url)
@@ -340,12 +667,9 @@ def setup(bot):
     @bot.command()
     async def ping(ctx):
         """Vérifie la latence du bot"""
-        ping_message = f"🏓 {ctx.author.mention} a vérifié la latence du bot."
-        await ctx.send(ping_message)
-        
         embed = discord.Embed(
             title="🏓 Pong!",
-            description=f"Latence: {round(bot.latency * 1000)}ms",
+            description=f"Latence: **{round(bot.latency * 1000)}**ms",
             color=discord.Color.green()
         )
         await ctx.send(embed=embed)
@@ -364,7 +688,6 @@ def setup(bot):
         chapitres_erreur = []
         chapitres_complets = []
         
-        # CORRECTION: Normaliser le nom du manga (enlever les espaces en trop)
         manga_normalized = manga.strip()
         
         for chapitre_str in chapitres:
@@ -372,7 +695,6 @@ def setup(bot):
             
             try:
                 chapitre = int(chapitre_str)
-                # CORRECTION: Utiliser le nom normalisé pour la clé
                 chapitre_key = f"{manga_normalized.lower()}_{chapitre}"
                 
                 if chapitre_key not in etat_taches_global:
@@ -386,7 +708,6 @@ def setup(bot):
                 etat_taches_global[chapitre_key][action.lower()] = "✅ Terminé"
                 chapitres_traites.append(str(chapitre))
                 
-                # Vérifier si le chapitre est maintenant complet
                 if est_chapitre_complet(etat_taches_global[chapitre_key]):
                     chapitres_complets.append(str(chapitre))
                 
@@ -414,32 +735,24 @@ def setup(bot):
             thread_channel = bot.get_channel(thread_id)
             
             if thread_channel:
-                # Si des chapitres sont complets, envoyer une notification avec mention
                 if chapitres_complets:
                     mention_role = f"<@&{role_id}>"
                     chapitres_mention = ", ".join(chapitres_complets)
                     
                     embed = discord.Embed(
                         title="🎉 CHAPITRE(S) TERMINÉ(S) ! 🎉",
-                        description=f"Le(s) chapitre(s) **{chapitres_mention}** de **{manga_nom_formate}** est/sont maintenant complet(s) !",
+                        description=f"Le(s) chapitre(s) **{chapitres_mention}** de **{manga_nom_formate}** est/sont complet(s) !",
                         color=discord.Color.gold(),
                         timestamp=datetime.now()
                     )
                     embed.add_field(
                         name="✅ Toutes les tâches terminées",
-                        value="🧹 Clean\n🌍 Traduction\n✅ Check\n✏️ Edit",
+                        value="🧹 Clean • 🌍 Trad • ✅ Check • ✏️ Edit",
                         inline=False
                     )
-                    embed.add_field(
-                        name="📊 Voir l'avancée complète",
-                        value="Utilisez la commande `!avancee` pour voir tous les projets !",
-                        inline=False
-                    )
-                    embed.set_footer(text="Excellent travail à toute l'équipe ! 💪")
+                    embed.set_footer(text="Excellent travail ! 💪")
                     
                     await thread_channel.send(f"{mention_role}", embed=embed)
-                
-                # Sinon, envoyer un message aléatoire sans mention
                 else:
                     message_aleatoire = random.choice(MESSAGES_ALEATOIRES)
                     await thread_channel.send(message_aleatoire)
@@ -448,11 +761,9 @@ def setup(bot):
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
     async def task_status(ctx, manga: str, chapitre: int):
         """Affiche l'état des tâches pour un chapitre donné"""
-        # CORRECTION: Normaliser et chercher avec flexibilité
         manga_normalized = normaliser_manga_name(manga)
         chapitre_key = None
         
-        # Chercher la clé correspondante
         for key in etat_taches_global:
             key_manga, key_chap = extraire_manga_chapitre(key)
             if key_manga and normaliser_manga_name(key_manga) == manga_normalized and key_chap == chapitre:
@@ -460,35 +771,31 @@ def setup(bot):
                 break
         
         if chapitre_key is None:
-            await ctx.send(f"❌ Aucun état trouvé pour le chapitre **{chapitre}** de **{manga}**.")
+            await ctx.send(f"❌ Aucun état trouvé pour **{manga}** ch.**{chapitre}**.")
             return
         
         etat_taches = etat_taches_global[chapitre_key]
         
         embed = discord.Embed(
-            title=f"📋 État des Tâches : {manga} - Chapitre {chapitre}",
-            color=discord.Color.blue()
+            title=f"📋 {manga} - Chapitre {chapitre}",
+            color=discord.Color.gold() if est_chapitre_complet(etat_taches) else discord.Color.blue()
         )
         
         for tache, etat in etat_taches.items():
-            embed.add_field(name=tache.capitalize(), value=etat, inline=False)
+            embed.add_field(name=tache.capitalize(), value=etat, inline=True)
         
-        # Ajouter un indicateur si le chapitre est complet
         if est_chapitre_complet(etat_taches):
             embed.add_field(name="🎉 Statut", value="✅ Chapitre complet !", inline=False)
-            embed.color = discord.Color.gold()
         
         await ctx.send(embed=embed)
     
     @bot.command()
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
     async def delete_task(ctx, manga: str, chapitre: int):
-        """Supprime toutes les tâches associées à un chapitre donné"""
-        # CORRECTION: Normaliser et chercher avec flexibilité
+        """Supprime toutes les tâches d'un chapitre"""
         manga_normalized = normaliser_manga_name(manga)
         chapitre_key = None
         
-        # Chercher la clé correspondante
         for key in etat_taches_global:
             key_manga, key_chap = extraire_manga_chapitre(key)
             if key_manga and normaliser_manga_name(key_manga) == manga_normalized and key_chap == chapitre:
@@ -498,14 +805,14 @@ def setup(bot):
         if chapitre_key and chapitre_key in etat_taches_global:
             del etat_taches_global[chapitre_key]
             sauvegarder_etat_taches()
-            await ctx.send(f"✅ Toutes les tâches pour le chapitre **{chapitre}** de **{manga}** ont été supprimées.")
+            await ctx.send(f"✅ Tâches supprimées pour **{manga}** ch.**{chapitre}**.")
         else:
-            await ctx.send(f"❌ Aucune tâche trouvée pour le chapitre **{chapitre}** de **{manga}**.")
+            await ctx.send(f"❌ Aucune tâche trouvée pour **{manga}** ch.**{chapitre}**.")
     
     @bot.command(name="fix_tasks")
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
     async def fix_tasks(ctx):
-        """Normalise les clés des tâches (corrige les espaces)"""
+        """Normalise les clés des tâches"""
         global etat_taches_global
         
         old_count = len(etat_taches_global)
@@ -513,17 +820,13 @@ def setup(bot):
         fixed_count = 0
         
         for key, value in etat_taches_global.items():
-            # Extraire manga et chapitre
             key_manga, key_chap = extraire_manga_chapitre(key)
             
             if key_manga and key_chap:
-                # Créer la nouvelle clé normalisée
                 new_key = f"{key_manga}_{key_chap}"
-                
                 if new_key != key:
                     fixed_count += 1
                 
-                # Si la clé existe déjà, fusionner (garder les tâches terminées)
                 if new_key in new_tasks:
                     for task_name, task_status in value.items():
                         if task_status == "✅ Terminé":
@@ -531,7 +834,6 @@ def setup(bot):
                 else:
                     new_tasks[new_key] = value
             else:
-                # Garder les clés non reconnues telles quelles
                 new_tasks[key] = value
         
         etat_taches_global = new_tasks
@@ -539,39 +841,38 @@ def setup(bot):
         
         embed = discord.Embed(
             title="🔧 Normalisation des Tâches",
-            description=f"Les clés des tâches ont été normalisées !",
             color=discord.Color.green(),
             timestamp=datetime.now()
         )
-        embed.add_field(name="📊 Tâches avant", value=str(old_count), inline=True)
-        embed.add_field(name="📊 Tâches après", value=str(len(etat_taches_global)), inline=True)
-        embed.add_field(name="🔧 Clés corrigées", value=str(fixed_count), inline=True)
+        embed.add_field(name="Avant", value=str(old_count), inline=True)
+        embed.add_field(name="Après", value=str(len(etat_taches_global)), inline=True)
+        embed.add_field(name="Corrigées", value=str(fixed_count), inline=True)
         
         await ctx.send(embed=embed)
     
     @bot.command(name="avancee")
     async def avancee(ctx):
-        """Affiche l'avancée des mangas de manière interactive avec pagination"""
+        """Affiche l'avancée des mangas avec pagination"""
         embed = discord.Embed(
-            title="📊 Avancée des Projets Manga",
+            title="📊 Avancée des Projets",
             description=(
-                "Choisissez un manga pour voir son avancée !\n\n"
-                "👹 **Ao No Exorcist**\n"
-                "🩸 **Satsudou**\n"
-                "🗼 **Tokyo Underworld**\n"
-                "😈 **Tougen Anki**\n"
-                "⚽ **Catenaccio**"
+                "Choisissez un manga !\n\n"
+                "👹 Ao No Exorcist\n"
+                "🩸 Satsudou\n"
+                "🗼 Tokyo Underworld\n"
+                "😈 Tougen Anki\n"
+                "⚽ Catenaccio"
             ),
             color=discord.Color.blue(),
             timestamp=datetime.now()
         )
-        embed.set_footer(text="Cliquez sur une réaction pour voir l'avancée du manga !")
+        embed.set_footer(text="Cliquez sur une réaction")
         
         message = await ctx.send(embed=embed)
         
         reactions = ['👹', '🩸', '🗼', '😈', '⚽']
-        for reaction in reactions:
-            await message.add_reaction(reaction)
+        for r in reactions:
+            await message.add_reaction(r)
         
         manga_map = {
             '👹': 'Ao No Exorcist',
@@ -581,65 +882,46 @@ def setup(bot):
             '⚽': 'Catenaccio'
         }
         
-        manga_emoji_map = {
-            'Ao No Exorcist': '👹',
-            'Satsudou': '🩸',
-            'Tokyo Underworld': '🗼',
-            'Tougen Anki': '😈',
-            'Catenaccio': '⚽'
-        }
-        
         def check(reaction, user):
             return user == ctx.author and str(reaction.emoji) in reactions
         
         try:
             reaction, user = await bot.wait_for('reaction_add', timeout=30.0, check=check)
             manga_name = manga_map[str(reaction.emoji)]
-            manga_emoji = manga_emoji_map.get(manga_name, '📚')
+            manga_emoji = str(reaction.emoji)
             
-            # Récupérer tous les chapitres du manga
             manga_chapters = {}
             manga_name_normalized = normaliser_manga_name(manga_name)
             
             for key in etat_taches_global:
                 key_manga, key_chapter = extraire_manga_chapitre(key)
-                
                 if key_manga and key_chapter:
                     if normaliser_manga_name(key_manga) == manga_name_normalized:
                         manga_chapters[key_chapter] = etat_taches_global[key]
             
             if not manga_chapters:
-                await ctx.send(f"❌ Aucune tâche trouvée pour **{manga_name}**.")
+                await ctx.send(f"❌ Aucune tâche pour **{manga_name}**.")
                 return
             
-            # Trier les chapitres
             sorted_chapters = sorted(manga_chapters.keys())
-            
-            # Nombre de chapitres par page (5 pour éviter de dépasser la limite Discord)
             CHAPTERS_PER_PAGE = 5
             total_pages = (len(sorted_chapters) + CHAPTERS_PER_PAGE - 1) // CHAPTERS_PER_PAGE
             
-            # Fonction pour créer un embed de page
             def create_page_embed(page_num):
                 start_idx = page_num * CHAPTERS_PER_PAGE
                 end_idx = min(start_idx + CHAPTERS_PER_PAGE, len(sorted_chapters))
                 page_chapters = sorted_chapters[start_idx:end_idx]
                 
-                # Calculer les statistiques globales
-                total_tasks = len(sorted_chapters) * 4  # 4 tâches par chapitre
-                completed_tasks = sum(
-                    1 for ch in sorted_chapters 
-                    for task in manga_chapters[ch].values() 
-                    if task == "✅ Terminé"
-                )
-                global_progress = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+                total_tasks = len(sorted_chapters) * 4
+                completed = sum(1 for ch in sorted_chapters for t in manga_chapters[ch].values() if t == "✅ Terminé")
+                progress = (completed / total_tasks * 100) if total_tasks > 0 else 0
                 
-                progress_embed = discord.Embed(
-                    title=f"{manga_emoji} Avancée de {manga_name}",
+                page_embed = discord.Embed(
+                    title=f"{manga_emoji} {manga_name}",
                     description=(
-                        f"📊 **Progression globale:** {global_progress:.1f}% ({completed_tasks}/{total_tasks} tâches)\n"
-                        f"📚 **Chapitres:** {sorted_chapters[0]} → {sorted_chapters[-1]} ({len(sorted_chapters)} chapitres)\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━━━"
+                        f"📊 **Progression:** {progress:.1f}% ({completed}/{total_tasks})\n"
+                        f"📚 Chapitres {sorted_chapters[0]} → {sorted_chapters[-1]}\n"
+                        f"━━━━━━━━━━━━━━━━━━━━"
                     ),
                     color=discord.Color.green(),
                     timestamp=datetime.now()
@@ -647,74 +929,60 @@ def setup(bot):
                 
                 for chapter in page_chapters:
                     tasks = manga_chapters[chapter]
-                    progress = sum(1 for task in tasks.values() if task == "✅ Terminé")
-                    progress_bar = generate_progress_bar(progress, len(tasks))
+                    prog = sum(1 for t in tasks.values() if t == "✅ Terminé")
+                    bar = generate_progress_bar(prog, 4)
                     
-                    # Ajouter un emoji si le chapitre est complet
-                    chapter_title = f"📑 Chapitre {chapter}"
+                    title = f"📑 Ch.{chapter}"
                     if est_chapitre_complet(tasks):
-                        chapter_title += " ✅"
+                        title += " ✅"
                     
-                    field_value = (
-                        f"{progress_bar} ({progress}/{len(tasks)})\n"
-                        f"🧹 Clean: {tasks.get('clean', '❓ Inconnu')}\n"
-                        f"🌍 Trad: {tasks.get('trad', '❓ Inconnu')}\n"
-                        f"✅ Check: {tasks.get('check', '❓ Inconnu')}\n"
-                        f"✏️ Edit: {tasks.get('edit', '❓ Inconnu')}"
+                    value = (
+                        f"{bar} ({prog}/4)\n"
+                        f"🧹 {tasks.get('clean', '❓')}\n"
+                        f"🌍 {tasks.get('trad', '❓')}\n"
+                        f"✅ {tasks.get('check', '❓')}\n"
+                        f"✏️ {tasks.get('edit', '❓')}"
                     )
                     
-                    progress_embed.add_field(
-                        name=chapter_title,
-                        value=field_value,
-                        inline=False
-                    )
+                    page_embed.add_field(name=title, value=value, inline=False)
                 
-                progress_embed.set_footer(
-                    text=f"Page {page_num + 1}/{total_pages} | Chapitres {page_chapters[0]}-{page_chapters[-1]} | Demandé par {ctx.author.name}",
+                page_embed.set_footer(
+                    text=f"Page {page_num + 1}/{total_pages} │ {ctx.author.name}",
                     icon_url=ctx.author.avatar.url if ctx.author.avatar else None
                 )
                 
-                return progress_embed
+                return page_embed
             
-            # Afficher la première page
             current_page = 0
             await message.clear_reactions()
             await message.edit(embed=create_page_embed(current_page))
             
-            # Si plusieurs pages, ajouter les réactions de navigation
             if total_pages > 1:
-                nav_reactions = ['⏮️', '⬅️', '➡️', '⏭️', '🏠']
-                for nav_reaction in nav_reactions:
-                    await message.add_reaction(nav_reaction)
+                nav = ['⏮️', '⬅️', '➡️', '⏭️', '🏠']
+                for n in nav:
+                    await message.add_reaction(n)
                 
                 def nav_check(reaction, user):
-                    return user == ctx.author and str(reaction.emoji) in nav_reactions and reaction.message.id == message.id
+                    return user == ctx.author and str(reaction.emoji) in nav and reaction.message.id == message.id
                 
                 while True:
                     try:
                         reaction, user = await bot.wait_for('reaction_add', timeout=120.0, check=nav_check)
                         emoji = str(reaction.emoji)
                         
-                        if emoji == '⏮️':  # Première page
+                        if emoji == '⏮️':
                             current_page = 0
-                        elif emoji == '⬅️':  # Page précédente
+                        elif emoji == '⬅️':
                             current_page = max(0, current_page - 1)
-                        elif emoji == '➡️':  # Page suivante
+                        elif emoji == '➡️':
                             current_page = min(total_pages - 1, current_page + 1)
-                        elif emoji == '⏭️':  # Dernière page
+                        elif emoji == '⏭️':
                             current_page = total_pages - 1
-                        elif emoji == '🏠':  # Retour au menu principal
+                        elif emoji == '🏠':
                             await message.clear_reactions()
                             await message.edit(embed=embed)
                             for r in reactions:
                                 await message.add_reaction(r)
-                            # Réinitialiser pour permettre une nouvelle sélection
-                            try:
-                                reaction, user = await bot.wait_for('reaction_add', timeout=30.0, check=check)
-                                manga_name = manga_map[str(reaction.emoji)]
-                                # Relancer la logique... (simplifié ici)
-                            except asyncio.TimeoutError:
-                                await message.clear_reactions()
                             break
                         
                         await message.edit(embed=create_page_embed(current_page))
@@ -726,26 +994,23 @@ def setup(bot):
         
         except asyncio.TimeoutError:
             await message.clear_reactions()
-            timeout_embed = embed.copy()
-            timeout_embed.description += "\n\n⏰ Le temps de sélection est écoulé."
-            await message.edit(embed=timeout_embed)
+            embed.description += "\n\n⏰ Temps écoulé."
+            await message.edit(embed=embed)
     
     @bot.command(name="task_all")
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
     async def task_all(ctx):
-        """Affiche toutes les tâches actuellement en cours, organisées par manga avec pagination"""
+        """Affiche toutes les tâches en cours"""
         if not etat_taches_global:
-            await ctx.send("📋 Aucune tâche en cours actuellement.")
+            await ctx.send("📋 Aucune tâche en cours.")
             return
         
-        # CORRECTION: Utiliser la nouvelle logique d'extraction
         tasks_by_manga = {}
         for chapitre_key, tasks in etat_taches_global.items():
             key_manga, key_chapter = extraire_manga_chapitre(chapitre_key)
             
             if key_manga and key_chapter:
-                # Normaliser le nom du manga pour le regroupement
-                manga_display = key_manga.title()  # Mettre en majuscule proprement
+                manga_display = key_manga.title()
                 if manga_display not in tasks_by_manga:
                     tasks_by_manga[manga_display] = {}
                 tasks_by_manga[manga_display][str(key_chapter)] = tasks
@@ -753,38 +1018,30 @@ def setup(bot):
         embeds = []
         for manga, chapitres in tasks_by_manga.items():
             embed = discord.Embed(
-                title=f"📋 Tâches en cours - {manga}",
+                title=f"📋 {manga}",
                 color=discord.Color.blue(),
                 timestamp=datetime.now()
             )
             
             for chapitre, tasks in sorted(chapitres.items(), key=lambda x: int(x[0])):
-                progress = sum(1 for task in tasks.values() if task == "✅ Terminé")
-                progress_bar = generate_progress_bar(progress, len(tasks))
+                prog = sum(1 for t in tasks.values() if t == "✅ Terminé")
+                bar = generate_progress_bar(prog, 4)
                 
-                # Ajouter un emoji si le chapitre est complet
-                chapter_title = f"📖 Chapitre {chapitre}"
+                title = f"Ch.{chapitre}"
                 if est_chapitre_complet(tasks):
-                    chapter_title += " ✅"
+                    title += " ✅"
                 
-                field_value = (
-                    f"{progress_bar} ({progress}/{len(tasks)})\n"
-                    f"Clean: {tasks.get('clean', '❓ Inconnu')}\n"
-                    f"Trad: {tasks.get('trad', '❓ Inconnu')}\n"
-                    f"Check: {tasks.get('check', '❓ Inconnu')}\n"
-                    f"Edit: {tasks.get('edit', '❓ Inconnu')}"
+                value = (
+                    f"{bar} ({prog}/4)\n"
+                    f"Clean: {tasks.get('clean', '❓')}\n"
+                    f"Trad: {tasks.get('trad', '❓')}\n"
+                    f"Check: {tasks.get('check', '❓')}\n"
+                    f"Edit: {tasks.get('edit', '❓')}"
                 )
                 
-                embed.add_field(
-                    name=chapter_title,
-                    value=field_value,
-                    inline=False
-                )
+                embed.add_field(name=title, value=value, inline=False)
             
-            embed.set_footer(
-                text=f"Page {len(embeds) + 1}/{len(tasks_by_manga)} | Demandé par {ctx.author.name}",
-                icon_url=ctx.author.avatar.url if ctx.author.avatar else None
-            )
+            embed.set_footer(text=f"Page {len(embeds)+1}/{len(tasks_by_manga)} │ {ctx.author.name}")
             embeds.append(embed)
         
         if not embeds:
@@ -794,65 +1051,51 @@ def setup(bot):
         current_page = 0
         message = await ctx.send(embed=embeds[current_page])
         
-        reactions = ['⬅️', '➡️']
-        for reaction in reactions:
-            await message.add_reaction(reaction)
-        
-        def check(reaction, user):
-            return user == ctx.author and str(reaction.emoji) in reactions and reaction.message.id == message.id
-        
-        while True:
-            try:
-                reaction, user = await ctx.bot.wait_for('reaction_add', timeout=60.0, check=check)
-                
-                if str(reaction.emoji) == '⬅️':
-                    if current_page > 0:
+        if len(embeds) > 1:
+            await message.add_reaction('⬅️')
+            await message.add_reaction('➡️')
+            
+            def check(reaction, user):
+                return user == ctx.author and str(reaction.emoji) in ['⬅️', '➡️'] and reaction.message.id == message.id
+            
+            while True:
+                try:
+                    reaction, user = await bot.wait_for('reaction_add', timeout=60.0, check=check)
+                    
+                    if str(reaction.emoji) == '⬅️' and current_page > 0:
                         current_page -= 1
                         await message.edit(embed=embeds[current_page])
-                elif str(reaction.emoji) == '➡️':
-                    if current_page < len(embeds) - 1:
+                    elif str(reaction.emoji) == '➡️' and current_page < len(embeds) - 1:
                         current_page += 1
                         await message.edit(embed=embeds[current_page])
+                    
+                    await message.remove_reaction(reaction, user)
                 
-                await message.remove_reaction(reaction, user)
-            
-            except asyncio.TimeoutError:
-                await message.clear_reactions()
-                break
+                except asyncio.TimeoutError:
+                    await message.clear_reactions()
+                    break
     
     @bot.command(name="actualiser")
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
     async def actualiser(ctx):
-        """Commande d'administration pour sauvegarder et envoyer les fichiers de tâches ou rappels"""
-        # ID de l'utilisateur qui recevra les fichiers
+        """Sauvegarder et envoyer les données"""
         TARGET_USER_ID = 608234789564186644
         
-        # Embed de sélection
         embed_select = discord.Embed(
-            title="🔄 Actualisation des Données",
-            description="Que souhaitez-vous actualiser et recevoir ?",
-            color=discord.Color.blue(),
-            timestamp=datetime.now()
-        )
-        embed_select.add_field(
-            name="📋 Options disponibles",
-            value=(
-                "📝 **Tasks** - Fichiers de tâches des chapitres\n"
-                "⏰ **Rappels** - Fichiers de rappels\n"
-                "📨 **Invitations** - Fichiers d'invitations du giveaway\n"
-                "❌ **Annuler** - Annuler l'opération"
+            title="🔄 Actualisation",
+            description=(
+                "📝 **Tasks** - Tâches des chapitres\n"
+                "⏰ **Rappels** - Rappels\n"
+                "📨 **Invitations** - Giveaway\n"
+                "❌ **Annuler**"
             ),
-            inline=False
+            color=discord.Color.blue()
         )
-        embed_select.set_footer(text="Réagissez avec l'emoji correspondant")
         
         message = await ctx.send(embed=embed_select)
         
-        # Ajouter les réactions
-        await message.add_reaction("📝")
-        await message.add_reaction("⏰")
-        await message.add_reaction("📨")
-        await message.add_reaction("❌")
+        for e in ["📝", "⏰", "📨", "❌"]:
+            await message.add_reaction(e)
         
         def check(reaction, user):
             return user == ctx.author and str(reaction.emoji) in ["📝", "⏰", "📨", "❌"] and reaction.message.id == message.id
@@ -862,147 +1105,56 @@ def setup(bot):
             await message.clear_reactions()
             
             if str(reaction.emoji) == "❌":
-                embed_cancel = discord.Embed(
-                    title="❌ Opération Annulée",
-                    description="L'actualisation a été annulée.",
-                    color=discord.Color.red()
-                )
-                await ctx.send(embed=embed_cancel, delete_after=5)
+                await ctx.send("❌ Annulé.", delete_after=5)
                 return
             
-            # Déterminer quel type de fichier envoyer
             if str(reaction.emoji) == "📝":
-                file_type = "tasks"
-                main_file = TASKS_FILE
-                meta_file = META_FILE
+                file_type, main_file, meta_file = "tasks", TASKS_FILE, META_FILE
                 data = etat_taches_global
-                emoji = "📋"
+                sauvegarder_etat_taches()
             elif str(reaction.emoji) == "⏰":
-                file_type = "rappels"
-                # Import des données de rappels depuis rappels.py
                 import rappels
-                main_file = rappels.RAPPELS_FILE
-                meta_file = rappels.RAPPELS_META_FILE
+                file_type = "rappels"
+                main_file, meta_file = rappels.RAPPELS_FILE, rappels.RAPPELS_META_FILE
                 data = rappels.rappeals_actifs
-                emoji = "⏰"
-            else:  # 📨 Invitations
-                file_type = "invitations"
-                # Import des données d'invitations depuis giveaway.py
+                rappels.sauvegarder_rappels()
+            else:
                 import giveaway
+                file_type = "invitations"
                 main_file = giveaway.INVITES_FILE
-                # Créer un fichier meta pour les invitations
                 meta_file = "data/invites_tracker_meta.json"
                 data = giveaway.invites_tracker
-                emoji = "📨"
-            
-            # Sauvegarder les données actuelles
-            if file_type == "tasks":
-                sauvegarder_etat_taches()
-            elif file_type == "rappels":
-                rappels.sauvegarder_rappels()
-            else:  # invitations
                 giveaway.sauvegarder_invites()
-                # Créer le fichier meta pour les invitations
-                import json
-                meta = {
-                    "last_saved": datetime.utcnow().isoformat() + "Z",
-                    "invite_count": len(giveaway.invites_tracker),
-                    "total_invites": sum(inv['real'] for inv in giveaway.invites_tracker.values())
-                }
-                with open(meta_file, "w", encoding="utf-8") as mf:
-                    json.dump(meta, mf, ensure_ascii=False, indent=4)
             
-            # Récupérer l'utilisateur cible
             target_user = await bot.fetch_user(TARGET_USER_ID)
             if not target_user:
-                await ctx.send("❌ Impossible de trouver l'utilisateur cible.")
+                await ctx.send("❌ Utilisateur introuvable.")
                 return
             
-            # Créer l'embed de confirmation
-            embed_sending = discord.Embed(
-                title=f"{emoji} Envoi en cours...",
-                description=f"Préparation et envoi des fichiers **{file_type}** à {target_user.mention}",
-                color=discord.Color.gold()
-            )
-            await message.edit(embed=embed_sending)
-            
-            # Préparer les fichiers à envoyer
-            files_to_send = []
-            
-            # Fichier principal
+            files = []
             if os.path.exists(main_file):
-                files_to_send.append(discord.File(main_file))
-            
-            # Fichier meta
+                files.append(discord.File(main_file))
             if os.path.exists(meta_file):
-                files_to_send.append(discord.File(meta_file))
+                files.append(discord.File(meta_file))
             
-            # Créer l'embed pour le MP
             embed_dm = discord.Embed(
-                title=f"{emoji} Actualisation des {file_type.capitalize()}",
-                description=f"Fichiers mis à jour le {datetime.now().strftime('%d/%m/%Y à %H:%M:%S')}",
-                color=discord.Color(COLORS.get("success", 0x2ECC71)),
+                title=f"📁 {file_type.capitalize()}",
+                description=f"**{len(data)}** éléments",
+                color=discord.Color.green(),
                 timestamp=datetime.now()
             )
-            embed_dm.add_field(
-                name="📊 Statistiques",
-                value=f"**{len(data)}** élément(s) dans le fichier",
-                inline=True
-            )
-            embed_dm.add_field(
-                name="📁 Fichiers joints",
-                value=f"• {os.path.basename(main_file)}\n• {os.path.basename(meta_file)}",
-                inline=False
-            )
-            embed_dm.set_footer(
-                text=f"Demandé par {ctx.author.name} depuis {ctx.guild.name}",
-                icon_url=ctx.author.avatar.url if ctx.author.avatar else None
-            )
+            embed_dm.set_footer(text=f"Par {ctx.author.name} • {ctx.guild.name}")
             
-            # Envoyer en MP
-            try:
-                await target_user.send(embed=embed_dm, files=files_to_send)
-                
-                # Confirmation dans le salon
-                embed_success = discord.Embed(
-                    title=f"✅ {file_type.capitalize()} Actualisés",
-                    description=f"Les fichiers ont été sauvegardés et envoyés avec succès !",
-                    color=discord.Color(COLORS.get("success", 0x2ECC71)),
-                    timestamp=datetime.now()
-                )
-                embed_success.add_field(
-                    name="📊 Éléments sauvegardés",
-                    value=f"**{len(data)}** élément(s)",
-                    inline=True
-                )
-                embed_success.add_field(
-                    name="📨 Envoyé à",
-                    value=target_user.mention,
-                    inline=True
-                )
-                embed_success.set_footer(text=f"Demandé par {ctx.author.name}")
-                await message.edit(embed=embed_success)
-            
-            except discord.Forbidden:
-                embed_error = discord.Embed(
-                    title="❌ Erreur d'Envoi",
-                    description=f"Impossible d'envoyer un MP à {target_user.mention}. Ses MPs sont peut-être désactivés.",
-                    color=discord.Color.red()
-                )
-                await message.edit(embed=embed_error)
+            await target_user.send(embed=embed_dm, files=files)
+            await ctx.send(f"✅ **{file_type.capitalize()}** envoyés à {target_user.mention}")
         
         except asyncio.TimeoutError:
             await message.clear_reactions()
-            embed_timeout = discord.Embed(
-                title="⏰ Temps Écoulé",
-                description="L'opération a été annulée (temps d'attente dépassé).",
-                color=discord.Color.orange()
-            )
-            await message.edit(embed=embed_timeout)
+            await ctx.send("⏰ Temps écoulé.")
+
 
 def generate_progress_bar(progress, total, size=10):
-    """Génère une barre de progression visuelle"""
-    percentage = progress / total
-    filled = int(size * percentage)
-    empty = size - filled
-    return f"{'🟩' * filled}{'⬜' * empty}"
+    """Génère une barre de progression"""
+    pct = progress / total if total > 0 else 0
+    filled = int(size * pct)
+    return '🟩' * filled + '⬜' * (size - filled)
