@@ -175,7 +175,7 @@ HELP_CATEGORIES = {
         "commands": [
             {"name": "task", "usage": "!task <action> <manga> <chap...>", "desc": "MAJ tâche (clean/trad/check/edit)"},
             {"name": "task_status", "usage": "!task_status <manga> <chap>", "desc": "État des tâches d'un chapitre"},
-            {"name": "task_all", "usage": "!task_all", "desc": "Toutes les tâches en cours"},
+            {"name": "task_all", "usage": "!task_all [manga]", "desc": "Toutes les tâches (optionnel: filtrer par manga)"},
             {"name": "delete_task", "usage": "!delete_task <manga> <chap>", "desc": "Supprimer tâches d'un chapitre"},
             {"name": "fix_tasks", "usage": "!fix_tasks", "desc": "Normaliser les clés des tâches"},
             {"name": "actualiser", "usage": "!actualiser", "desc": "Sauvegarder/exporter les données"},
@@ -1387,8 +1387,8 @@ def setup(bot):
     
     @bot.command(name="task_all")
     @commands.has_any_role(1326417422663680090, 1330147432847114321)
-    async def task_all(ctx):
-        """Affiche toutes les tâches en cours"""
+    async def task_all(ctx, *, manga_filter: str = None):
+        """Affiche toutes les tâches en cours (optionnel: spécifier un manga)"""
         if not etat_taches_global:
             embed = discord.Embed(
                 color=THEME_COLORS["info"],
@@ -1421,6 +1421,37 @@ def setup(bot):
                 if manga_display not in tasks_by_manga:
                     tasks_by_manga[manga_display] = {}
                 tasks_by_manga[manga_display][str(key_chapter)] = tasks
+        
+        # Si un manga est spécifié, filtrer
+        if manga_filter:
+            manga_filter_normalized = manga_filter.strip().lower()
+            filtered_manga = None
+            
+            for manga_name in tasks_by_manga.keys():
+                if manga_filter_normalized in manga_name.lower():
+                    filtered_manga = manga_name
+                    break
+            
+            if filtered_manga:
+                tasks_by_manga = {filtered_manga: tasks_by_manga[filtered_manga]}
+            else:
+                # Afficher le menu de sélection si le manga n'est pas trouvé
+                available_mangas = "\n".join([f"{manga_emojis.get(m, '📚')} {m}" for m in tasks_by_manga.keys()])
+                embed = discord.Embed(
+                    color=THEME_COLORS["error"],
+                    description=(
+                        "```ansi\n"
+                        "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
+                        "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Manga Non Trouvé\u001b[0m           \u001b[1;31m║\u001b[0m\n"
+                        "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
+                        "```\n"
+                        f"Aucun manga trouvé pour **{manga_filter}**.\n\n"
+                        f"**Mangas disponibles :**\n{available_mangas}\n\n"
+                        f"💡 Utilisez `!task_all` sans argument pour tout voir."
+                    )
+                )
+                await ctx.send(embed=embed)
+                return
         
         embeds = []
         CHAPTERS_PER_PAGE = 8  # Limite pour éviter de dépasser 25 fields
