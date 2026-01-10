@@ -1423,6 +1423,8 @@ def setup(bot):
                 tasks_by_manga[manga_display][str(key_chapter)] = tasks
         
         embeds = []
+        CHAPTERS_PER_PAGE = 8  # Limite pour éviter de dépasser 25 fields
+        
         for manga, chapitres in tasks_by_manga.items():
             manga_emoji = manga_emojis.get(manga, "📚")
             
@@ -1431,48 +1433,52 @@ def setup(bot):
             completed_tasks = sum(1 for chap_tasks in chapitres.values() for t in chap_tasks.values() if t == "✅ Terminé")
             progress = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
             
-            embed = discord.Embed(
-                color=THEME_COLORS["tasks"],
-                timestamp=datetime.now()
-            )
-            embed.description = (
-                "```ansi\n"
-                "\u001b[1;36m╔═══════════════════════════════════════╗\u001b[0m\n"
-                f"\u001b[1;36m║\u001b[0m      \u001b[1;37m{manga_emoji} {manga}\u001b[0m\n"
-                "\u001b[1;36m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```\n"
-                f"📊 **Progression:** `{progress:.1f}%` ({completed_tasks}/{total_tasks})\n"
-                f"📚 **Chapitres:** `{len(chapitres)}`"
-            )
+            sorted_chapters = sorted(chapitres.items(), key=lambda x: int(x[0]))
             
-            embed.add_field(name="━━━━━━━━━━━━━━━━━━━━", value="** **", inline=False)
-            
-            for chapitre, tasks in sorted(chapitres.items(), key=lambda x: int(x[0])):
-                prog = sum(1 for t in tasks.values() if t == "✅ Terminé")
-                bar = generate_progress_bar(prog, 4)
+            # Diviser en pages si nécessaire
+            for page_start in range(0, len(sorted_chapters), CHAPTERS_PER_PAGE):
+                page_chapters = sorted_chapters[page_start:page_start + CHAPTERS_PER_PAGE]
+                page_num = page_start // CHAPTERS_PER_PAGE + 1
+                total_manga_pages = (len(sorted_chapters) + CHAPTERS_PER_PAGE - 1) // CHAPTERS_PER_PAGE
                 
-                title = f"📑 Ch.{chapitre}"
-                if est_chapitre_complet(tasks):
-                    title += " ✅"
-                
-                # Format compact
-                clean_status = "✅" if tasks.get('clean') == "✅ Terminé" else "⏳"
-                trad_status = "✅" if tasks.get('trad') == "✅ Terminé" else "⏳"
-                check_status = "✅" if tasks.get('check') == "✅ Terminé" else "⏳"
-                edit_status = "✅" if tasks.get('edit') == "✅ Terminé" else "⏳"
-                
-                value = (
-                    f"{bar} `{prog}/4`\n"
-                    f"🧹{clean_status} 🌍{trad_status} ✅{check_status} ✏️{edit_status}"
+                embed = discord.Embed(
+                    color=THEME_COLORS["tasks"],
+                    timestamp=datetime.now()
                 )
                 
-                embed.add_field(name=title, value=value, inline=True)
-            
-            embed.set_footer(
-                text=f"Page {len(embeds)+1}/{len(tasks_by_manga)} │ {ctx.author.name}",
-                icon_url=ctx.author.avatar.url if ctx.author.avatar else None
-            )
-            embeds.append(embed)
+                page_info = f" ({page_num}/{total_manga_pages})" if total_manga_pages > 1 else ""
+                embed.description = (
+                    "```ansi\n"
+                    "\u001b[1;36m╔═══════════════════════════════════════╗\u001b[0m\n"
+                    f"\u001b[1;36m║\u001b[0m      \u001b[1;37m{manga_emoji} {manga}\u001b[0m{page_info}\n"
+                    "\u001b[1;36m╚═══════════════════════════════════════╝\u001b[0m\n"
+                    "```\n"
+                    f"📊 **Progression:** `{progress:.1f}%` ({completed_tasks}/{total_tasks})\n"
+                    f"📚 **Chapitres:** `{len(chapitres)}`"
+                )
+                
+                for chapitre, tasks in page_chapters:
+                    prog = sum(1 for t in tasks.values() if t == "✅ Terminé")
+                    bar = generate_progress_bar(prog, 4)
+                    
+                    title = f"📑 Ch.{chapitre}"
+                    if est_chapitre_complet(tasks):
+                        title += " ✅"
+                    
+                    # Format compact
+                    clean_status = "✅" if tasks.get('clean') == "✅ Terminé" else "⏳"
+                    trad_status = "✅" if tasks.get('trad') == "✅ Terminé" else "⏳"
+                    check_status = "✅" if tasks.get('check') == "✅ Terminé" else "⏳"
+                    edit_status = "✅" if tasks.get('edit') == "✅ Terminé" else "⏳"
+                    
+                    value = (
+                        f"{bar} `{prog}/4`\n"
+                        f"🧹{clean_status} 🌍{trad_status} ✅{check_status} ✏️{edit_status}"
+                    )
+                    
+                    embed.add_field(name=title, value=value, inline=True)
+                
+                embeds.append(embed)
         
         if not embeds:
             embed = discord.Embed(
@@ -1481,6 +1487,13 @@ def setup(bot):
             )
             await ctx.send(embed=embed)
             return
+        
+        # Mettre à jour les footers avec le compte total de pages
+        for i, embed in enumerate(embeds):
+            embed.set_footer(
+                text=f"Page {i+1}/{len(embeds)} │ {ctx.author.name}",
+                icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+            )
         
         current_page = 0
         message = await ctx.send(embed=embeds[current_page])
