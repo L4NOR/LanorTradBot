@@ -1,292 +1,255 @@
 # shop.py
-# Système de Shop Virtuel
+# Système de boutique AMÉLIORÉ : Loterie hebdomadaire, Boosts fonctionnels, Expirations auto
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import json
 import os
-import asyncio
+import random
 from datetime import datetime, timedelta
 from config import COLORS
 
-SHOP_FILE = "data/shop_items.json"
-PURCHASES_FILE = "data/purchases.json"
-USER_INVENTORY_FILE = "data/user_inventory.json"
+SHOP_FILE = "data/shop_inventory.json"
+LOTTERY_FILE = "data/lottery.json"
 os.makedirs("data", exist_ok=True)
 
-# Items par défaut du shop
-DEFAULT_SHOP_ITEMS = {
-    # === RÔLES CUSTOM ===
-    "custom_role_color": {
-        "id": "custom_role_color",
-        "name": "Couleur de Rôle Custom",
-        "description": "Obtenez un rôle avec une couleur personnalisée de votre choix",
-        "emoji": "🎨",
-        "category": "roles",
-        "price": 2000,
-        "stock": -1,  # -1 = illimité
-        "type": "one_time",
-        "requirements": {"badges": [], "level": 0},
-        "active": True
+# Inventaires des utilisateurs
+shop_inventory = {}
+
+# Données de la loterie
+lottery_data = {
+    "current_jackpot": 500,
+    "participants": [],
+    "last_draw": None,
+    "winner_history": []
+}
+
+# Articles de la boutique
+SHOP_ITEMS = {
+    # === BOOSTS DE POINTS ===
+    "double_points": {
+        "name": "🚀 Double Points 24h",
+        "description": "Double tous vos gains de points pendant 24 heures",
+        "price": 200,
+        "category": "boost",
+        "duration_hours": 24,
+        "multiplier": 2,
+        "max_stock": 99,
+        "icon": "🚀"
     },
-    "custom_role_name": {
-        "id": "custom_role_name",
-        "name": "Nom de Rôle Custom",
-        "description": "Obtenez un rôle avec un nom personnalisé",
-        "emoji": "✏️",
-        "category": "roles",
-        "price": 3000,
-        "stock": -1,
-        "type": "one_time",
-        "requirements": {"badges": [], "level": 0},
-        "active": True
-    },
-    "vip_role": {
-        "id": "vip_role",
-        "name": "Rôle VIP",
-        "description": "Accès au salon VIP exclusif pendant 30 jours",
-        "emoji": "⭐",
-        "category": "roles",
-        "price": 1500,
-        "stock": -1,
-        "type": "temporary",
-        "duration_days": 30,
-        "role_id": None,  # À configurer
-        "requirements": {"badges": [], "level": 0},
-        "active": True
+    "triple_points": {
+        "name": "⚡ Triple Points 12h",
+        "description": "Triple tous vos gains pendant 12 heures !",
+        "price": 400,
+        "category": "boost",
+        "duration_hours": 12,
+        "multiplier": 3,
+        "max_stock": 99,
+        "icon": "⚡"
     },
     
-    # === AVANTAGES ===
-    "double_points_24h": {
-        "id": "double_points_24h",
-        "name": "Double Points (24h)",
-        "description": "Doublez vos points gagnés pendant 24 heures",
-        "emoji": "⚡",
-        "category": "boosts",
-        "price": 500,
-        "stock": -1,
-        "type": "consumable",
-        "duration_hours": 24,
-        "requirements": {"badges": [], "level": 0},
-        "active": True
-    },
+    # === BOOSTS COMMUNAUTAIRES ===
     "highlight_review": {
-        "id": "highlight_review",
-        "name": "Review en Vedette",
-        "description": "Mettez votre prochaine review en avant avec un embed spécial",
-        "emoji": "🌟",
-        "category": "boosts",
-        "price": 300,
-        "stock": -1,
-        "type": "consumable",
-        "requirements": {"badges": [], "level": 0},
-        "active": True
+        "name": "🌟 Review en Vedette",
+        "description": "Votre prochaine review sera mise en avant",
+        "price": 100,
+        "category": "boost",
+        "one_time_use": True,
+        "icon": "🌟"
     },
     "theory_boost": {
-        "id": "theory_boost",
-        "name": "Boost Théorie",
-        "description": "Votre prochaine théorie apparaît en haut de la liste pendant 48h",
-        "emoji": "🚀",
-        "category": "boosts",
-        "price": 400,
-        "stock": -1,
-        "type": "consumable",
-        "requirements": {"badges": [], "level": 0},
-        "active": True
+        "name": "💡 Boost Théorie",
+        "description": "Votre prochaine théorie sera épinglée 48h",
+        "price": 150,
+        "category": "boost",
+        "one_time_use": True,
+        "icon": "💡"
+    },
+    "super_vote": {
+        "name": "🗳️ Super Vote",
+        "description": "Votre prochain vote compte triple",
+        "price": 75,
+        "category": "boost",
+        "one_time_use": True,
+        "icon": "🗳️"
     },
     
-    # === COSMÉTIQUES ===
-    "profile_banner_slot": {
-        "id": "profile_banner_slot",
-        "name": "Slot Bannière Profil",
-        "description": "Ajoutez une bannière personnalisée à votre profil",
-        "emoji": "🖼️",
-        "category": "cosmetics",
-        "price": 1000,
-        "stock": -1,
-        "type": "one_time",
-        "requirements": {"badges": [], "level": 0},
-        "active": True
-    },
-    "extra_badge_slot": {
-        "id": "extra_badge_slot",
-        "name": "Slot Badge Supplémentaire",
-        "description": "Affichez 1 badge supplémentaire sur votre profil (max +2)",
-        "emoji": "🏅",
-        "category": "cosmetics",
-        "price": 800,
-        "stock": -1,
-        "type": "one_time",
-        "max_purchases": 2,
-        "requirements": {"badges": [], "level": 0},
-        "active": True
-    },
-    "nickname_color": {
-        "id": "nickname_color",
-        "name": "Pseudo Coloré",
-        "description": "Choisissez la couleur de votre pseudo (rôle dédié)",
-        "emoji": "🌈",
-        "category": "cosmetics",
-        "price": 1500,
-        "stock": -1,
-        "type": "one_time",
-        "requirements": {"badges": [], "level": 0},
-        "active": True
-    },
-    
-    # === PRIVILÈGES ===
-    "early_access": {
-        "id": "early_access",
-        "name": "Accès Anticipé",
-        "description": "Accès aux chapitres 1h avant tout le monde (30 jours)",
-        "emoji": "⏰",
-        "category": "privileges",
-        "price": 5000,
-        "stock": 10,  # Limité
-        "type": "temporary",
-        "duration_days": 30,
-        "requirements": {"badges": ["reviewer_silver"], "level": 0},
-        "active": True
-    },
-    "suggestion_priority": {
-        "id": "suggestion_priority",
-        "name": "Suggestion Prioritaire",
-        "description": "Votre suggestion de manga sera examinée en priorité",
-        "emoji": "📬",
-        "category": "privileges",
-        "price": 2500,
-        "stock": -1,
-        "type": "consumable",
-        "requirements": {"badges": [], "level": 0},
-        "active": True
-    },
-    
-    # === LOTERIE / FUN ===
+    # === LOTERIE ===
     "lottery_ticket": {
-        "id": "lottery_ticket",
-        "name": "Ticket Loterie",
-        "description": "Participez à la loterie hebdomadaire (1 ticket = 1 chance)",
-        "emoji": "🎟️",
+        "name": "🎰 Ticket Loterie",
+        "description": "Participez au tirage hebdomadaire !",
+        "price": 50,
         "category": "lottery",
-        "price": 100,
-        "stock": -1,
-        "type": "consumable",
-        "requirements": {"badges": [], "level": 0},
-        "active": True
+        "icon": "🎰"
     },
-    "mystery_box": {
-        "id": "mystery_box",
-        "name": "Boîte Mystère",
-        "description": "Recevez un item aléatoire (peut être rare !)",
-        "emoji": "🎁",
+    "lottery_ticket_x5": {
+        "name": "🎰 Pack 5 Tickets",
+        "description": "5 tickets pour le prix de 4 !",
+        "price": 200,
         "category": "lottery",
-        "price": 750,
-        "stock": -1,
-        "type": "consumable",
-        "requirements": {"badges": [], "level": 0},
-        "active": True
+        "tickets": 5,
+        "icon": "🎰"
+    },
+    
+    # === RÔLES TEMPORAIRES ===
+    "vip_role_7d": {
+        "name": "👑 Rôle VIP 7 jours",
+        "description": "Accédez au salon VIP pendant 7 jours",
+        "price": 500,
+        "category": "role",
+        "duration_days": 7,
+        "role_id": None,  # À configurer
+        "icon": "👑"
+    },
+    "vip_role_30d": {
+        "name": "👑 Rôle VIP 30 jours",
+        "description": "Accédez au salon VIP pendant 30 jours",
+        "price": 1500,
+        "category": "role",
+        "duration_days": 30,
+        "role_id": None,  # À configurer
+        "icon": "👑"
+    },
+    "color_role_30d": {
+        "name": "🎨 Couleur Custom 30j",
+        "description": "Un rôle coloré personnalisé pendant 30 jours",
+        "price": 800,
+        "category": "role",
+        "duration_days": 30,
+        "custom_color": True,
+        "icon": "🎨"
+    },
+    
+    # === MYSTERY BOX ===
+    "mystery_box_common": {
+        "name": "📦 Mystery Box",
+        "description": "Contient un item aléatoire",
+        "price": 150,
+        "category": "mystery",
+        "icon": "📦",
+        "loot_table": {
+            "common": 60,    # 60% chance
+            "uncommon": 30,  # 30% chance
+            "rare": 10       # 10% chance
+        }
+    },
+    "mystery_box_rare": {
+        "name": "💎 Mystery Box Rare",
+        "description": "Meilleures chances d'items rares !",
+        "price": 400,
+        "category": "mystery",
+        "icon": "💎",
+        "loot_table": {
+            "common": 20,    # 20% chance
+            "uncommon": 50,  # 50% chance
+            "rare": 30       # 30% chance
+        }
+    },
+    
+    # === COLLECTIBLES ===
+    "badge_collector": {
+        "name": "🏅 Badge Collectionneur",
+        "description": "Un badge exclusif pour votre profil",
+        "price": 1000,
+        "category": "collectible",
+        "badge_id": "collector",
+        "icon": "🏅"
     }
 }
 
-# Catégories avec emojis
-CATEGORIES = {
-    "roles": {"name": "🎭 Rôles", "emoji": "🎭", "description": "Rôles personnalisés et exclusifs"},
-    "boosts": {"name": "⚡ Boosts", "emoji": "⚡", "description": "Multiplicateurs et avantages temporaires"},
-    "cosmetics": {"name": "✨ Cosmétiques", "emoji": "✨", "description": "Personnalisez votre profil"},
-    "privileges": {"name": "👑 Privilèges", "emoji": "👑", "description": "Accès et droits spéciaux"},
-    "lottery": {"name": "🎲 Loterie", "emoji": "🎲", "description": "Tentez votre chance !"},
-    "manga_packs": {"name": "📚 Packs Manga", "emoji": "📚", "description": "Packs fans par manga"},
-    "social": {"name": "💬 Social", "emoji": "💬", "description": "Interactions communautaires"},
-    "utility": {"name": "🔧 Utilitaires", "emoji": "🔧", "description": "Tokens et modifications"},
-    "limited": {"name": "🌟 Édition Limitée", "emoji": "🌟", "description": "Items rares et exclusifs"}
-}
+# Loot tables pour mystery boxes
+LOOT_COMMON = [
+    {"item": "lottery_ticket", "quantity": 1},
+    {"item": "points", "quantity": 50},
+    {"item": "points", "quantity": 75},
+]
 
-# Données en mémoire
-shop_items = {}
-purchases_history = {}
-user_inventory = {}
+LOOT_UNCOMMON = [
+    {"item": "highlight_review", "quantity": 1},
+    {"item": "theory_boost", "quantity": 1},
+    {"item": "lottery_ticket", "quantity": 2},
+    {"item": "points", "quantity": 150},
+]
+
+LOOT_RARE = [
+    {"item": "double_points", "quantity": 1},
+    {"item": "triple_points", "quantity": 1},
+    {"item": "lottery_ticket", "quantity": 5},
+    {"item": "points", "quantity": 500},
+]
 
 def charger_shop():
-    """Charge les données du shop"""
-    global shop_items, purchases_history, user_inventory
+    """Charge les données de la boutique"""
+    global shop_inventory, lottery_data
     
-    # Items du shop
     if os.path.exists(SHOP_FILE):
         try:
             with open(SHOP_FILE, "r", encoding="utf-8") as f:
                 contenu = f.read().strip()
                 if contenu:
-                    shop_items = json.loads(contenu)
+                    shop_inventory.update(json.loads(contenu))
+            print("✅ Inventaires shop chargés")
         except Exception as e:
             print(f"❌ Erreur chargement shop: {e}")
-            shop_items = DEFAULT_SHOP_ITEMS.copy()
-    else:
-        shop_items = DEFAULT_SHOP_ITEMS.copy()
     
-    # Historique des achats
-    if os.path.exists(PURCHASES_FILE):
+    if os.path.exists(LOTTERY_FILE):
         try:
-            with open(PURCHASES_FILE, "r", encoding="utf-8") as f:
+            with open(LOTTERY_FILE, "r", encoding="utf-8") as f:
                 contenu = f.read().strip()
                 if contenu:
-                    purchases_history = json.loads(contenu)
+                    lottery_data.update(json.loads(contenu))
+            print("✅ Loterie chargée")
         except Exception as e:
-            print(f"❌ Erreur chargement purchases: {e}")
-    
-    # Inventaires utilisateurs
-    if os.path.exists(USER_INVENTORY_FILE):
-        try:
-            with open(USER_INVENTORY_FILE, "r", encoding="utf-8") as f:
-                contenu = f.read().strip()
-                if contenu:
-                    user_inventory = json.loads(contenu)
-        except Exception as e:
-            print(f"❌ Erreur chargement inventory: {e}")
-    
-    print(f"✅ Shop chargé ({len(shop_items)} items)")
+            print(f"❌ Erreur chargement loterie: {e}")
 
 def sauvegarder_shop():
-    """Sauvegarde les données du shop"""
+    """Sauvegarde les données"""
     try:
         with open(SHOP_FILE, "w", encoding="utf-8") as f:
-            json.dump(shop_items, f, ensure_ascii=False, indent=4)
-        with open(PURCHASES_FILE, "w", encoding="utf-8") as f:
-            json.dump(purchases_history, f, ensure_ascii=False, indent=4)
-        with open(USER_INVENTORY_FILE, "w", encoding="utf-8") as f:
-            json.dump(user_inventory, f, ensure_ascii=False, indent=4)
-        print("✅ Shop sauvegardé")
+            json.dump(shop_inventory, f, ensure_ascii=False, indent=4)
+        with open(LOTTERY_FILE, "w", encoding="utf-8") as f:
+            json.dump(lottery_data, f, ensure_ascii=False, indent=4)
     except Exception as e:
         print(f"❌ Erreur sauvegarde shop: {e}")
 
 def get_user_inventory(user_id):
-    """Récupère l'inventaire d'un utilisateur"""
+    """Récupère ou crée l'inventaire d'un utilisateur"""
     user_id_str = str(user_id)
-    if user_id_str not in user_inventory:
-        user_inventory[user_id_str] = {
+    if user_id_str not in shop_inventory:
+        shop_inventory[user_id_str] = {
             "items": {},
             "active_boosts": {},
-            "total_spent": 0,
-            "purchases_count": 0
+            "active_roles": {},
+            "purchase_history": [],
+            "lottery_tickets": 0
         }
-    return user_inventory[user_id_str]
+    return shop_inventory[user_id_str]
 
-def add_to_inventory(user_id, item_id, quantity=1):
-    """Ajoute un item à l'inventaire"""
+def activate_boost(user_id, boost_id, item_data):
+    """Active un boost pour un utilisateur"""
     inv = get_user_inventory(user_id)
-    if item_id not in inv["items"]:
-        inv["items"][item_id] = 0
-    inv["items"][item_id] += quantity
+    
+    if "active_boosts" not in inv:
+        inv["active_boosts"] = {}
+    
+    if item_data.get("one_time_use"):
+        # Boost à usage unique (s'active au prochain usage)
+        inv["active_boosts"][boost_id] = {
+            "activated_at": datetime.now().isoformat(),
+            "one_time": True
+        }
+    else:
+        # Boost temporaire
+        duration = item_data.get("duration_hours", 24)
+        expires = datetime.now() + timedelta(hours=duration)
+        
+        inv["active_boosts"][boost_id] = {
+            "activated_at": datetime.now().isoformat(),
+            "expires": expires.isoformat(),
+            "multiplier": item_data.get("multiplier", 2)
+        }
+    
     sauvegarder_shop()
-
-def remove_from_inventory(user_id, item_id, quantity=1):
-    """Retire un item de l'inventaire"""
-    inv = get_user_inventory(user_id)
-    if item_id in inv["items"]:
-        inv["items"][item_id] -= quantity
-        if inv["items"][item_id] <= 0:
-            del inv["items"][item_id]
-        sauvegarder_shop()
-        return True
-    return False
+    return True
 
 
 class ShopSystem(commands.Cog):
@@ -294,10 +257,156 @@ class ShopSystem(commands.Cog):
         self.bot = bot
         charger_shop()
     
-    @commands.command(name="shop")
-    async def show_shop(self, ctx, category: str = None):
-        """Affiche le shop"""
-        # Import pour récupérer les points
+    async def cog_load(self):
+        """Démarrer les tâches"""
+        self.weekly_lottery.start()
+        self.check_expirations.start()
+        print("✅ Tâches shop démarrées")
+    
+    async def cog_unload(self):
+        self.weekly_lottery.cancel()
+        self.check_expirations.cancel()
+    
+    # ==================== TIRAGE LOTERIE ====================
+    
+    @tasks.loop(hours=168)  # Chaque semaine
+    async def weekly_lottery(self):
+        """Tirage automatique de la loterie chaque semaine"""
+        if not lottery_data["participants"]:
+            return
+        
+        # Tirer un gagnant
+        winner_id = random.choice(lottery_data["participants"])
+        jackpot = lottery_data["current_jackpot"]
+        
+        # Donner les gains
+        try:
+            from community import add_points
+            add_points(int(winner_id), jackpot, "lottery_win")
+        except:
+            pass
+        
+        # Enregistrer le gagnant
+        lottery_data["winner_history"].append({
+            "user_id": winner_id,
+            "jackpot": jackpot,
+            "date": datetime.now().isoformat(),
+            "participants_count": len(lottery_data["participants"])
+        })
+        
+        # Reset
+        lottery_data["participants"] = []
+        lottery_data["current_jackpot"] = 500
+        lottery_data["last_draw"] = datetime.now().isoformat()
+        
+        sauvegarder_shop()
+        
+        # Annoncer (chercher un salon approprié)
+        for guild in self.bot.guilds:
+            # Chercher un salon général ou annonces
+            channel = discord.utils.find(
+                lambda c: "general" in c.name.lower() or "annonce" in c.name.lower(),
+                guild.text_channels
+            )
+            if channel:
+                winner = guild.get_member(int(winner_id))
+                winner_name = winner.mention if winner else f"User {winner_id}"
+                
+                embed = discord.Embed(
+                    title="🎰 TIRAGE DE LA LOTERIE ! 🎰",
+                    description=f"**{winner_name}** remporte le jackpot !",
+                    color=discord.Color.gold()
+                )
+                embed.add_field(name="💰 Gains", value=f"**{jackpot:,}** points !", inline=True)
+                embed.add_field(name="👥 Participants", value=str(len(lottery_data["winner_history"][-1]["participants_count"])), inline=True)
+                
+                try:
+                    await channel.send(embed=embed)
+                except:
+                    pass
+    
+    @weekly_lottery.before_loop
+    async def before_lottery(self):
+        await self.bot.wait_until_ready()
+    
+    # ==================== EXPIRATION AUTO ====================
+    
+    @tasks.loop(hours=1)  # Vérifier chaque heure
+    async def check_expirations(self):
+        """Vérifie et retire les rôles/boosts expirés"""
+        now = datetime.now()
+        
+        for user_id, inv in shop_inventory.items():
+            # Vérifier les rôles temporaires
+            expired_roles = []
+            for role_key, role_data in inv.get("active_roles", {}).items():
+                if "expires" in role_data:
+                    expires = datetime.fromisoformat(role_data["expires"])
+                    if now >= expires:
+                        expired_roles.append((role_key, role_data))
+            
+            # Retirer les rôles expirés
+            for role_key, role_data in expired_roles:
+                role_id = role_data.get("role_id")
+                if role_id:
+                    for guild in self.bot.guilds:
+                        member = guild.get_member(int(user_id))
+                        if member:
+                            role = guild.get_role(role_id)
+                            if role and role in member.roles:
+                                try:
+                                    await member.remove_roles(role, reason="Rôle temporaire expiré")
+                                    
+                                    # Notifier l'utilisateur
+                                    try:
+                                        await member.send(
+                                            f"⏰ Votre rôle temporaire **{role.name}** a expiré. "
+                                            f"Vous pouvez le racheter dans la boutique avec `!shop`"
+                                        )
+                                    except:
+                                        pass
+                                except:
+                                    pass
+                
+                del inv["active_roles"][role_key]
+            
+            # Vérifier les boosts expirés
+            expired_boosts = []
+            for boost_id, boost_data in inv.get("active_boosts", {}).items():
+                if "expires" in boost_data:
+                    expires = datetime.fromisoformat(boost_data["expires"])
+                    if now >= expires:
+                        expired_boosts.append(boost_id)
+            
+            for boost_id in expired_boosts:
+                del inv["active_boosts"][boost_id]
+        
+        sauvegarder_shop()
+    
+    @check_expirations.before_loop
+    async def before_check_expirations(self):
+        await self.bot.wait_until_ready()
+    
+    # ==================== COMMANDES SHOP ====================
+    
+    @commands.command(name="shop", aliases=["boutique", "magasin"])
+    async def shop(self, ctx, category: str = None):
+        """
+        Affiche la boutique.
+        Catégories: boost, lottery, role, mystery, collectible
+        """
+        if category:
+            filtered = {k: v for k, v in SHOP_ITEMS.items() if v.get("category") == category.lower()}
+            if not filtered:
+                await ctx.send(f"❌ Catégorie invalide. Choix: `boost`, `lottery`, `role`, `mystery`, `collectible`")
+                return
+            items = filtered
+            title = f"🛒 Boutique - {category.title()}"
+        else:
+            items = SHOP_ITEMS
+            title = "🛒 Boutique LanorTrad"
+        
+        # Récupérer les points de l'utilisateur
         try:
             from community import get_user_stats
             user_stats = get_user_stats(ctx.author.id)
@@ -305,577 +414,531 @@ class ShopSystem(commands.Cog):
         except:
             user_points = 0
         
-        if category:
-            # Afficher une catégorie spécifique
-            cat_lower = category.lower()
-            cat_key = None
-            
-            for key, cat_info in CATEGORIES.items():
-                if key == cat_lower or cat_info["name"].lower().find(cat_lower) != -1:
-                    cat_key = key
-                    break
-            
-            if not cat_key:
-                await ctx.send(f"❌ Catégorie '{category}' introuvable.")
-                return
-            
-            items = {k: v for k, v in shop_items.items() 
-                    if v.get("category") == cat_key and v.get("active", True)}
-            
-            if not items:
-                await ctx.send(f"❌ Aucun item dans cette catégorie.")
-                return
-            
-            cat_info = CATEGORIES[cat_key]
-            
-            embed = discord.Embed(
-                title=f"🛒 Shop - {cat_info['name']}",
-                description=f"💰 Vos points: **{user_points:,}**",
-                color=discord.Color.blue(),
-                timestamp=datetime.now()
-            )
-            
-            for item_id, item in items.items():
-                stock_text = f"Stock: {item['stock']}" if item['stock'] > 0 else "♾️ Illimité" if item['stock'] == -1 else "❌ Rupture"
-                can_afford = "✅" if user_points >= item['price'] else "❌"
-                
-                value = (
-                    f"{item['description']}\n"
-                    f"💵 **{item['price']:,}** pts {can_afford}\n"
-                    f"📦 {stock_text}"
-                )
-                
-                embed.add_field(
-                    name=f"{item['emoji']} {item['name']}",
-                    value=value,
-                    inline=True
-                )
-            
-            embed.set_footer(text=f"Utilisez !buy <nom> pour acheter")
-            await ctx.send(embed=embed)
-            
-        else:
-            # Afficher le menu principal
-            embed = discord.Embed(
-                title="🛒 Shop LanorTrad",
-                description=(
-                    f"💰 Vos points: **{user_points:,}**\n\n"
-                    "Bienvenue dans le shop ! Dépensez vos points gagnés en participant à la communauté.\n\n"
-                    "**Catégories disponibles:**"
-                ),
-                color=discord.Color.gold(),
-                timestamp=datetime.now()
-            )
-            
-            for cat_key, cat_info in CATEGORIES.items():
-                items_count = len([i for i in shop_items.values() 
-                                  if i.get("category") == cat_key and i.get("active", True)])
-                
-                embed.add_field(
-                    name=cat_info["name"],
-                    value=f"{items_count} item(s)\n`!shop {cat_key}`",
-                    inline=True
-                )
-            
-            embed.add_field(
-                name="━━━━━━━━━━━━━━━━━━━━",
-                value="",
-                inline=False
-            )
-            
-            embed.add_field(
-                name="📋 Commandes",
-                value=(
-                    "`!shop <catégorie>` - Voir une catégorie\n"
-                    "`!buy <item>` - Acheter un item\n"
-                    "`!inventory` - Voir votre inventaire\n"
-                    "`!use <item>` - Utiliser un item"
-                ),
-                inline=False
-            )
-            
-            embed.set_thumbnail(url=ctx.guild.icon.url if ctx.guild.icon else None)
-            embed.set_footer(text="Gagnez des points en laissant des reviews et des théories !")
-            
-            await ctx.send(embed=embed)
-    
-    @commands.command(name="buy")
-    async def buy_item(self, ctx, *, item_name: str):
-        """Achète un item du shop"""
-        # Chercher l'item
-        found_item = None
-        found_id = None
+        embed = discord.Embed(
+            title=title,
+            description=f"💰 Votre solde: **{user_points:,}** points\n\n"
+                       f"Utilisez `!buy <article>` pour acheter",
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
         
-        for iid, item in shop_items.items():
-            if item["name"].lower() == item_name.lower() or iid.lower() == item_name.lower():
-                found_item = item
-                found_id = iid
+        # Grouper par catégorie
+        categories = {}
+        for item_id, item in items.items():
+            cat = item.get("category", "autre")
+            if cat not in categories:
+                categories[cat] = []
+            categories[cat].append((item_id, item))
+        
+        category_names = {
+            "boost": "⚡ Boosts",
+            "lottery": "🎰 Loterie",
+            "role": "👑 Rôles",
+            "mystery": "📦 Mystery Box",
+            "collectible": "🏆 Collectibles"
+        }
+        
+        for cat, cat_items in categories.items():
+            items_text = ""
+            for item_id, item in cat_items:
+                can_afford = "✅" if user_points >= item["price"] else "❌"
+                items_text += f"{can_afford} **{item['name']}** - {item['price']} pts\n"
+                items_text += f"   *{item['description'][:50]}*\n"
+            
+            embed.add_field(
+                name=category_names.get(cat, cat.title()),
+                value=items_text or "Aucun article",
+                inline=False
+            )
+        
+        # Info loterie
+        embed.add_field(
+            name="🎰 Jackpot Actuel",
+            value=f"**{lottery_data['current_jackpot']:,}** points\n"
+                  f"👥 {len(lottery_data['participants'])} participants",
+            inline=True
+        )
+        
+        embed.set_footer(text="!shop <catégorie> pour filtrer | !buy <article> pour acheter")
+        await ctx.send(embed=embed)
+    
+    @commands.command(name="buy", aliases=["acheter"])
+    async def buy(self, ctx, *, item_name: str):
+        """Achète un article de la boutique"""
+        # Trouver l'item
+        item_id = None
+        item_data = None
+        
+        item_name_lower = item_name.lower().replace(" ", "_")
+        
+        for iid, idata in SHOP_ITEMS.items():
+            if iid == item_name_lower or idata["name"].lower() == item_name.lower():
+                item_id = iid
+                item_data = idata
                 break
         
-        if not found_item:
-            await ctx.send(f"❌ Item '{item_name}' introuvable. Utilisez `!shop` pour voir les items disponibles.")
+        if not item_data:
+            await ctx.send(f"❌ Article introuvable. Utilisez `!shop` pour voir les articles disponibles.")
             return
         
-        if not found_item.get("active", True):
-            await ctx.send("❌ Cet item n'est pas disponible actuellement.")
-            return
-        
-        # Vérifier le stock
-        if found_item["stock"] == 0:
-            await ctx.send("❌ Cet item est en rupture de stock.")
-            return
-        
-        # Import pour les points
+        # Vérifier les points
         try:
-            from community import get_user_stats, add_points, sauvegarder_donnees
+            from community import get_user_stats, add_points
             user_stats = get_user_stats(ctx.author.id)
             user_points = user_stats.get("points", 0)
         except Exception as e:
-            await ctx.send(f"❌ Erreur système: {e}")
+            await ctx.send(f"❌ Erreur: {e}")
             return
         
-        price = found_item["price"]
-        
-        # Vérifier les points
-        if user_points < price:
-            await ctx.send(f"❌ Vous n'avez pas assez de points. (Vous avez **{user_points:,}** pts, il faut **{price:,}** pts)")
+        if user_points < item_data["price"]:
+            await ctx.send(f"❌ Vous n'avez pas assez de points. (Vous avez {user_points:,}, il faut {item_data['price']:,})")
             return
         
-        # Vérifier les achats max
+        # Déduire les points
+        add_points(ctx.author.id, -item_data["price"], f"achat_{item_id}")
+        
         inv = get_user_inventory(ctx.author.id)
-        if "max_purchases" in found_item:
-            current_owned = inv["items"].get(found_id, 0)
-            if current_owned >= found_item["max_purchases"]:
-                await ctx.send(f"❌ Vous avez atteint la limite d'achat pour cet item ({found_item['max_purchases']} max).")
-                return
         
-        # Vérifier les requirements
-        requirements = found_item.get("requirements", {})
-        required_badges = requirements.get("badges", [])
+        # Ajouter à l'historique
+        inv["purchase_history"].append({
+            "item_id": item_id,
+            "price": item_data["price"],
+            "date": datetime.now().isoformat()
+        })
         
-        if required_badges:
-            try:
-                from achievements import get_user_badges
-                user_badges = get_user_badges(ctx.author.id)
-                for badge_id in required_badges:
-                    if badge_id not in user_badges.get("unlocked", []):
-                        await ctx.send(f"❌ Vous avez besoin du badge `{badge_id}` pour acheter cet item.")
-                        return
-            except:
-                pass
-        
-        # Confirmation
-        embed_confirm = discord.Embed(
-            title="🛒 Confirmation d'Achat",
-            description=f"Voulez-vous acheter **{found_item['emoji']} {found_item['name']}** ?",
-            color=discord.Color.blue()
+        # Traitement selon la catégorie
+        result_embed = discord.Embed(
+            title=f"✅ Achat Réussi !",
+            description=f"Vous avez acheté **{item_data['name']}**",
+            color=discord.Color.green(),
+            timestamp=datetime.now()
         )
-        embed_confirm.add_field(name="💵 Prix", value=f"**{price:,}** pts", inline=True)
-        embed_confirm.add_field(name="💰 Vos points", value=f"**{user_points:,}** pts", inline=True)
-        embed_confirm.add_field(name="💰 Après achat", value=f"**{user_points - price:,}** pts", inline=True)
-        embed_confirm.add_field(name="📝 Description", value=found_item["description"], inline=False)
-        embed_confirm.set_footer(text="Réagissez ✅ pour confirmer ou ❌ pour annuler")
         
-        confirm_msg = await ctx.send(embed=embed_confirm)
-        await confirm_msg.add_reaction("✅")
-        await confirm_msg.add_reaction("❌")
+        # === BOOST ===
+        if item_data["category"] == "boost":
+            activate_boost(ctx.author.id, item_id.replace("_24h", "").replace("_12h", ""), item_data)
+            
+            if item_data.get("one_time_use"):
+                result_embed.add_field(
+                    name="⚡ Activation",
+                    value="S'activera automatiquement à votre prochaine action !",
+                    inline=False
+                )
+            else:
+                duration = item_data.get("duration_hours", 24)
+                expires = datetime.now() + timedelta(hours=duration)
+                result_embed.add_field(
+                    name="⏰ Durée",
+                    value=f"Actif jusqu'au {expires.strftime('%d/%m à %H:%M')}",
+                    inline=True
+                )
+                result_embed.add_field(
+                    name="⚡ Multiplicateur",
+                    value=f"x{item_data.get('multiplier', 2)}",
+                    inline=True
+                )
         
-        def check(reaction, user):
-            return user == ctx.author and str(reaction.emoji) in ["✅", "❌"] and reaction.message.id == confirm_msg.id
-        
-        try:
-            reaction, _ = await self.bot.wait_for("reaction_add", timeout=30, check=check)
-            await confirm_msg.clear_reactions()
+        # === LOTERIE ===
+        elif item_data["category"] == "lottery":
+            tickets = item_data.get("tickets", 1)
+            inv["lottery_tickets"] = inv.get("lottery_tickets", 0) + tickets
             
-            if str(reaction.emoji) == "❌":
-                await ctx.send("❌ Achat annulé.")
-                return
+            # Ajouter aux participants
+            for _ in range(tickets):
+                lottery_data["participants"].append(str(ctx.author.id))
             
-            # Effectuer l'achat
-            # Retirer les points
-            add_points(ctx.author.id, -price)
-            sauvegarder_donnees()
+            # Augmenter le jackpot (10% du prix va au jackpot)
+            lottery_data["current_jackpot"] += int(item_data["price"] * 0.1 * tickets)
             
-            # Ajouter à l'inventaire
-            add_to_inventory(ctx.author.id, found_id)
-            
-            # Mettre à jour les stats
-            inv["total_spent"] += price
-            inv["purchases_count"] += 1
-            
-            # Réduire le stock si limité
-            if found_item["stock"] > 0:
-                shop_items[found_id]["stock"] -= 1
-            
-            # Enregistrer l'achat
-            if str(ctx.author.id) not in purchases_history:
-                purchases_history[str(ctx.author.id)] = []
-            
-            purchases_history[str(ctx.author.id)].append({
-                "item_id": found_id,
-                "item_name": found_item["name"],
-                "price": price,
-                "date": datetime.now().isoformat()
-            })
-            
-            sauvegarder_shop()
-            
-            # Vérifier les badges liés aux achats
-            try:
-                from achievements import check_badges, get_user_badges
-                user_badges_data = get_user_badges(ctx.author.id)
-                user_badges_data["stats"]["purchases"] = inv["purchases_count"]
-                user_badges_data["stats"]["total_spent"] = inv["total_spent"]
-                
-                unlocked = check_badges(ctx.author.id, user_stats)
-                if unlocked:
-                    badges_text = ", ".join([f"{b['emoji']} {b['name']}" for b in unlocked])
-                    await ctx.send(f"🏆 **Nouveau(x) badge(s) débloqué(s):** {badges_text}")
-            except:
-                pass
-            
-            # Confirmation d'achat
-            embed_success = discord.Embed(
-                title="✅ Achat Réussi !",
-                description=f"Vous avez acheté **{found_item['emoji']} {found_item['name']}** !",
-                color=discord.Color.green(),
-                timestamp=datetime.now()
+            result_embed.add_field(
+                name="🎰 Tickets",
+                value=f"+{tickets} ticket(s) ajouté(s)\nVous avez maintenant **{inv['lottery_tickets']}** ticket(s)",
+                inline=True
             )
-            embed_success.add_field(name="💵 Dépensé", value=f"**{price:,}** pts", inline=True)
-            embed_success.add_field(name="💰 Reste", value=f"**{user_points - price:,}** pts", inline=True)
-            
-            # Instructions spéciales selon le type
-            item_type = found_item.get("type", "consumable")
-            if item_type == "consumable":
-                embed_success.add_field(
-                    name="📋 Utilisation",
-                    value=f"Utilisez `!use {found_item['name']}` pour activer cet item.",
+            result_embed.add_field(
+                name="💰 Jackpot",
+                value=f"**{lottery_data['current_jackpot']:,}** points",
+                inline=True
+            )
+        
+        # === RÔLE TEMPORAIRE ===
+        elif item_data["category"] == "role":
+            if item_data.get("custom_color"):
+                # Demander la couleur
+                result_embed.add_field(
+                    name="🎨 Couleur Custom",
+                    value="Utilisez `!setcolor #HEXCODE` pour définir votre couleur !",
                     inline=False
                 )
-            elif item_type == "one_time":
-                embed_success.add_field(
-                    name="📋 Information",
-                    value="Un membre du staff vous contactera pour configurer votre achat.",
+                inv["pending_color_role"] = {
+                    "purchased_at": datetime.now().isoformat(),
+                    "duration_days": item_data.get("duration_days", 30)
+                }
+            else:
+                role_id = item_data.get("role_id")
+                if role_id:
+                    role = ctx.guild.get_role(role_id)
+                    if role:
+                        try:
+                            await ctx.author.add_roles(role, reason="Achat boutique")
+                            
+                            # Enregistrer l'expiration
+                            duration = item_data.get("duration_days", 7)
+                            expires = datetime.now() + timedelta(days=duration)
+                            
+                            if "active_roles" not in inv:
+                                inv["active_roles"] = {}
+                            
+                            inv["active_roles"][item_id] = {
+                                "role_id": role_id,
+                                "expires": expires.isoformat(),
+                                "purchased_at": datetime.now().isoformat()
+                            }
+                            
+                            result_embed.add_field(
+                                name="👑 Rôle Activé",
+                                value=f"{role.mention}\nExpire le {expires.strftime('%d/%m/%Y')}",
+                                inline=False
+                            )
+                        except Exception as e:
+                            result_embed.add_field(name="❌ Erreur", value=str(e), inline=False)
+                else:
+                    result_embed.add_field(
+                        name="⚠️ Configuration",
+                        value="Ce rôle n'est pas encore configuré. Contactez un admin.",
+                        inline=False
+                    )
+        
+        # === MYSTERY BOX ===
+        elif item_data["category"] == "mystery":
+            loot = self.open_mystery_box(item_data.get("loot_table", {}))
+            
+            result_embed.title = f"📦 Mystery Box Ouverte !"
+            
+            if loot["type"] == "points":
+                add_points(ctx.author.id, loot["quantity"], "mystery_box")
+                result_embed.add_field(
+                    name="💰 Vous avez obtenu",
+                    value=f"**{loot['quantity']}** points !",
                     inline=False
                 )
+            elif loot["type"] == "item":
+                # Activer l'item gagné
+                won_item = SHOP_ITEMS.get(loot["item_id"])
+                if won_item:
+                    if won_item["category"] == "boost":
+                        activate_boost(ctx.author.id, loot["item_id"], won_item)
+                    elif won_item["category"] == "lottery":
+                        inv["lottery_tickets"] = inv.get("lottery_tickets", 0) + loot.get("quantity", 1)
+                        for _ in range(loot.get("quantity", 1)):
+                            lottery_data["participants"].append(str(ctx.author.id))
+                    
+                    result_embed.add_field(
+                        name=f"🎁 Vous avez obtenu",
+                        value=f"**{won_item['name']}** x{loot.get('quantity', 1)} !",
+                        inline=False
+                    )
             
-            embed_success.set_footer(text=f"Achat #{inv['purchases_count']}")
-            await ctx.send(embed=embed_success)
-            
-        except asyncio.TimeoutError:
-            await confirm_msg.clear_reactions()
-            await ctx.send("⏰ Temps écoulé. Achat annulé.")
+            result_embed.add_field(
+                name="🎲 Rareté",
+                value=f"**{loot['rarity'].upper()}**",
+                inline=True
+            )
+        
+        # === COLLECTIBLE ===
+        elif item_data["category"] == "collectible":
+            badge_id = item_data.get("badge_id")
+            if badge_id:
+                try:
+                    from achievements import unlock_badge
+                    unlock_badge(ctx.author.id, badge_id)
+                    result_embed.add_field(
+                        name="🏅 Badge Débloqué",
+                        value=f"Vous avez maintenant le badge **{item_data['name']}** !",
+                        inline=False
+                    )
+                except:
+                    if "items" not in inv:
+                        inv["items"] = {}
+                    inv["items"][item_id] = inv["items"].get(item_id, 0) + 1
+        
+        sauvegarder_shop()
+        
+        # Afficher le nouveau solde
+        try:
+            user_stats = get_user_stats(ctx.author.id)
+            result_embed.set_footer(text=f"💰 Nouveau solde: {user_stats.get('points', 0):,} points")
+        except:
+            pass
+        
+        result_embed.set_thumbnail(url=ctx.author.avatar.url if ctx.author.avatar else None)
+        await ctx.send(embed=result_embed)
     
-    @commands.command(name="inventory")
-    async def show_inventory(self, ctx, member: discord.Member = None):
-        """Affiche l'inventaire"""
+    def open_mystery_box(self, loot_table):
+        """Ouvre une mystery box et retourne le loot"""
+        # Déterminer la rareté
+        roll = random.randint(1, 100)
+        
+        common_chance = loot_table.get("common", 60)
+        uncommon_chance = loot_table.get("uncommon", 30)
+        
+        if roll <= common_chance:
+            rarity = "common"
+            loot_pool = LOOT_COMMON
+        elif roll <= common_chance + uncommon_chance:
+            rarity = "uncommon"
+            loot_pool = LOOT_UNCOMMON
+        else:
+            rarity = "rare"
+            loot_pool = LOOT_RARE
+        
+        # Choisir un item aléatoire
+        loot = random.choice(loot_pool)
+        
+        if loot["item"] == "points":
+            return {
+                "type": "points",
+                "quantity": loot["quantity"],
+                "rarity": rarity
+            }
+        else:
+            return {
+                "type": "item",
+                "item_id": loot["item"],
+                "quantity": loot.get("quantity", 1),
+                "rarity": rarity
+            }
+    
+    @commands.command(name="lottery", aliases=["loto", "loterie"])
+    async def lottery_info(self, ctx):
+        """Affiche les infos de la loterie"""
+        embed = discord.Embed(
+            title="🎰 Loterie Hebdomadaire",
+            description="Achetez des tickets pour participer au tirage !",
+            color=discord.Color.gold(),
+            timestamp=datetime.now()
+        )
+        
+        embed.add_field(
+            name="💰 Jackpot Actuel",
+            value=f"**{lottery_data['current_jackpot']:,}** points",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="👥 Participants",
+            value=f"**{len(lottery_data['participants'])}** tickets en jeu",
+            inline=True
+        )
+        
+        # Tickets de l'utilisateur
+        inv = get_user_inventory(ctx.author.id)
+        user_tickets = lottery_data["participants"].count(str(ctx.author.id))
+        
+        embed.add_field(
+            name="🎫 Vos Tickets",
+            value=f"**{user_tickets}** ticket(s) en jeu",
+            inline=True
+        )
+        
+        # Probabilité de gain
+        if len(lottery_data["participants"]) > 0:
+            win_chance = (user_tickets / len(lottery_data["participants"])) * 100
+            embed.add_field(
+                name="📊 Vos Chances",
+                value=f"**{win_chance:.1f}%**",
+                inline=True
+            )
+        
+        # Dernier gagnant
+        if lottery_data["winner_history"]:
+            last_winner = lottery_data["winner_history"][-1]
+            member = ctx.guild.get_member(int(last_winner["user_id"]))
+            winner_name = member.display_name if member else "Inconnu"
+            
+            embed.add_field(
+                name="🏆 Dernier Gagnant",
+                value=f"**{winner_name}** ({last_winner['jackpot']:,} pts)",
+                inline=True
+            )
+        
+        embed.add_field(
+            name="🛒 Acheter des Tickets",
+            value="`!buy lottery_ticket` (50 pts)\n`!buy lottery_ticket_x5` (200 pts)",
+            inline=False
+        )
+        
+        embed.set_footer(text="Tirage automatique chaque semaine !")
+        await ctx.send(embed=embed)
+    
+    @commands.command(name="inventory", aliases=["inv", "inventaire"])
+    async def inventory(self, ctx, member: discord.Member = None):
+        """Affiche l'inventaire d'un membre"""
         member = member or ctx.author
         inv = get_user_inventory(member.id)
         
         embed = discord.Embed(
             title=f"🎒 Inventaire de {member.display_name}",
-            description=f"💸 Total dépensé: **{inv['total_spent']:,}** pts",
-            color=discord.Color.blue(),
+            color=member.color if member.color != discord.Color.default() else discord.Color.blue(),
             timestamp=datetime.now()
         )
-        
-        if not inv["items"]:
-            embed.add_field(
-                name="Vide",
-                value="Aucun item dans l'inventaire.\nVisitez le `!shop` pour acheter !",
-                inline=False
-            )
-        else:
-            # Grouper par catégorie
-            by_category = {}
-            for item_id, quantity in inv["items"].items():
-                if item_id in shop_items:
-                    item = shop_items[item_id]
-                    cat = item.get("category", "other")
-                    if cat not in by_category:
-                        by_category[cat] = []
-                    by_category[cat].append((item, quantity))
-            
-            for cat, items in by_category.items():
-                cat_name = CATEGORIES.get(cat, {}).get("name", cat.capitalize())
-                items_text = "\n".join([f"{item['emoji']} {item['name']} x{qty}" for item, qty in items])
-                embed.add_field(name=cat_name, value=items_text, inline=True)
         
         # Boosts actifs
-        if inv.get("active_boosts"):
+        active_boosts = inv.get("active_boosts", {})
+        if active_boosts:
             boosts_text = ""
-            for boost_id, boost_data in inv["active_boosts"].items():
-                expires = datetime.fromisoformat(boost_data["expires"])
-                remaining = expires - datetime.now()
-                if remaining.total_seconds() > 0:
+            for boost_id, boost_data in active_boosts.items():
+                item_name = SHOP_ITEMS.get(boost_id, {}).get("name", boost_id)
+                
+                if boost_data.get("one_time"):
+                    boosts_text += f"⚡ **{item_name}** - Prêt à l'emploi\n"
+                elif "expires" in boost_data:
+                    expires = datetime.fromisoformat(boost_data["expires"])
+                    remaining = expires - datetime.now()
                     hours = int(remaining.total_seconds() // 3600)
-                    minutes = int((remaining.total_seconds() % 3600) // 60)
-                    boosts_text += f"⚡ {boost_data['name']} - {hours}h {minutes}m restant\n"
+                    boosts_text += f"⚡ **{item_name}** - {hours}h restantes\n"
             
-            if boosts_text:
-                embed.add_field(name="🔥 Boosts Actifs", value=boosts_text, inline=False)
+            embed.add_field(name="🚀 Boosts Actifs", value=boosts_text or "Aucun", inline=False)
+        
+        # Rôles temporaires
+        active_roles = inv.get("active_roles", {})
+        if active_roles:
+            roles_text = ""
+            for role_key, role_data in active_roles.items():
+                expires = datetime.fromisoformat(role_data["expires"])
+                days_left = (expires - datetime.now()).days
+                role = ctx.guild.get_role(role_data.get("role_id", 0))
+                role_name = role.name if role else role_key
+                roles_text += f"👑 **{role_name}** - {days_left} jours\n"
+            
+            embed.add_field(name="👑 Rôles Temporaires", value=roles_text or "Aucun", inline=False)
+        
+        # Tickets loterie
+        lottery_tickets = inv.get("lottery_tickets", 0)
+        in_draw = lottery_data["participants"].count(str(member.id))
+        embed.add_field(
+            name="🎰 Loterie",
+            value=f"**{in_draw}** ticket(s) en jeu",
+            inline=True
+        )
+        
+        # Items collectés
+        items = inv.get("items", {})
+        if items:
+            items_text = ""
+            for item_id, qty in items.items():
+                item_name = SHOP_ITEMS.get(item_id, {}).get("name", item_id)
+                items_text += f"• **{item_name}** x{qty}\n"
+            embed.add_field(name="📦 Items", value=items_text[:500], inline=False)
+        
+        # Stats d'achat
+        history = inv.get("purchase_history", [])
+        total_spent = sum(p.get("price", 0) for p in history)
+        embed.add_field(
+            name="📊 Statistiques",
+            value=f"Achats: **{len(history)}**\nTotal dépensé: **{total_spent:,}** pts",
+            inline=False
+        )
         
         embed.set_thumbnail(url=member.avatar.url if member.avatar else None)
-        embed.set_footer(text=f"Utilisez !use <item> pour activer un item")
-        
         await ctx.send(embed=embed)
     
-    @commands.command(name="use")
-    async def use_item(self, ctx, *, item_name: str):
-        """Utilise un item de l'inventaire"""
+    @commands.command(name="setcolor")
+    async def set_custom_color(self, ctx, color: str):
+        """Définit votre couleur custom (après achat)"""
         inv = get_user_inventory(ctx.author.id)
         
-        # Chercher l'item
-        found_item = None
-        found_id = None
-        
-        for iid, item in shop_items.items():
-            if item["name"].lower() == item_name.lower() or iid.lower() == item_name.lower():
-                found_item = item
-                found_id = iid
-                break
-        
-        if not found_item:
-            await ctx.send(f"❌ Item '{item_name}' introuvable.")
+        if "pending_color_role" not in inv:
+            await ctx.send("❌ Vous n'avez pas de couleur custom en attente. Achetez-en une avec `!buy color_role_30d`")
             return
         
-        if found_id not in inv["items"] or inv["items"][found_id] <= 0:
-            await ctx.send(f"❌ Vous ne possédez pas cet item.")
-            return
-        
-        item_type = found_item.get("type", "consumable")
-        
-        if item_type != "consumable":
-            await ctx.send("❌ Cet item ne peut pas être utilisé directement. Contactez un admin si nécessaire.")
-            return
-        
-        # Utiliser l'item
-        remove_from_inventory(ctx.author.id, found_id)
-        
-        # Effets spéciaux selon l'item
-        effect_text = ""
-        
-        if found_id == "double_points_24h":
-            # Activer le boost
-            expires = datetime.now() + timedelta(hours=24)
-            if "active_boosts" not in inv:
-                inv["active_boosts"] = {}
-            inv["active_boosts"]["double_points"] = {
-                "name": found_item["name"],
-                "expires": expires.isoformat(),
-                "multiplier": 2
-            }
-            effect_text = "⚡ Vos points seront doublés pendant 24h !"
-            
-        elif found_id == "highlight_review":
-            if "active_boosts" not in inv:
-                inv["active_boosts"] = {}
-            inv["active_boosts"]["highlight_review"] = {
-                "name": found_item["name"],
-                "uses": 1
-            }
-            effect_text = "🌟 Votre prochaine review sera mise en avant !"
-            
-        elif found_id == "theory_boost":
-            if "active_boosts" not in inv:
-                inv["active_boosts"] = {}
-            inv["active_boosts"]["theory_boost"] = {
-                "name": found_item["name"],
-                "uses": 1
-            }
-            effect_text = "🚀 Votre prochaine théorie sera boostée !"
-            
-        elif found_id == "lottery_ticket":
-            # Ajouter à la loterie
-            effect_text = "🎟️ Votre ticket a été enregistré pour la prochaine loterie !"
-            
-        elif found_id == "mystery_box":
-            # Ouvrir la boîte mystère
-            import random
-            possible_rewards = [
-                {"type": "points", "amount": 100, "name": "100 points", "emoji": "💰"},
-                {"type": "points", "amount": 250, "name": "250 points", "emoji": "💰"},
-                {"type": "points", "amount": 500, "name": "500 points", "emoji": "💎"},
-                {"type": "points", "amount": 1000, "name": "1000 points", "emoji": "💎", "rare": True},
-                {"type": "item", "item_id": "lottery_ticket", "name": "Ticket Loterie", "emoji": "🎟️"},
-                {"type": "item", "item_id": "double_points_24h", "name": "Double Points (24h)", "emoji": "⚡"},
-            ]
-            
-            reward = random.choice(possible_rewards)
-            
-            if reward["type"] == "points":
-                try:
-                    from community import add_points
-                    add_points(ctx.author.id, reward["amount"])
-                except:
-                    pass
-                effect_text = f"🎁 Vous avez gagné **{reward['emoji']} {reward['name']}** !"
-            elif reward["type"] == "item":
-                add_to_inventory(ctx.author.id, reward["item_id"])
-                effect_text = f"🎁 Vous avez gagné **{reward['emoji']} {reward['name']}** !"
-        
-        else:
-            effect_text = f"✅ {found_item['name']} utilisé !"
-        
-        sauvegarder_shop()
-        
-        embed = discord.Embed(
-            title=f"{found_item['emoji']} Item Utilisé !",
-            description=effect_text,
-            color=discord.Color.green(),
-            timestamp=datetime.now()
-        )
-        embed.set_footer(text=f"Stock restant: {inv['items'].get(found_id, 0)}")
-        
-        await ctx.send(embed=embed)
-    
-    # ==================== ADMIN ====================
-    
-    @commands.command(name="shop_add")
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
-    async def shop_add(self, ctx):
-        """(Admin) Ajoute un item au shop de manière interactive"""
-        
-        def check(m):
-            return m.author == ctx.author and m.channel == ctx.channel
-        
+        # Valider la couleur hex
+        color = color.strip("#")
         try:
-            # Nom
-            await ctx.send("📝 **Nom de l'item:**")
-            msg = await self.bot.wait_for("message", timeout=60, check=check)
-            name = msg.content.strip()
+            color_int = int(color, 16)
+        except ValueError:
+            await ctx.send("❌ Couleur invalide. Utilisez le format hex: `!setcolor #FF5500`")
+            return
+        
+        # Créer le rôle
+        try:
+            role = await ctx.guild.create_role(
+                name=f"🎨 {ctx.author.display_name}",
+                color=discord.Color(color_int),
+                reason="Couleur custom achetée"
+            )
             
-            # ID
-            item_id = name.lower().replace(" ", "_")
+            # Positionner le rôle
+            await ctx.author.add_roles(role)
             
-            # Description
-            await ctx.send("📋 **Description:**")
-            msg = await self.bot.wait_for("message", timeout=60, check=check)
-            description = msg.content.strip()
+            # Enregistrer l'expiration
+            duration = inv["pending_color_role"].get("duration_days", 30)
+            expires = datetime.now() + timedelta(days=duration)
             
-            # Emoji
-            await ctx.send("😀 **Emoji:**")
-            msg = await self.bot.wait_for("message", timeout=60, check=check)
-            emoji = msg.content.strip()
+            if "active_roles" not in inv:
+                inv["active_roles"] = {}
             
-            # Catégorie
-            cats_list = ", ".join(CATEGORIES.keys())
-            await ctx.send(f"📁 **Catégorie:** ({cats_list})")
-            msg = await self.bot.wait_for("message", timeout=60, check=check)
-            category = msg.content.strip().lower()
-            
-            # Prix
-            await ctx.send("💵 **Prix (en points):**")
-            msg = await self.bot.wait_for("message", timeout=60, check=check)
-            price = int(msg.content.strip())
-            
-            # Stock
-            await ctx.send("📦 **Stock:** (-1 pour illimité)")
-            msg = await self.bot.wait_for("message", timeout=60, check=check)
-            stock = int(msg.content.strip())
-            
-            # Type
-            await ctx.send("🔧 **Type:** (one_time, consumable, temporary)")
-            msg = await self.bot.wait_for("message", timeout=60, check=check)
-            item_type = msg.content.strip().lower()
-            
-            # Créer l'item
-            shop_items[item_id] = {
-                "id": item_id,
-                "name": name,
-                "description": description,
-                "emoji": emoji,
-                "category": category,
-                "price": price,
-                "stock": stock,
-                "type": item_type,
-                "requirements": {"badges": [], "level": 0},
-                "active": True
+            inv["active_roles"]["custom_color"] = {
+                "role_id": role.id,
+                "expires": expires.isoformat(),
+                "color": color
             }
             
+            del inv["pending_color_role"]
             sauvegarder_shop()
             
             embed = discord.Embed(
-                title="✅ Item Ajouté !",
-                description=f"**{emoji} {name}** a été ajouté au shop.",
-                color=discord.Color.green()
+                title="🎨 Couleur Appliquée !",
+                description=f"Votre nouvelle couleur: **#{color}**",
+                color=discord.Color(color_int)
             )
-            embed.add_field(name="💵 Prix", value=f"{price:,} pts", inline=True)
-            embed.add_field(name="📦 Stock", value=str(stock) if stock >= 0 else "Illimité", inline=True)
+            embed.add_field(name="⏰ Expire le", value=expires.strftime("%d/%m/%Y"))
             
             await ctx.send(embed=embed)
             
-        except asyncio.TimeoutError:
-            await ctx.send("⏰ Temps écoulé.")
-        except ValueError:
-            await ctx.send("❌ Valeur invalide.")
+        except Exception as e:
+            await ctx.send(f"❌ Erreur lors de la création du rôle: {e}")
     
-    @commands.command(name="shop_remove")
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
-    async def shop_remove(self, ctx, *, item_name: str):
-        """(Admin) Retire un item du shop"""
-        found_id = None
-        for iid, item in shop_items.items():
-            if item["name"].lower() == item_name.lower() or iid.lower() == item_name.lower():
-                found_id = iid
-                break
-        
-        if not found_id:
-            await ctx.send(f"❌ Item '{item_name}' introuvable.")
+    # ==================== COMMANDES ADMIN ====================
+    
+    @commands.command(name="forcedraw")
+    @commands.has_permissions(administrator=True)
+    async def force_lottery_draw(self, ctx):
+        """Force un tirage de loterie (admin)"""
+        if not lottery_data["participants"]:
+            await ctx.send("❌ Aucun participant dans la loterie.")
             return
         
-        item = shop_items[found_id]
-        del shop_items[found_id]
+        await ctx.send("🎰 **Tirage forcé de la loterie...**")
+        
+        # Utiliser la tâche de tirage
+        await self.weekly_lottery()
+        
+        if lottery_data["winner_history"]:
+            last = lottery_data["winner_history"][-1]
+            winner = ctx.guild.get_member(int(last["user_id"]))
+            winner_name = winner.mention if winner else "Inconnu"
+            
+            await ctx.send(f"🎉 **{winner_name}** a remporté **{last['jackpot']:,}** points !")
+    
+    @commands.command(name="setjackpot")
+    @commands.has_permissions(administrator=True)
+    async def set_jackpot(self, ctx, amount: int):
+        """Définit le jackpot de la loterie (admin)"""
+        lottery_data["current_jackpot"] = amount
         sauvegarder_shop()
-        
-        await ctx.send(f"✅ Item **{item['emoji']} {item['name']}** supprimé du shop.")
+        await ctx.send(f"✅ Jackpot défini à **{amount:,}** points.")
     
-    @commands.command(name="give_item")
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
-    async def give_item(self, ctx, member: discord.Member, *, item_name: str):
-        """(Admin) Donne un item à un membre"""
-        found_id = None
-        for iid, item in shop_items.items():
-            if item["name"].lower() == item_name.lower() or iid.lower() == item_name.lower():
-                found_id = iid
-                break
-        
-        if not found_id:
-            await ctx.send(f"❌ Item '{item_name}' introuvable.")
+    @commands.command(name="configrole")
+    @commands.has_permissions(administrator=True)
+    async def config_shop_role(self, ctx, item_id: str, role: discord.Role):
+        """Configure un rôle pour un article de la boutique (admin)"""
+        if item_id not in SHOP_ITEMS:
+            await ctx.send("❌ Article introuvable.")
             return
         
-        add_to_inventory(member.id, found_id)
-        item = shop_items[found_id]
-        
-        await ctx.send(f"✅ **{item['emoji']} {item['name']}** donné à {member.mention} !")
-    
-    @commands.command(name="set_points")
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
-    async def set_points(self, ctx, member: discord.Member, amount: int):
-        """(Admin) Définit les points d'un membre"""
-        try:
-            from community import get_user_stats, sauvegarder_donnees
-            stats = get_user_stats(member.id)
-            old_points = stats.get("points", 0)
-            stats["points"] = amount
-            sauvegarder_donnees()
-            
-            await ctx.send(f"✅ Points de {member.mention}: **{old_points:,}** → **{amount:,}**")
-        except Exception as e:
-            await ctx.send(f"❌ Erreur: {e}")
-    
-    @commands.command(name="add_points_admin")
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
-    async def add_points_admin(self, ctx, member: discord.Member, amount: int):
-        """(Admin) Ajoute des points à un membre"""
-        try:
-            from community import add_points, get_user_stats
-            new_total = add_points(member.id, amount)
-            
-            action = "ajoutés à" if amount >= 0 else "retirés de"
-            await ctx.send(f"✅ **{abs(amount):,}** points {action} {member.mention} (Total: **{new_total:,}**)")
-        except Exception as e:
-            await ctx.send(f"❌ Erreur: {e}")
+        SHOP_ITEMS[item_id]["role_id"] = role.id
+        await ctx.send(f"✅ Le rôle {role.mention} a été configuré pour **{SHOP_ITEMS[item_id]['name']}**")
 
 
 async def setup(bot):
