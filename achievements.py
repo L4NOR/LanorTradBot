@@ -1,310 +1,331 @@
-# achievements.py
-# Système de badges AMÉLIORÉ : Vérification auto, Notifications progression, Plus de badges
 import discord
 from discord.ext import commands
 import json
 import os
-from datetime import datetime
-from config import COLORS
+from datetime import datetime, timedelta
+from typing import Optional, Dict, List, Any
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FICHIERS DE DONNÉES
+# ═══════════════════════════════════════════════════════════════════════════════
 
 BADGES_FILE = "data/user_badges.json"
-os.makedirs("data", exist_ok=True)
+BADGES_CONFIG_FILE = "data/badges_config.json"
 
-# Badges utilisateurs
-user_badges_data = {}
+# ═══════════════════════════════════════════════════════════════════════════════
+# DÉFINITION DES BADGES
+# ═══════════════════════════════════════════════════════════════════════════════
 
-# Définition des badges
-badges_data = {
-    # === REVIEWS ===
-    "first_review": {
-        "name": "Premier Pas",
-        "description": "Poster sa première review",
-        "emoji": "🌱",
-        "category": "reviews",
-        "condition": {"reviews_count": 1},
-        "points_reward": 10,
-        "rarity": "common"
-    },
-    "reviewer_10": {
-        "name": "Critique Amateur",
-        "description": "Poster 10 reviews",
-        "emoji": "📝",
-        "category": "reviews",
-        "condition": {"reviews_count": 10},
-        "points_reward": 50,
-        "rarity": "common"
-    },
-    "reviewer_50": {
-        "name": "Critique Confirmé",
-        "description": "Poster 50 reviews",
-        "emoji": "✍️",
-        "category": "reviews",
-        "condition": {"reviews_count": 50},
-        "points_reward": 150,
-        "rarity": "uncommon"
-    },
-    "reviewer_100": {
-        "name": "Critique Expert",
-        "description": "Poster 100 reviews",
-        "emoji": "🎭",
-        "category": "reviews",
-        "condition": {"reviews_count": 100},
-        "points_reward": 300,
-        "rarity": "rare"
-    },
-    "reviewer_500": {
-        "name": "Maître Critique",
-        "description": "Poster 500 reviews",
-        "emoji": "👑",
-        "category": "reviews",
-        "condition": {"reviews_count": 500},
-        "points_reward": 1000,
-        "rarity": "legendary"
-    },
-    
-    # === THÉORIES ===
-    "first_theory": {
-        "name": "Penseur",
-        "description": "Poster sa première théorie",
-        "emoji": "💭",
-        "category": "theories",
-        "condition": {"theories_count": 1},
-        "points_reward": 15,
-        "rarity": "common"
-    },
-    "theorist_10": {
-        "name": "Théoricien",
-        "description": "Poster 10 théories",
-        "emoji": "🧠",
-        "category": "theories",
-        "condition": {"theories_count": 10},
-        "points_reward": 75,
-        "rarity": "uncommon"
-    },
-    "theorist_50": {
-        "name": "Philosophe",
-        "description": "Poster 50 théories",
-        "emoji": "📚",
-        "category": "theories",
-        "condition": {"theories_count": 50},
-        "points_reward": 250,
-        "rarity": "rare"
-    },
-    "theory_confirmed": {
-        "name": "Visionnaire",
-        "description": "Avoir une théorie confirmée",
-        "emoji": "🔮",
-        "category": "theories",
-        "condition": {"theory_confirmed": True},
-        "points_reward": 500,
-        "rarity": "epic",
-        "manual": True  # Déblocage manuel par admin
-    },
-    "theory_popular": {
-        "name": "Influenceur",
-        "description": "Avoir une théorie avec 10+ upvotes",
-        "emoji": "🔥",
-        "category": "theories",
-        "condition": {"theory_votes": 10},
-        "points_reward": 100,
-        "rarity": "uncommon"
-    },
-    
-    # === POINTS & ACTIVITÉ ===
-    "points_1000": {
-        "name": "Économe",
-        "description": "Accumuler 1,000 points",
-        "emoji": "💰",
-        "category": "points",
-        "condition": {"total_points": 1000},
-        "points_reward": 100,
-        "rarity": "common"
-    },
-    "points_5000": {
-        "name": "Riche",
-        "description": "Accumuler 5,000 points",
-        "emoji": "💎",
-        "category": "points",
-        "condition": {"total_points": 5000},
-        "points_reward": 250,
-        "rarity": "uncommon"
-    },
-    "points_10000": {
-        "name": "Millionnaire",
-        "description": "Accumuler 10,000 points",
-        "emoji": "🏦",
-        "category": "points",
-        "condition": {"total_points": 10000},
-        "points_reward": 500,
-        "rarity": "rare"
-    },
-    "streak_7": {
-        "name": "Régulier",
-        "description": "Maintenir un streak de 7 jours",
-        "emoji": "🔥",
-        "category": "activity",
-        "condition": {"daily_streak": 7},
-        "points_reward": 70,
-        "rarity": "common"
-    },
-    "streak_30": {
-        "name": "Dévoué",
-        "description": "Maintenir un streak de 30 jours",
-        "emoji": "⚡",
-        "category": "activity",
-        "condition": {"daily_streak": 30},
-        "points_reward": 300,
-        "rarity": "rare"
-    },
-    "streak_100": {
-        "name": "Légende",
-        "description": "Maintenir un streak de 100 jours",
+BADGES_DATA = {
+    # ─────────────────────────────────────────────────────────────────────────
+    # BADGES DE CONTRIBUTION
+    # ─────────────────────────────────────────────────────────────────────────
+    "first_task": {
+        "name": "Première Contribution",
+        "description": "A complété sa première tâche pour l'équipe",
         "emoji": "🌟",
-        "category": "activity",
-        "condition": {"daily_streak": 100},
-        "points_reward": 1000,
-        "rarity": "legendary"
-    },
-    
-    # === VOTES ===
-    "voter_50": {
-        "name": "Démocrate",
-        "description": "Voter sur 50 théories",
-        "emoji": "🗳️",
-        "category": "votes",
-        "condition": {"theories_votes_given": 50},
+        "category": "contribution",
         "points_reward": 50,
-        "rarity": "common"
+        "rarity": "common",
+        "secret": False
     },
-    "voter_200": {
-        "name": "Électeur Assidu",
-        "description": "Voter sur 200 théories",
-        "emoji": "📊",
-        "category": "votes",
-        "condition": {"theories_votes_given": 200},
-        "points_reward": 150,
-        "rarity": "uncommon"
-    },
-    
-    # === MANGAS SPÉCIFIQUES ===
-    "fan_ao_no_exorcist": {
-        "name": "Fan d'Ao No Exorcist",
-        "description": "10 reviews sur Ao No Exorcist",
-        "emoji": "👹",
-        "category": "manga",
-        "condition": {"manga_reviews": {"ao no exorcist": 10}},
-        "points_reward": 100,
-        "rarity": "uncommon"
-    },
-    "fan_satsudou": {
-        "name": "Fan de Satsudou",
-        "description": "10 reviews sur Satsudou",
-        "emoji": "🩸",
-        "category": "manga",
-        "condition": {"manga_reviews": {"satsudou": 10}},
-        "points_reward": 100,
-        "rarity": "uncommon"
-    },
-    "fan_tougen_anki": {
-        "name": "Fan de Tougen Anki",
-        "description": "10 reviews sur Tougen Anki",
-        "emoji": "😈",
-        "category": "manga",
-        "condition": {"manga_reviews": {"tougen anki": 10}},
-        "points_reward": 100,
-        "rarity": "uncommon"
-    },
-    "fan_catenaccio": {
-        "name": "Fan de Catenaccio",
-        "description": "10 reviews sur Catenaccio",
-        "emoji": "⚽",
-        "category": "manga",
-        "condition": {"manga_reviews": {"catenaccio": 10}},
-        "points_reward": 100,
-        "rarity": "uncommon"
-    },
-    "fan_tokyo_underworld": {
-        "name": "Fan de Tokyo Underworld",
-        "description": "10 reviews sur Tokyo Underworld",
-        "emoji": "🗼",
-        "category": "manga",
-        "condition": {"manga_reviews": {"tokyo underworld": 10}},
-        "points_reward": 100,
-        "rarity": "uncommon"
-    },
-    "polyvalent": {
-        "name": "Polyvalent",
-        "description": "Reviewer 5 mangas différents",
-        "emoji": "📖",
-        "category": "manga",
-        "condition": {"manga_count": 5},
-        "points_reward": 200,
-        "rarity": "rare"
-    },
-    
-    # === SHOP & COLLECTIBLES ===
-    "collector": {
-        "name": "Collectionneur",
-        "description": "Badge exclusif acheté en boutique",
-        "emoji": "🏅",
-        "category": "shop",
-        "condition": {"purchased": True},
-        "points_reward": 0,
-        "rarity": "rare",
-        "purchasable": True
-    },
-    "big_spender": {
-        "name": "Gros Dépensier",
-        "description": "Dépenser 5,000 points en boutique",
-        "emoji": "💸",
-        "category": "shop",
-        "condition": {"total_spent": 5000},
-        "points_reward": 200,
-        "rarity": "uncommon"
-    },
-    "lottery_winner": {
-        "name": "Chanceux",
-        "description": "Gagner la loterie",
-        "emoji": "🎰",
-        "category": "shop",
-        "condition": {"lottery_wins": 1},
-        "points_reward": 0,
+    "task_master": {
+        "name": "Maître des Tâches",
+        "description": "A complété 50 tâches au total",
+        "emoji": "⚔️",
+        "category": "contribution",
+        "points_reward": 500,
         "rarity": "epic",
-        "manual": True
+        "secret": False
+    },
+    "speed_demon": {
+        "name": "Speed Demon",
+        "description": "A complété 5 tâches en une journée",
+        "emoji": "⚡",
+        "category": "contribution",
+        "points_reward": 200,
+        "rarity": "rare",
+        "secret": False
+    },
+    "perfectionist": {
+        "name": "Perfectionniste",
+        "description": "10 tâches complétées sans aucune correction demandée",
+        "emoji": "💎",
+        "category": "contribution",
+        "points_reward": 300,
+        "rarity": "epic",
+        "secret": False
     },
     
-    # === SPÉCIAUX ===
-    "early_bird": {
-        "name": "Early Bird",
-        "description": "Être parmi les 10 premiers à poster une review",
-        "emoji": "🐦",
-        "category": "special",
-        "condition": {"first_10_reviewer": True},
-        "points_reward": 150,
-        "rarity": "rare",
-        "manual": True
+    # ─────────────────────────────────────────────────────────────────────────
+    # BADGES D'ANCIENNETÉ
+    # ─────────────────────────────────────────────────────────────────────────
+    "newcomer": {
+        "name": "Nouveau Venu",
+        "description": "A rejoint l'équipe LanorTrad",
+        "emoji": "👋",
+        "category": "anciennete",
+        "points_reward": 10,
+        "rarity": "common",
+        "secret": False
     },
     "veteran": {
         "name": "Vétéran",
         "description": "Membre depuis plus de 6 mois",
         "emoji": "🎖️",
-        "category": "special",
-        "condition": {"member_months": 6},
-        "points_reward": 300,
-        "rarity": "rare"
+        "category": "anciennete",
+        "points_reward": 200,
+        "rarity": "rare",
+        "secret": False
     },
-    "og": {
-        "name": "OG",
-        "description": "Membre depuis plus d'un an",
-        "emoji": "👴",
-        "category": "special",
-        "condition": {"member_months": 12},
+    "founder": {
+        "name": "Membre Fondateur",
+        "description": "Parmi les premiers membres de l'équipe",
+        "emoji": "👑",
+        "category": "anciennete",
+        "points_reward": 1000,
+        "rarity": "legendary",
+        "secret": False
+    },
+    "anniversary": {
+        "name": "Anniversaire",
+        "description": "1 an dans l'équipe LanorTrad",
+        "emoji": "🎂",
+        "category": "anciennete",
         "points_reward": 500,
-        "rarity": "legendary"
+        "rarity": "epic",
+        "secret": False
+    },
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # BADGES DE SPÉCIALISATION
+    # ─────────────────────────────────────────────────────────────────────────
+    "translator_pro": {
+        "name": "Traducteur Pro",
+        "description": "A traduit 20 chapitres",
+        "emoji": "📝",
+        "category": "specialisation",
+        "points_reward": 400,
+        "rarity": "epic",
+        "secret": False
+    },
+    "cleaner_expert": {
+        "name": "Cleaner Expert",
+        "description": "A nettoyé 30 chapitres",
+        "emoji": "🧹",
+        "category": "specialisation",
+        "points_reward": 400,
+        "rarity": "epic",
+        "secret": False
+    },
+    "editor_master": {
+        "name": "Éditeur Maître",
+        "description": "A édité 25 chapitres",
+        "emoji": "✒️",
+        "category": "specialisation",
+        "points_reward": 400,
+        "rarity": "epic",
+        "secret": False
+    },
+    "checker_hawk": {
+        "name": "Œil de Lynx",
+        "description": "A vérifié 40 chapitres",
+        "emoji": "🔍",
+        "category": "specialisation",
+        "points_reward": 400,
+        "rarity": "epic",
+        "secret": False
+    },
+    "polyvalent": {
+        "name": "Polyvalent",
+        "description": "A contribué dans au moins 3 rôles différents",
+        "emoji": "🎭",
+        "category": "specialisation",
+        "points_reward": 300,
+        "rarity": "rare",
+        "secret": False
+    },
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # BADGES DE MANGA SPÉCIFIQUES
+    # ─────────────────────────────────────────────────────────────────────────
+    "tougen_fan": {
+        "name": "Fan de Tougen Anki",
+        "description": "A contribué à 10 chapitres de Tougen Anki",
+        "emoji": "👹",
+        "category": "manga",
+        "points_reward": 150,
+        "rarity": "uncommon",
+        "secret": False
+    },
+    "ao_devotee": {
+        "name": "Dévoué d'Ao no Exorcist",
+        "description": "A contribué à 10 chapitres d'Ao no Exorcist",
+        "emoji": "🔵",
+        "category": "manga",
+        "points_reward": 150,
+        "rarity": "uncommon",
+        "secret": False
+    },
+    "tokyo_expert": {
+        "name": "Expert Tokyo Underworld",
+        "description": "A contribué à 10 chapitres de Tokyo Underworld",
+        "emoji": "🏙️",
+        "category": "manga",
+        "points_reward": 150,
+        "rarity": "uncommon",
+        "secret": False
+    },
+    "satsudou_master": {
+        "name": "Maître Satsudou",
+        "description": "A contribué à 10 chapitres de Satsudou",
+        "emoji": "⚔️",
+        "category": "manga",
+        "points_reward": 150,
+        "rarity": "uncommon",
+        "secret": False
+    },
+    "catenaccio_champion": {
+        "name": "Champion Catenaccio",
+        "description": "A contribué à 10 chapitres de Catenaccio",
+        "emoji": "⚽",
+        "category": "manga",
+        "points_reward": 150,
+        "rarity": "uncommon",
+        "secret": False
+    },
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # BADGES SOCIAUX
+    # ─────────────────────────────────────────────────────────────────────────
+    "helper": {
+        "name": "Entraide",
+        "description": "A aidé 10 autres membres",
+        "emoji": "🤝",
+        "category": "social",
+        "points_reward": 100,
+        "rarity": "uncommon",
+        "secret": False
+    },
+    "mentor": {
+        "name": "Mentor",
+        "description": "A formé 3 nouveaux membres",
+        "emoji": "🎓",
+        "category": "social",
+        "points_reward": 250,
+        "rarity": "rare",
+        "secret": False
+    },
+    "community_star": {
+        "name": "Star de la Communauté",
+        "description": "500 messages dans le serveur",
+        "emoji": "⭐",
+        "category": "social",
+        "points_reward": 100,
+        "rarity": "uncommon",
+        "secret": False
+    },
+    "event_participant": {
+        "name": "Participant",
+        "description": "A participé à un événement communautaire",
+        "emoji": "🎉",
+        "category": "social",
+        "points_reward": 50,
+        "rarity": "common",
+        "secret": False
+    },
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # BADGES SHOP & ÉCONOMIE
+    # ─────────────────────────────────────────────────────────────────────────
+    "first_purchase": {
+        "name": "Premier Achat",
+        "description": "A effectué son premier achat dans la boutique",
+        "emoji": "🛒",
+        "category": "economie",
+        "points_reward": 25,
+        "rarity": "common",
+        "secret": False
+    },
+    "big_spender": {
+        "name": "Gros Dépensier",
+        "description": "A dépensé plus de 5000 points au total",
+        "emoji": "💰",
+        "category": "economie",
+        "points_reward": 200,
+        "rarity": "rare",
+        "secret": False
+    },
+    "lottery_winner": {
+        "name": "Chanceux",
+        "description": "A gagné la loterie",
+        "emoji": "🎰",
+        "category": "economie",
+        "points_reward": 100,
+        "rarity": "rare",
+        "secret": False
+    },
+    "collector": {
+        "name": "Collectionneur",
+        "description": "Possède 10 badges différents",
+        "emoji": "🏆",
+        "category": "economie",
+        "points_reward": 150,
+        "rarity": "uncommon",
+        "secret": False
+    },
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # BADGES SECRETS
+    # ─────────────────────────────────────────────────────────────────────────
+    "night_owl": {
+        "name": "Oiseau de Nuit",
+        "description": "A complété une tâche entre 2h et 5h du matin",
+        "emoji": "🦉",
+        "category": "secret",
+        "points_reward": 100,
+        "rarity": "rare",
+        "secret": True
+    },
+    "early_bird": {
+        "name": "Lève-Tôt",
+        "description": "A complété une tâche avant 7h du matin",
+        "emoji": "🐦",
+        "category": "secret",
+        "points_reward": 100,
+        "rarity": "rare",
+        "secret": True
+    },
+    "marathon": {
+        "name": "Marathon",
+        "description": "10 tâches complétées en 48h",
+        "emoji": "🏃",
+        "category": "secret",
+        "points_reward": 300,
+        "rarity": "epic",
+        "secret": True
+    },
+    "lucky_seven": {
+        "name": "Lucky Seven",
+        "description": "7 tâches complétées un 7 du mois",
+        "emoji": "🍀",
+        "category": "secret",
+        "points_reward": 77,
+        "rarity": "rare",
+        "secret": True
+    },
+    "dedication": {
+        "name": "Dévouement",
+        "description": "A contribué chaque semaine pendant 2 mois consécutifs",
+        "emoji": "💪",
+        "category": "secret",
+        "points_reward": 500,
+        "rarity": "legendary",
+        "secret": True
     }
 }
 
-# Raretés avec couleurs
+# Couleurs par rareté
 RARITY_COLORS = {
     "common": 0x9e9e9e,      # Gris
     "uncommon": 0x4caf50,    # Vert
@@ -321,531 +342,662 @@ RARITY_NAMES = {
     "legendary": "Légendaire"
 }
 
-def charger_badges():
-    """Charge les données des badges"""
-    global user_badges_data
+# ═══════════════════════════════════════════════════════════════════════════════
+# FONCTIONS UTILITAIRES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def ensure_data_dir():
+    """S'assure que le dossier data existe"""
+    os.makedirs("data", exist_ok=True)
+
+def load_badges_data() -> Dict:
+    """Charge les données des badges utilisateurs"""
+    ensure_data_dir()
     if os.path.exists(BADGES_FILE):
         try:
             with open(BADGES_FILE, "r", encoding="utf-8") as f:
-                contenu = f.read().strip()
-                if contenu:
-                    user_badges_data.update(json.loads(contenu))
-            print("✅ Badges chargés")
-        except Exception as e:
-            print(f"❌ Erreur chargement badges: {e}")
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return {}
+    return {}
 
-def sauvegarder_badges():
+def save_badges_data(data: Dict):
     """Sauvegarde les données des badges"""
-    try:
-        with open(BADGES_FILE, "w", encoding="utf-8") as f:
-            json.dump(user_badges_data, f, ensure_ascii=False, indent=4)
-    except Exception as e:
-        print(f"❌ Erreur sauvegarde badges: {e}")
+    ensure_data_dir()
+    with open(BADGES_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
 
-def get_user_badges(user_id):
-    """Récupère ou crée les badges d'un utilisateur"""
+def get_user_badges(user_id: int) -> Dict:
+    """Récupère les badges d'un utilisateur"""
+    data = load_badges_data()
     user_id_str = str(user_id)
-    if user_id_str not in user_badges_data:
-        user_badges_data[user_id_str] = {
-            "unlocked": [],
-            "displayed": [],  # Badges affichés (max 3)
+    
+    if user_id_str not in data:
+        data[user_id_str] = {
+            "badges": [],
+            "badge_dates": {},
             "stats": {
-                "reviews_count": 0,
-                "theories_count": 0,
-                "theories_votes_given": 0,
-                "theories_votes_received": 0,
-                "total_points": 0,
-                "daily_streak": 0,
-                "total_spent": 0,
-                "manga_reviews": {}
-            },
-            "progress": {},  # Progression vers les badges
-            "notifications_seen": []
+                "tasks_completed": 0,
+                "tasks_today": 0,
+                "last_task_date": None,
+                "chapters_translated": 0,
+                "chapters_cleaned": 0,
+                "chapters_edited": 0,
+                "chapters_checked": 0,
+                "roles_contributed": [],
+                "manga_contributions": {},
+                "messages_count": 0,
+                "members_helped": 0,
+                "members_mentored": 0,
+                "events_participated": 0,
+                "consecutive_weeks": 0,
+                "last_contribution_week": None,
+                "join_date": None
+            }
         }
-    return user_badges_data[user_id_str]
+        save_badges_data(data)
+    
+    return data[user_id_str]
 
-def check_badges(user_id, user_stats=None):
-    """
-    Vérifie et débloque automatiquement les badges.
-    Retourne la liste des badges nouvellement débloqués.
-    """
-    user_badges = get_user_badges(user_id)
-    unlocked = user_badges.get("unlocked", [])
-    newly_unlocked = []
-    
-    # Mettre à jour les stats locales
-    if user_stats:
-        for key in ["reviews_count", "theories_count", "theories_votes_given", 
-                    "theories_votes_received", "daily_streak"]:
-            if key in user_stats:
-                user_badges["stats"][key] = user_stats[key]
-        
-        # Total points gagné
-        if "total_points_earned" in user_stats:
-            user_badges["stats"]["total_points"] = user_stats["total_points_earned"]
-        elif "points" in user_stats:
-            user_badges["stats"]["total_points"] = user_stats["points"]
-    
-    stats = user_badges["stats"]
-    
-    for badge_id, badge in badges_data.items():
-        # Skip si déjà débloqué ou si c'est un badge manuel
-        if badge_id in unlocked:
-            continue
-        if badge.get("manual") or badge.get("purchasable"):
-            continue
-        
-        condition = badge.get("condition", {})
-        should_unlock = True
-        
-        # Vérifier chaque condition
-        for cond_key, cond_value in condition.items():
-            if cond_key == "manga_reviews":
-                # Condition spéciale pour les mangas
-                for manga, count in cond_value.items():
-                    manga_reviews = stats.get("manga_reviews", {})
-                    if manga_reviews.get(manga, 0) < count:
-                        should_unlock = False
-                        break
-            elif cond_key == "manga_count":
-                # Nombre de mangas différents
-                manga_reviews = stats.get("manga_reviews", {})
-                if len(manga_reviews) < cond_value:
-                    should_unlock = False
-            elif cond_key == "member_months":
-                # Ancienneté (vérifiée ailleurs)
-                should_unlock = False
-            else:
-                # Condition numérique standard
-                if stats.get(cond_key, 0) < cond_value:
-                    should_unlock = False
-        
-        if should_unlock:
-            newly_unlocked.append(unlock_badge(user_id, badge_id))
-    
-    return [b for b in newly_unlocked if b is not None]
+def has_badge(user_id: int, badge_id: str) -> bool:
+    """Vérifie si un utilisateur a un badge"""
+    user_data = get_user_badges(user_id)
+    return badge_id in user_data.get("badges", [])
 
-def unlock_badge(user_id, badge_id):
-    """Débloque un badge pour un utilisateur"""
-    if badge_id not in badges_data:
+def unlock_badge(user_id: int, badge_id: str, bot=None) -> Optional[Dict]:
+    """
+    Débloque un badge pour un utilisateur.
+    Retourne les infos du badge si nouveau, None si déjà possédé ou invalide.
+    """
+    if badge_id not in BADGES_DATA:
         return None
     
-    user_badges = get_user_badges(user_id)
-    
-    if badge_id in user_badges["unlocked"]:
+    if has_badge(user_id, badge_id):
         return None
     
-    user_badges["unlocked"].append(badge_id)
-    user_badges[f"unlocked_{badge_id}_date"] = datetime.now().isoformat()
+    data = load_badges_data()
+    user_id_str = str(user_id)
     
-    badge = badges_data[badge_id]
+    if user_id_str not in data:
+        get_user_badges(user_id)
+        data = load_badges_data()
+    
+    # Ajouter le badge
+    data[user_id_str]["badges"].append(badge_id)
+    data[user_id_str]["badge_dates"][badge_id] = datetime.now().isoformat()
+    
+    save_badges_data(data)
+    
+    badge_info = BADGES_DATA[badge_id]
     
     # Donner les points de récompense
-    if badge.get("points_reward", 0) > 0:
-        try:
-            from community import add_points
-            add_points(int(user_id), badge["points_reward"], f"badge_{badge_id}")
-        except:
-            pass
+    try:
+        from community import add_points, sauvegarder_donnees
+        add_points(user_id, badge_info["points_reward"])
+        sauvegarder_donnees()
+    except ImportError:
+        pass
     
-    sauvegarder_badges()
+    # Vérifier le badge "collector" (10 badges)
+    if len(data[user_id_str]["badges"]) >= 10 and not has_badge(user_id, "collector"):
+        unlock_badge(user_id, "collector", bot)
     
-    return badge
+    return badge_info
 
-def get_badge_progress(user_id, badge_id):
+def update_user_stat(user_id: int, stat_name: str, value: Any = None, increment: int = 1):
+    """Met à jour une statistique utilisateur"""
+    data = load_badges_data()
+    user_id_str = str(user_id)
+    
+    if user_id_str not in data:
+        get_user_badges(user_id)
+        data = load_badges_data()
+    
+    stats = data[user_id_str].get("stats", {})
+    
+    if value is not None:
+        stats[stat_name] = value
+    else:
+        stats[stat_name] = stats.get(stat_name, 0) + increment
+    
+    data[user_id_str]["stats"] = stats
+    save_badges_data(data)
+    
+    return stats[stat_name]
+
+def get_badge_info(badge_id: str) -> Optional[Dict]:
+    """Récupère les infos d'un badge"""
+    return BADGES_DATA.get(badge_id)
+
+def get_all_badges() -> Dict:
+    """Retourne tous les badges disponibles"""
+    return BADGES_DATA
+
+def get_badges_by_category(category: str) -> Dict:
+    """Récupère les badges d'une catégorie"""
+    return {k: v for k, v in BADGES_DATA.items() if v.get("category") == category}
+
+def get_visible_badges() -> Dict:
+    """Récupère les badges non secrets"""
+    return {k: v for k, v in BADGES_DATA.items() if not v.get("secret", False)}
+
+def count_user_badges(user_id: int) -> int:
+    """Compte le nombre de badges d'un utilisateur"""
+    user_data = get_user_badges(user_id)
+    return len(user_data.get("badges", []))
+
+def get_badge_progress(user_id: int, badge_id: str) -> Optional[Dict]:
     """Calcule la progression vers un badge"""
-    if badge_id not in badges_data:
+    if badge_id not in BADGES_DATA:
         return None
     
-    badge = badges_data[badge_id]
-    user_badges = get_user_badges(user_id)
-    stats = user_badges["stats"]
+    user_data = get_user_badges(user_id)
+    stats = user_data.get("stats", {})
     
-    if badge_id in user_badges["unlocked"]:
-        return {"progress": 100, "current": "MAX", "target": "MAX", "completed": True}
+    progress_mapping = {
+        "task_master": ("tasks_completed", 50),
+        "translator_pro": ("chapters_translated", 20),
+        "cleaner_expert": ("chapters_cleaned", 30),
+        "editor_master": ("chapters_edited", 25),
+        "checker_hawk": ("chapters_checked", 40),
+        "community_star": ("messages_count", 500),
+        "helper": ("members_helped", 10),
+        "mentor": ("members_mentored", 3),
+        "collector": (lambda: len(user_data.get("badges", [])), 10),
+    }
     
-    condition = badge.get("condition", {})
-    
-    # Trouver la condition principale
-    for cond_key, cond_value in condition.items():
-        if cond_key == "manga_reviews":
-            # Pour les badges manga spécifiques
-            for manga, target in cond_value.items():
-                current = stats.get("manga_reviews", {}).get(manga, 0)
-                progress = min(100, int((current / target) * 100))
-                return {"progress": progress, "current": current, "target": target, "completed": False}
-        elif cond_key == "manga_count":
-            current = len(stats.get("manga_reviews", {}))
-            progress = min(100, int((current / cond_value) * 100))
-            return {"progress": progress, "current": current, "target": cond_value, "completed": False}
-        elif isinstance(cond_value, (int, float)):
-            current = stats.get(cond_key, 0)
-            progress = min(100, int((current / cond_value) * 100))
-            return {"progress": progress, "current": current, "target": cond_value, "completed": False}
+    if badge_id in progress_mapping:
+        mapping = progress_mapping[badge_id]
+        if callable(mapping[0]):
+            current = mapping[0]()
+        else:
+            current = stats.get(mapping[0], 0)
+        target = mapping[1]
+        return {
+            "current": current,
+            "target": target,
+            "percentage": min(100, int((current / target) * 100))
+        }
     
     return None
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# COG DISCORD
+# ═══════════════════════════════════════════════════════════════════════════════
 
-class AchievementsSystem(commands.Cog):
+class Achievements(commands.Cog):
+    """Système de badges et achievements"""
+    
     def __init__(self, bot):
         self.bot = bot
-        charger_badges()
     
-    @commands.command(name="badges", aliases=["achievements", "succes"])
-    async def badges(self, ctx, member: discord.Member = None):
+    # ─────────────────────────────────────────────────────────────────────────
+    # COMMANDES UTILISATEUR
+    # ─────────────────────────────────────────────────────────────────────────
+    
+    @commands.command(name="badges", aliases=["achievements", "mes_badges"])
+    async def show_badges(self, ctx, member: Optional[discord.Member] = None):
         """Affiche les badges d'un membre"""
-        member = member or ctx.author
-        user_badges = get_user_badges(member.id)
-        unlocked = user_badges.get("unlocked", [])
+        target = member or ctx.author
+        user_data = get_user_badges(target.id)
+        user_badges = user_data.get("badges", [])
         
-        embed = discord.Embed(
-            title=f"🏅 Badges de {member.display_name}",
-            description=f"**{len(unlocked)}/{len(badges_data)}** badges débloqués",
-            color=member.color if member.color != discord.Color.default() else discord.Color.gold(),
-            timestamp=datetime.now()
+        if not user_badges:
+            if target == ctx.author:
+                embed = discord.Embed(
+                    title="🏅 Mes Badges",
+                    description="Tu n'as pas encore de badges.\nParticipe aux activités pour en débloquer !",
+                    color=0x9e9e9e
+                )
+            else:
+                embed = discord.Embed(
+                    title=f"🏅 Badges de {target.display_name}",
+                    description="Ce membre n'a pas encore de badges.",
+                    color=0x9e9e9e
+                )
+            await ctx.send(embed=embed)
+            return
+        
+        # Trier par rareté (legendary -> common)
+        rarity_order = ["legendary", "epic", "rare", "uncommon", "common"]
+        sorted_badges = sorted(
+            user_badges,
+            key=lambda x: rarity_order.index(BADGES_DATA.get(x, {}).get("rarity", "common"))
         )
         
-        embed.set_thumbnail(url=member.avatar.url if member.avatar else None)
-        
-        # Badges affichés
-        displayed = user_badges.get("displayed", [])[:3]
-        if displayed:
-            displayed_text = " ".join([badges_data[bid]["emoji"] for bid in displayed if bid in badges_data])
-            embed.add_field(name="✨ Badges Affichés", value=displayed_text or "Aucun", inline=False)
-        
-        # Grouper par catégorie
-        categories = {
-            "reviews": "📝 Reviews",
-            "theories": "💭 Théories",
-            "points": "💰 Points",
-            "activity": "🔥 Activité",
-            "votes": "🗳️ Votes",
-            "manga": "📚 Mangas",
-            "shop": "🛒 Boutique",
-            "special": "⭐ Spéciaux"
-        }
-        
-        for cat_id, cat_name in categories.items():
-            cat_badges = [bid for bid, b in badges_data.items() if b.get("category") == cat_id]
-            
-            if not cat_badges:
-                continue
-            
-            badges_text = ""
-            for bid in cat_badges:
-                badge = badges_data[bid]
-                if bid in unlocked:
-                    badges_text += f"{badge['emoji']} "
-                else:
-                    badges_text += "⬜ "
-            
-            # Compter débloqués
-            unlocked_count = sum(1 for bid in cat_badges if bid in unlocked)
-            
-            embed.add_field(
-                name=f"{cat_name} ({unlocked_count}/{len(cat_badges)})",
-                value=badges_text.strip() or "Aucun",
-                inline=True
+        # Créer l'embed
+        if target == ctx.author:
+            embed = discord.Embed(
+                title="🏅 Mes Badges",
+                description=f"**{len(user_badges)}** badges débloqués",
+                color=0xffd700
+            )
+        else:
+            embed = discord.Embed(
+                title=f"🏅 Badges de {target.display_name}",
+                description=f"**{len(user_badges)}** badges débloqués",
+                color=0xffd700
             )
         
-        embed.set_footer(text="!badge_info <nom> pour plus de détails | !displaybadge <nom> pour afficher")
+        # Grouper par rareté
+        by_rarity = {}
+        for badge_id in sorted_badges:
+            badge = BADGES_DATA.get(badge_id, {})
+            rarity = badge.get("rarity", "common")
+            if rarity not in by_rarity:
+                by_rarity[rarity] = []
+            by_rarity[rarity].append(badge)
+        
+        for rarity in rarity_order:
+            if rarity in by_rarity:
+                badges_text = " ".join([f"{b['emoji']}" for b in by_rarity[rarity]])
+                embed.add_field(
+                    name=f"{RARITY_NAMES[rarity]} ({len(by_rarity[rarity])})",
+                    value=badges_text,
+                    inline=False
+                )
+        
+        embed.set_thumbnail(url=target.display_avatar.url)
         await ctx.send(embed=embed)
     
     @commands.command(name="badge_info", aliases=["badgeinfo"])
     async def badge_info(self, ctx, *, badge_name: str):
         """Affiche les détails d'un badge"""
-        # Rechercher le badge
+        # Recherche par nom ou ID
         badge_id = None
-        badge = None
+        badge_data = None
         
-        badge_name_lower = badge_name.lower()
-        
-        for bid, b in badges_data.items():
-            if bid == badge_name_lower or b["name"].lower() == badge_name_lower:
+        for bid, bdata in BADGES_DATA.items():
+            if bid.lower() == badge_name.lower() or bdata["name"].lower() == badge_name.lower():
                 badge_id = bid
-                badge = b
+                badge_data = bdata
                 break
         
-        if not badge:
-            await ctx.send("❌ Badge introuvable.")
+        if not badge_data:
+            await ctx.send("❌ Badge non trouvé. Utilise `!all_badges` pour voir la liste.")
             return
         
-        user_badges = get_user_badges(ctx.author.id)
-        is_unlocked = badge_id in user_badges.get("unlocked", [])
-        
-        rarity = badge.get("rarity", "common")
-        
-        embed = discord.Embed(
-            title=f"{badge['emoji']} {badge['name']}",
-            description=badge["description"],
-            color=RARITY_COLORS.get(rarity, 0x9e9e9e),
-            timestamp=datetime.now()
-        )
-        
-        embed.add_field(name="🏷️ Rareté", value=RARITY_NAMES.get(rarity, "Commun"), inline=True)
-        embed.add_field(name="🏆 Récompense", value=f"+{badge.get('points_reward', 0)} pts", inline=True)
-        
-        # Statut
-        if is_unlocked:
-            unlock_date = user_badges.get(f"unlocked_{badge_id}_date", "Inconnu")
-            if unlock_date != "Inconnu":
-                unlock_date = unlock_date[:10]
-            embed.add_field(name="✅ Statut", value=f"Débloqué le {unlock_date}", inline=True)
-        else:
-            progress = get_badge_progress(ctx.author.id, badge_id)
-            if progress and not badge.get("manual"):
-                bar_length = int(progress["progress"] / 10)
-                bar = "█" * bar_length + "░" * (10 - bar_length)
-                embed.add_field(
-                    name="📊 Progression",
-                    value=f"`{bar}` {progress['progress']}%\n{progress['current']}/{progress['target']}",
-                    inline=False
-                )
-            elif badge.get("manual"):
-                embed.add_field(name="🔒 Statut", value="Badge spécial (déblocage manuel)", inline=True)
-            elif badge.get("purchasable"):
-                embed.add_field(name="🛒 Statut", value="Disponible en boutique", inline=True)
-            else:
-                embed.add_field(name="🔒 Statut", value="Non débloqué", inline=True)
-        
-        # Catégorie
-        categories = {
-            "reviews": "📝 Reviews",
-            "theories": "💭 Théories",
-            "points": "💰 Points",
-            "activity": "🔥 Activité",
-            "votes": "🗳️ Votes",
-            "manga": "📚 Mangas",
-            "shop": "🛒 Boutique",
-            "special": "⭐ Spéciaux"
-        }
-        embed.add_field(name="📁 Catégorie", value=categories.get(badge.get("category"), "Autre"), inline=True)
-        
-        await ctx.send(embed=embed)
-    
-    @commands.command(name="displaybadge", aliases=["showbadge", "equipbadge"])
-    async def display_badge(self, ctx, *, badge_name: str):
-        """Équipe un badge pour l'afficher sur votre profil (max 3)"""
-        # Rechercher le badge
-        badge_id = None
-        badge = None
-        
-        badge_name_lower = badge_name.lower()
-        
-        for bid, b in badges_data.items():
-            if bid == badge_name_lower or b["name"].lower() == badge_name_lower:
-                badge_id = bid
-                badge = b
-                break
-        
-        if not badge:
-            await ctx.send("❌ Badge introuvable.")
+        # Badge secret non débloqué
+        if badge_data.get("secret") and not has_badge(ctx.author.id, badge_id):
+            embed = discord.Embed(
+                title="🔒 Badge Secret",
+                description="Ce badge est secret ! Débloque-le pour en savoir plus.",
+                color=0x2f3136
+            )
+            await ctx.send(embed=embed)
             return
         
-        user_badges = get_user_badges(ctx.author.id)
-        
-        if badge_id not in user_badges.get("unlocked", []):
-            await ctx.send("❌ Vous n'avez pas débloqué ce badge.")
-            return
-        
-        displayed = user_badges.get("displayed", [])
-        
-        if badge_id in displayed:
-            # Retirer le badge
-            displayed.remove(badge_id)
-            await ctx.send(f"✅ Le badge **{badge['name']}** {badge['emoji']} a été retiré de votre profil.")
-        else:
-            if len(displayed) >= 3:
-                # Remplacer le plus ancien
-                displayed.pop(0)
-            displayed.append(badge_id)
-            await ctx.send(f"✅ Le badge **{badge['name']}** {badge['emoji']} est maintenant affiché sur votre profil !")
-        
-        user_badges["displayed"] = displayed
-        sauvegarder_badges()
-    
-    @commands.command(name="progress", aliases=["progression"])
-    async def progress(self, ctx, member: discord.Member = None):
-        """Affiche la progression vers les prochains badges"""
-        member = member or ctx.author
-        user_badges = get_user_badges(member.id)
-        unlocked = user_badges.get("unlocked", [])
+        rarity = badge_data.get("rarity", "common")
+        color = RARITY_COLORS.get(rarity, 0x9e9e9e)
         
         embed = discord.Embed(
-            title=f"📊 Progression de {member.display_name}",
-            description="Badges les plus proches d'être débloqués",
-            color=discord.Color.blue(),
-            timestamp=datetime.now()
+            title=f"{badge_data['emoji']} {badge_data['name']}",
+            description=badge_data["description"],
+            color=color
         )
         
-        # Calculer la progression de tous les badges non débloqués
-        progressions = []
+        embed.add_field(name="Rareté", value=RARITY_NAMES[rarity], inline=True)
+        embed.add_field(name="Récompense", value=f"{badge_data['points_reward']} points", inline=True)
+        embed.add_field(name="Catégorie", value=badge_data["category"].title(), inline=True)
         
-        for badge_id, badge in badges_data.items():
-            if badge_id in unlocked:
-                continue
-            if badge.get("manual") or badge.get("purchasable"):
-                continue
-            
-            progress = get_badge_progress(member.id, badge_id)
-            if progress and progress["progress"] > 0:
-                progressions.append({
-                    "id": badge_id,
-                    "badge": badge,
-                    "progress": progress
-                })
-        
-        # Trier par progression décroissante
-        progressions.sort(key=lambda x: x["progress"]["progress"], reverse=True)
-        
-        if not progressions:
-            embed.description = "Aucune progression en cours. Commencez à participer !"
-        else:
-            for p in progressions[:8]:
-                badge = p["badge"]
-                progress = p["progress"]
-                
-                bar_length = int(progress["progress"] / 10)
-                bar = "█" * bar_length + "░" * (10 - bar_length)
-                
-                embed.add_field(
-                    name=f"{badge['emoji']} {badge['name']}",
-                    value=f"`{bar}` **{progress['progress']}%**\n{progress['current']}/{progress['target']}",
-                    inline=True
-                )
-        
-        embed.set_thumbnail(url=member.avatar.url if member.avatar else None)
-        embed.set_footer(text="!badges pour voir tous vos badges")
-        
-        await ctx.send(embed=embed)
-    
-    @commands.command(name="leaderboard_badges", aliases=["lb_badges", "topbadges"])
-    async def leaderboard_badges(self, ctx):
-        """Affiche le classement par nombre de badges"""
-        # Trier les utilisateurs par nombre de badges
-        sorted_users = sorted(
-            user_badges_data.items(),
-            key=lambda x: len(x[1].get("unlocked", [])),
-            reverse=True
-        )[:10]
-        
-        embed = discord.Embed(
-            title="🏅 Top 10 - Badges",
-            color=discord.Color.gold(),
-            timestamp=datetime.now()
-        )
-        
-        medals = ["🥇", "🥈", "🥉"]
-        description = ""
-        
-        for i, (user_id, data) in enumerate(sorted_users, 1):
-            member = ctx.guild.get_member(int(user_id))
-            if not member:
-                continue
-            
-            medal = medals[i-1] if i <= 3 else f"**{i}.**"
-            count = len(data.get("unlocked", []))
-            
-            # Badges affichés
-            displayed = data.get("displayed", [])[:3]
-            badges_display = " ".join([badges_data[bid]["emoji"] for bid in displayed if bid in badges_data]) or ""
-            
-            description += f"{medal} {member.display_name} - **{count}** badges {badges_display}\n"
-        
-        embed.description = description if description else "Aucune donnée disponible."
-        
-        # Position de l'utilisateur
-        user_badges = get_user_badges(ctx.author.id)
-        user_count = len(user_badges.get("unlocked", []))
-        
-        user_pos = None
-        for i, (uid, _) in enumerate(sorted(user_badges_data.items(), 
-                                            key=lambda x: len(x[1].get("unlocked", [])), 
-                                            reverse=True), 1):
-            if uid == str(ctx.author.id):
-                user_pos = i
-                break
-        
-        if user_pos:
+        # Progression si applicable
+        progress = get_badge_progress(ctx.author.id, badge_id)
+        if progress and not has_badge(ctx.author.id, badge_id):
             embed.add_field(
-                name="📍 Votre Position",
-                value=f"#{user_pos} - **{user_count}** badges",
+                name="Ta Progression",
+                value=f"{'█' * (progress['percentage'] // 10)}{'░' * (10 - progress['percentage'] // 10)} {progress['percentage']}%\n{progress['current']}/{progress['target']}",
                 inline=False
             )
         
+        # Statut
+        if has_badge(ctx.author.id, badge_id):
+            user_data = get_user_badges(ctx.author.id)
+            date_str = user_data.get("badge_dates", {}).get(badge_id, "")
+            if date_str:
+                try:
+                    date = datetime.fromisoformat(date_str)
+                    embed.add_field(name="Statut", value=f"✅ Débloqué le {date.strftime('%d/%m/%Y')}", inline=False)
+                except:
+                    embed.add_field(name="Statut", value="✅ Débloqué", inline=False)
+            else:
+                embed.add_field(name="Statut", value="✅ Débloqué", inline=False)
+        else:
+            embed.add_field(name="Statut", value="🔒 Non débloqué", inline=False)
+        
         await ctx.send(embed=embed)
     
-    # ==================== COMMANDES ADMIN ====================
+    @commands.command(name="all_badges", aliases=["listbadges", "badges_list"])
+    async def all_badges(self, ctx, category: Optional[str] = None):
+        """
+        Affiche tous les badges disponibles
+        Catégories: contribution, anciennete, specialisation, manga, social, economie
+        """
+        user_badges = get_user_badges(ctx.author.id).get("badges", [])
+        
+        if category:
+            badges = get_badges_by_category(category.lower())
+            if not badges:
+                await ctx.send(f"❌ Catégorie inconnue. Catégories disponibles: contribution, anciennete, specialisation, manga, social, economie")
+                return
+            title = f"🏅 Badges - {category.title()}"
+        else:
+            badges = get_visible_badges()
+            title = "🏅 Tous les Badges"
+        
+        embed = discord.Embed(title=title, color=0xffd700)
+        
+        # Grouper par catégorie si pas de filtre
+        if not category:
+            categories = {}
+            for bid, bdata in badges.items():
+                cat = bdata.get("category", "autre")
+                if cat not in categories:
+                    categories[cat] = []
+                status = "✅" if bid in user_badges else "🔒"
+                categories[cat].append(f"{status} {bdata['emoji']} **{bdata['name']}**")
+            
+            for cat_name, badge_list in categories.items():
+                embed.add_field(
+                    name=cat_name.title(),
+                    value="\n".join(badge_list[:10]) + (f"\n*+{len(badge_list)-10} autres...*" if len(badge_list) > 10 else ""),
+                    inline=True
+                )
+        else:
+            lines = []
+            for bid, bdata in badges.items():
+                status = "✅" if bid in user_badges else "🔒"
+                rarity_emoji = {"common": "⬜", "uncommon": "🟩", "rare": "🟦", "epic": "🟪", "legendary": "🟨"}
+                lines.append(f"{status} {bdata['emoji']} **{bdata['name']}** {rarity_emoji.get(bdata['rarity'], '')}")
+            embed.description = "\n".join(lines)
+        
+        unlocked = len([b for b in badges if b in user_badges])
+        embed.set_footer(text=f"Tu as débloqué {unlocked}/{len(badges)} badges")
+        
+        await ctx.send(embed=embed)
     
-    @commands.command(name="givebadge")
-    @commands.has_permissions(administrator=True)
-    async def give_badge(self, ctx, member: discord.Member, *, badge_name: str):
-        """Donne un badge à un membre (admin)"""
-        badge_id = None
-        badge = None
+    @commands.command(name="badge_stats", aliases=["mystats"])
+    async def badge_stats(self, ctx):
+        """Affiche tes statistiques de progression"""
+        user_data = get_user_badges(ctx.author.id)
+        stats = user_data.get("stats", {})
+        badges = user_data.get("badges", [])
         
-        badge_name_lower = badge_name.lower()
+        embed = discord.Embed(
+            title=f"📊 Statistiques de {ctx.author.display_name}",
+            color=0x3498db
+        )
         
-        for bid, b in badges_data.items():
-            if bid == badge_name_lower or b["name"].lower() == badge_name_lower:
-                badge_id = bid
-                badge = b
-                break
+        # Stats générales
+        embed.add_field(
+            name="🏅 Badges",
+            value=f"**{len(badges)}** débloqués",
+            inline=True
+        )
+        embed.add_field(
+            name="📝 Tâches",
+            value=f"**{stats.get('tasks_completed', 0)}** complétées",
+            inline=True
+        )
+        embed.add_field(
+            name="💬 Messages",
+            value=f"**{stats.get('messages_count', 0)}**",
+            inline=True
+        )
         
-        if not badge:
-            await ctx.send("❌ Badge introuvable.")
+        # Stats de spécialisation
+        spec_text = []
+        if stats.get("chapters_translated", 0) > 0:
+            spec_text.append(f"📝 Traduction: **{stats['chapters_translated']}**")
+        if stats.get("chapters_cleaned", 0) > 0:
+            spec_text.append(f"🧹 Cleaning: **{stats['chapters_cleaned']}**")
+        if stats.get("chapters_edited", 0) > 0:
+            spec_text.append(f"✒️ Édition: **{stats['chapters_edited']}**")
+        if stats.get("chapters_checked", 0) > 0:
+            spec_text.append(f"🔍 Vérification: **{stats['chapters_checked']}**")
+        
+        if spec_text:
+            embed.add_field(
+                name="📚 Chapitres par rôle",
+                value="\n".join(spec_text),
+                inline=False
+            )
+        
+        # Prochain badge le plus proche
+        closest_badge = None
+        closest_progress = 0
+        
+        for badge_id in BADGES_DATA:
+            if badge_id not in badges:
+                progress = get_badge_progress(ctx.author.id, badge_id)
+                if progress and progress["percentage"] > closest_progress and progress["percentage"] < 100:
+                    closest_progress = progress["percentage"]
+                    closest_badge = badge_id
+        
+        if closest_badge:
+            badge = BADGES_DATA[closest_badge]
+            progress = get_badge_progress(ctx.author.id, closest_badge)
+            embed.add_field(
+                name="🎯 Prochain badge",
+                value=f"{badge['emoji']} **{badge['name']}**\n{progress['current']}/{progress['target']} ({progress['percentage']}%)",
+                inline=False
+            )
+        
+        embed.set_thumbnail(url=ctx.author.display_avatar.url)
+        await ctx.send(embed=embed)
+    
+    @commands.command(name="leaderboard_badges", aliases=["top_badges"])
+    async def leaderboard_badges(self, ctx):
+        """Affiche le classement des badges"""
+        data = load_badges_data()
+        
+        if not data:
+            await ctx.send("Aucune donnée de badges pour le moment.")
             return
         
-        result = unlock_badge(member.id, badge_id)
+        # Calculer les scores (nombre de badges * rareté)
+        scores = []
+        rarity_points = {"common": 1, "uncommon": 2, "rare": 3, "epic": 5, "legendary": 10}
+        
+        for user_id, user_data in data.items():
+            badges = user_data.get("badges", [])
+            score = sum(rarity_points.get(BADGES_DATA.get(b, {}).get("rarity", "common"), 1) for b in badges)
+            scores.append((user_id, len(badges), score))
+        
+        # Trier par score puis par nombre
+        scores.sort(key=lambda x: (-x[2], -x[1]))
+        
+        embed = discord.Embed(
+            title="🏆 Classement des Badges",
+            color=0xffd700
+        )
+        
+        medals = ["🥇", "🥈", "🥉"]
+        lines = []
+        
+        for i, (user_id, count, score) in enumerate(scores[:10]):
+            try:
+                member = await self.bot.fetch_user(int(user_id))
+                name = member.display_name
+            except:
+                name = f"Utilisateur #{user_id[:6]}"
+            
+            medal = medals[i] if i < 3 else f"**{i+1}.**"
+            lines.append(f"{medal} {name} - **{count}** badges ({score} pts)")
+        
+        embed.description = "\n".join(lines) if lines else "Aucun classement disponible."
+        await ctx.send(embed=embed)
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # COMMANDES ADMIN
+    # ─────────────────────────────────────────────────────────────────────────
+    
+    @commands.command(name="give_badge")
+    @commands.has_permissions(administrator=True)
+    async def give_badge(self, ctx, member: discord.Member, *, badge_name: str):
+        """[Admin] Donne un badge à un membre"""
+        # Recherche du badge
+        badge_id = None
+        for bid, bdata in BADGES_DATA.items():
+            if bid.lower() == badge_name.lower() or bdata["name"].lower() == badge_name.lower():
+                badge_id = bid
+                break
+        
+        if not badge_id:
+            await ctx.send("❌ Badge non trouvé.")
+            return
+        
+        result = unlock_badge(member.id, badge_id, self.bot)
         
         if result:
-            await ctx.send(f"✅ Le badge **{badge['name']}** {badge['emoji']} a été donné à {member.mention} !")
+            badge = BADGES_DATA[badge_id]
+            embed = discord.Embed(
+                title="🎖️ Badge Attribué",
+                description=f"{member.mention} a reçu le badge **{badge['emoji']} {badge['name']}**!",
+                color=RARITY_COLORS.get(badge["rarity"], 0xffd700)
+            )
+            embed.add_field(name="Récompense", value=f"+{badge['points_reward']} points")
+            await ctx.send(embed=embed)
             
             # Notifier le membre
             try:
-                embed = discord.Embed(
-                    title="🎉 Nouveau Badge Débloqué !",
-                    description=f"Vous avez reçu le badge **{badge['name']}** {badge['emoji']}",
-                    color=RARITY_COLORS.get(badge.get("rarity", "common"), 0x9e9e9e)
+                dm_embed = discord.Embed(
+                    title="🎖️ Nouveau Badge !",
+                    description=f"Tu as reçu le badge **{badge['emoji']} {badge['name']}**\n\n*{badge['description']}*",
+                    color=RARITY_COLORS.get(badge["rarity"], 0xffd700)
                 )
-                embed.add_field(name="📝 Description", value=badge["description"])
-                if badge.get("points_reward", 0) > 0:
-                    embed.add_field(name="🏆 Récompense", value=f"+{badge['points_reward']} points")
-                await member.send(embed=embed)
+                dm_embed.add_field(name="Récompense", value=f"+{badge['points_reward']} points")
+                await member.send(embed=dm_embed)
             except:
                 pass
         else:
-            await ctx.send(f"⚠️ {member.display_name} possède déjà ce badge.")
+            await ctx.send("❌ Ce membre possède déjà ce badge.")
     
-    @commands.command(name="removebadge")
+    @commands.command(name="remove_badge")
     @commands.has_permissions(administrator=True)
     async def remove_badge(self, ctx, member: discord.Member, *, badge_name: str):
-        """Retire un badge à un membre (admin)"""
+        """[Admin] Retire un badge à un membre"""
         badge_id = None
-        badge = None
-        
-        for bid, b in badges_data.items():
-            if bid == badge_name.lower() or b["name"].lower() == badge_name.lower():
+        for bid, bdata in BADGES_DATA.items():
+            if bid.lower() == badge_name.lower() or bdata["name"].lower() == badge_name.lower():
                 badge_id = bid
-                badge = b
                 break
         
-        if not badge:
-            await ctx.send("❌ Badge introuvable.")
+        if not badge_id:
+            await ctx.send("❌ Badge non trouvé.")
             return
         
-        user_badges = get_user_badges(member.id)
+        if not has_badge(member.id, badge_id):
+            await ctx.send("❌ Ce membre n'a pas ce badge.")
+            return
         
-        if badge_id in user_badges.get("unlocked", []):
-            user_badges["unlocked"].remove(badge_id)
-            if badge_id in user_badges.get("displayed", []):
-                user_badges["displayed"].remove(badge_id)
-            sauvegarder_badges()
-            await ctx.send(f"✅ Le badge **{badge['name']}** a été retiré à {member.display_name}.")
+        data = load_badges_data()
+        user_id_str = str(member.id)
+        
+        if user_id_str in data and badge_id in data[user_id_str].get("badges", []):
+            data[user_id_str]["badges"].remove(badge_id)
+            if badge_id in data[user_id_str].get("badge_dates", {}):
+                del data[user_id_str]["badge_dates"][badge_id]
+            save_badges_data(data)
+            
+            badge = BADGES_DATA[badge_id]
+            await ctx.send(f"✅ Badge **{badge['emoji']} {badge['name']}** retiré de {member.mention}.")
         else:
-            await ctx.send(f"⚠️ {member.display_name} ne possède pas ce badge.")
+            await ctx.send("❌ Erreur lors du retrait du badge.")
+    
+    @commands.command(name="set_stat")
+    @commands.has_permissions(administrator=True)
+    async def set_stat(self, ctx, member: discord.Member, stat_name: str, value: int):
+        """[Admin] Définit une statistique d'un membre"""
+        valid_stats = [
+            "tasks_completed", "chapters_translated", "chapters_cleaned",
+            "chapters_edited", "chapters_checked", "messages_count",
+            "members_helped", "members_mentored", "events_participated"
+        ]
+        
+        if stat_name not in valid_stats:
+            await ctx.send(f"❌ Statistique invalide. Valides: {', '.join(valid_stats)}")
+            return
+        
+        update_user_stat(member.id, stat_name, value=value)
+        await ctx.send(f"✅ Statistique `{stat_name}` de {member.mention} définie à **{value}**.")
+    
+    @commands.command(name="check_badges")
+    @commands.has_permissions(administrator=True)
+    async def check_badges(self, ctx, member: discord.Member):
+        """[Admin] Vérifie et attribue les badges mérités"""
+        user_data = get_user_badges(member.id)
+        stats = user_data.get("stats", {})
+        current_badges = user_data.get("badges", [])
+        
+        unlocked = []
+        
+        # Vérifications automatiques
+        checks = [
+            ("task_master", stats.get("tasks_completed", 0) >= 50),
+            ("translator_pro", stats.get("chapters_translated", 0) >= 20),
+            ("cleaner_expert", stats.get("chapters_cleaned", 0) >= 30),
+            ("editor_master", stats.get("chapters_edited", 0) >= 25),
+            ("checker_hawk", stats.get("chapters_checked", 0) >= 40),
+            ("community_star", stats.get("messages_count", 0) >= 500),
+            ("helper", stats.get("members_helped", 0) >= 10),
+            ("mentor", stats.get("members_mentored", 0) >= 3),
+            ("collector", len(current_badges) >= 10),
+        ]
+        
+        # Vérifier polyvalent (3 rôles différents)
+        roles = stats.get("roles_contributed", [])
+        if len(set(roles)) >= 3:
+            checks.append(("polyvalent", True))
+        
+        for badge_id, condition in checks:
+            if condition and badge_id not in current_badges:
+                result = unlock_badge(member.id, badge_id, self.bot)
+                if result:
+                    unlocked.append(badge_id)
+        
+        if unlocked:
+            badges_text = ", ".join([f"{BADGES_DATA[b]['emoji']} {BADGES_DATA[b]['name']}" for b in unlocked])
+            await ctx.send(f"✅ Badges débloqués pour {member.mention}: {badges_text}")
+        else:
+            await ctx.send(f"Aucun nouveau badge à débloquer pour {member.mention}.")
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # ÉVÉNEMENTS
+    # ─────────────────────────────────────────────────────────────────────────
+    
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        """Tracking des messages pour badges sociaux"""
+        if message.author.bot:
+            return
+        
+        # Incrémenter le compteur de messages
+        data = load_badges_data()
+        user_id = str(message.author.id)
+        
+        if user_id in data:
+            stats = data[user_id].get("stats", {})
+            stats["messages_count"] = stats.get("messages_count", 0) + 1
+            data[user_id]["stats"] = stats
+            save_badges_data(data)
+            
+            # Vérifier badge community_star
+            if stats["messages_count"] == 500 and not has_badge(message.author.id, "community_star"):
+                result = unlock_badge(message.author.id, "community_star", self.bot)
+                if result:
+                    try:
+                        embed = discord.Embed(
+                            title="🎖️ Nouveau Badge Débloqué !",
+                            description=f"**{BADGES_DATA['community_star']['emoji']} {BADGES_DATA['community_star']['name']}**\n\n*{BADGES_DATA['community_star']['description']}*",
+                            color=RARITY_COLORS["uncommon"]
+                        )
+                        await message.channel.send(f"🎉 {message.author.mention} a débloqué un badge !", embed=embed)
+                    except:
+                        pass
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# SETUP
+# ═══════════════════════════════════════════════════════════════════════════════
 
 async def setup(bot):
-    """Setup pour discord.py 2.0+"""
-    await bot.add_cog(AchievementsSystem(bot))
+    await bot.add_cog(Achievements(bot))
