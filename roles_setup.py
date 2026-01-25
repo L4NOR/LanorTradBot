@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 import asyncio
 from datetime import datetime
+import logging
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONFIGURATION DES RÔLES - Structure complète
@@ -260,7 +261,7 @@ class RolesSetup(commands.Cog):
         
         return False
     
-    def get_role_count(self) -> tuple[int, int]:
+    def get_role_count(self) -> tuple:
         """Compte le nombre de rôles et séparateurs dans la structure."""
         separators = sum(1 for cat in ROLES_STRUCTURE if cat.get("separator"))
         roles = sum(len(cat.get("roles", [])) for cat in ROLES_STRUCTURE)
@@ -451,8 +452,10 @@ class RolesSetup(commands.Cog):
                     await asyncio.sleep(0.5)  # Rate limit
                 except discord.Forbidden:
                     errors += 1
-                except discord.HTTPException:
+                    logging.warning(f"Permission refusée pour supprimer le rôle: {role.name}")
+                except discord.HTTPException as e:
                     errors += 1
+                    logging.error(f"Erreur HTTP lors de la suppression de {role.name}: {e}")
             
             # Résultat
             final_embed = discord.Embed(
@@ -557,7 +560,7 @@ class RolesSetup(commands.Cog):
                         await asyncio.sleep(0.3)
                     except Exception as e:
                         errors += 1
-                        print(f"Erreur création {role_data['name']}: {e}")
+                        logging.error(f"Erreur création {role_data['name']}: {e}")
                 
                 # Créer le séparateur
                 if separator:
@@ -578,7 +581,7 @@ class RolesSetup(commands.Cog):
                             await asyncio.sleep(0.3)
                     except Exception as e:
                         errors += 1
-                        print(f"Erreur création séparateur {separator}: {e}")
+                        logging.error(f"Erreur création séparateur {separator}: {e}")
             
             # Résultat
             final_embed = discord.Embed(
@@ -749,8 +752,8 @@ class RolesSetup(commands.Cog):
                     await role.delete(reason=f"Setup complet par {ctx.author}")
                     deleted += 1
                     await asyncio.sleep(0.5)
-                except:
-                    pass
+                except Exception as e:
+                    logging.warning(f"Impossible de supprimer {role.name}: {e}")
             
             # ÉTAPE 2: Création
             step2_embed = discord.Embed(
@@ -777,8 +780,8 @@ class RolesSetup(commands.Cog):
                         )
                         created += 1
                         await asyncio.sleep(0.3)
-                    except:
-                        pass
+                    except Exception as e:
+                        logging.warning(f"Impossible de créer {role_data['name']}: {e}")
                 
                 if separator:
                     try:
@@ -791,8 +794,8 @@ class RolesSetup(commands.Cog):
                         )
                         created += 1
                         await asyncio.sleep(0.3)
-                    except:
-                        pass
+                    except Exception as e:
+                        logging.warning(f"Impossible de créer séparateur {separator}: {e}")
             
             # ÉTAPE 3: Réorganisation
             step3_embed = discord.Embed(
@@ -827,8 +830,8 @@ class RolesSetup(commands.Cog):
                 try:
                     await guild.edit_role_positions(role_positions)
                     reordered = len(role_positions)
-                except:
-                    pass
+                except Exception as e:
+                    logging.error(f"Erreur lors de la réorganisation: {e}")
             
             # RÉSULTAT FINAL
             final_embed = discord.Embed(
@@ -884,17 +887,52 @@ class RolesSetup(commands.Cog):
         
         # Envoyer en fichier si trop long
         if len(output) > 1900:
-            # Créer un fichier temporaire
             import io
-            file = io.StringIO(output)
             await ctx.send(
                 "📤 Configuration exportée:",
                 file=discord.File(fp=io.BytesIO(output.encode()), filename="role_ids.py")
             )
         else:
             await ctx.send(f"```python\n{output}\n```")
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # COMMANDE : AIDE ROLES
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    @commands.command(name="roles_help")
+    async def roles_help(self, ctx):
+        """
+        📖 Affiche l'aide pour les commandes de gestion des rôles.
+        """
+        embed = discord.Embed(
+            title="📖 Aide - Gestion des Rôles",
+            description="Commandes disponibles pour gérer la structure des rôles du serveur.",
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+        
+        commands_info = [
+            ("!roles_preview", "👁️ Aperçu de la structure définie", "manage_roles"),
+            ("!roles_current", "📜 Liste les rôles actuels du serveur", "manage_roles"),
+            ("!roles_create", "✨ Crée les nouveaux rôles", "administrator"),
+            ("!roles_reorder", "📊 Réorganise les positions", "administrator"),
+            ("!roles_delete_old", "🗑️ Supprime les anciens rôles", "administrator"),
+            ("!roles_setup", "🔄 Setup complet (suppr + création + ordre)", "administrator"),
+            ("!roles_export", "📤 Exporte les IDs des rôles", "manage_roles"),
+        ]
+        
+        for cmd_name, description, permission in commands_info:
+            embed.add_field(
+                name=f"`{cmd_name}`",
+                value=f"{description}\n*Permission: {permission}*",
+                inline=False
+            )
+        
+        embed.set_footer(text="⚠️ Les commandes admin sont irréversibles!")
+        await ctx.send(embed=embed)
 
 
 async def setup(bot):
     """Setup pour discord.py 2.0+"""
     await bot.add_cog(RolesSetup(bot))
+    logging.info("🔧 Cog RolesSetup chargé avec succès")

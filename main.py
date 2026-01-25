@@ -67,6 +67,11 @@ async def main():
     await admin_data.setup(bot)
     logging.info("✅ Module Admin Data chargé")
     
+    # Charger le système de gestion des rôles
+    import roles_setup
+    await roles_setup.setup(bot)
+    logging.info("✅ Module Roles Setup chargé")
+    
     # =======================================================
 
     # Lancer le bot
