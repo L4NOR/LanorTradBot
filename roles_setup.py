@@ -896,6 +896,456 @@ class RolesSetup(commands.Cog):
         embed.set_footer(text="⚠️ Les commandes admin sont irréversibles!")
         await ctx.send(embed=embed)
 
+        # ═══════════════════════════════════════════════════════════════════════════
+    # COMMANDE : MODIFIER PERMISSIONS DE SALON
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    @commands.command(name="perms_setup")
+    @commands.has_permissions(manage_channels=True)
+    async def perms_setup(self, ctx):
+        """
+        🔐 Configure les permissions d'un rôle pour un salon de manière interactive.
+        """
+        # ÉTAPE 1: Sélection du salon
+        embed_channel = discord.Embed(
+            title="🔐 Configuration des Permissions",
+            description=(
+                "**Étape 1/3:** Sélection du salon\n\n"
+                "Mentionnez le salon dont vous voulez modifier les permissions.\n"
+                "Exemple: #général ou copiez l'ID du salon"
+            ),
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+        embed_channel.set_footer(text="Tapez 'annuler' pour annuler | Timeout: 60s")
+        await ctx.send(embed=embed_channel)
+        
+        def check_msg(m):
+            return m.author == ctx.author and m.channel == ctx.channel
+        
+        try:
+            # Attendre le salon
+            msg = await self.bot.wait_for("message", timeout=60.0, check=check_msg)
+            
+            if msg.content.lower() == "annuler":
+                await ctx.send("❌ Opération annulée.")
+                return
+            
+            # Récupérer le salon
+            channel = None
+            if msg.channel_mentions:
+                channel = msg.channel_mentions[0]
+            elif msg.content.isdigit():
+                channel = ctx.guild.get_channel(int(msg.content))
+            
+            if not channel:
+                await ctx.send("❌ Salon invalide. Opération annulée.")
+                return
+            
+            # ÉTAPE 2: Sélection du rôle
+            embed_role = discord.Embed(
+                title="🔐 Configuration des Permissions",
+                description=(
+                    f"**Étape 2/3:** Sélection du rôle\n\n"
+                    f"📍 **Salon sélectionné:** {channel.mention}\n\n"
+                    "Mentionnez le rôle ou tapez son nom.\n"
+                    "Exemple: @Lecteurs ou Lecteurs"
+                ),
+                color=discord.Color.blue(),
+                timestamp=datetime.now()
+            )
+            embed_role.set_footer(text="Tapez 'annuler' pour annuler | Timeout: 60s")
+            await ctx.send(embed=embed_role)
+            
+            # Attendre le rôle
+            msg = await self.bot.wait_for("message", timeout=60.0, check=check_msg)
+            
+            if msg.content.lower() == "annuler":
+                await ctx.send("❌ Opération annulée.")
+                return
+            
+            # Récupérer le rôle
+            role = None
+            if msg.role_mentions:
+                role = msg.role_mentions[0]
+            else:
+                role = discord.utils.get(ctx.guild.roles, name=msg.content)
+            
+            if not role:
+                await ctx.send("❌ Rôle invalide. Opération annulée.")
+                return
+            
+            # ÉTAPE 3: Sélection des permissions
+            permissions_display = {
+                "1": ("✅ Voir le salon", "view_channel", True),
+                "2": ("💬 Envoyer des messages", "send_messages", True),
+                "3": ("🔗 Intégrer des liens", "embed_links", True),
+                "4": ("📎 Joindre des fichiers", "attach_files", True),
+                "5": ("😀 Utiliser émojis externes", "use_external_emojis", True),
+                "6": ("💭 Ajouter des réactions", "add_reactions", True),
+                "7": ("📜 Voir l'historique", "read_message_history", True),
+                "8": ("🎤 Se connecter (vocal)", "connect", True),
+                "9": ("🔊 Parler (vocal)", "speak", True),
+                "10": ("📹 Caméra (vocal)", "stream", True),
+                "11": ("🎥 Utiliser activités", "use_embedded_activities", True),
+                "12": ("❌ Aucune permission", "none", False),
+                "13": ("🚫 Bloquer tout accès", "block", False),
+            }
+            
+            embed_perms = discord.Embed(
+                title="🔐 Configuration des Permissions",
+                description=(
+                    f"**Étape 3/3:** Choix des permissions\n\n"
+                    f"📍 **Salon:** {channel.mention}\n"
+                    f"👥 **Rôle:** {role.mention}\n\n"
+                    "**Sélectionnez les permissions à activer:**\n"
+                    "*(Tapez les numéros séparés par des espaces)*\n\n"
+                ),
+                color=discord.Color.blue(),
+                timestamp=datetime.now()
+            )
+            
+            # Organiser les permissions en colonnes
+            perms_text_1 = ""
+            perms_text_2 = ""
+            perms_text_3 = ""
+            
+            for i, (num, (label, _, _)) in enumerate(permissions_display.items()):
+                line = f"`{num}` {label}\n"
+                if i < 5:
+                    perms_text_1 += line
+                elif i < 10:
+                    perms_text_2 += line
+                else:
+                    perms_text_3 += line
+            
+            embed_perms.add_field(name="📋 Permissions (1)", value=perms_text_1, inline=True)
+            embed_perms.add_field(name="📋 Permissions (2)", value=perms_text_2, inline=True)
+            embed_perms.add_field(name="📋 Options spéciales", value=perms_text_3, inline=True)
+            
+            embed_perms.add_field(
+                name="💡 Exemples",
+                value=(
+                    "`1 2 3 4` = Voir + Envoyer + Liens + Fichiers\n"
+                    "`12` = Aucune permission (neutre)\n"
+                    "`13` = Bloquer complètement l'accès"
+                ),
+                inline=False
+            )
+            
+            embed_perms.set_footer(text="Tapez 'annuler' pour annuler | Timeout: 120s")
+            await ctx.send(embed=embed_perms)
+            
+            # Attendre les permissions
+            msg = await self.bot.wait_for("message", timeout=120.0, check=check_msg)
+            
+            if msg.content.lower() == "annuler":
+                await ctx.send("❌ Opération annulée.")
+                return
+            
+            # Parser les choix
+            choices = msg.content.split()
+            
+            # Construire l'overwrite
+            overwrite = discord.PermissionOverwrite()
+            
+            # Vérifier les options spéciales
+            if "13" in choices:
+                # Bloquer tout
+                overwrite.view_channel = False
+                overwrite.send_messages = False
+                overwrite.read_message_history = False
+                selected_perms = ["🚫 **Accès bloqué**"]
+            elif "12" in choices:
+                # Neutre (hérite du serveur)
+                overwrite = None
+                selected_perms = ["⚪ **Permissions héritées** (aucune modification)"]
+            else:
+                # Permissions personnalisées
+                selected_perms = []
+                for choice in choices:
+                    if choice in permissions_display:
+                        label, perm_name, value = permissions_display[choice]
+                        setattr(overwrite, perm_name, value)
+                        selected_perms.append(label)
+            
+            # Confirmation finale
+            if selected_perms:
+                confirm_embed = discord.Embed(
+                    title="⚠️ Confirmation Requise",
+                    description=(
+                        "**Résumé des modifications:**\n\n"
+                        f"📍 **Salon:** {channel.mention}\n"
+                        f"👥 **Rôle:** {role.mention}\n\n"
+                        "**Permissions sélectionnées:**\n"
+                        + "\n".join(selected_perms) +
+                        "\n\n**Tapez `CONFIRMER` pour appliquer les changements.**"
+                    ),
+                    color=discord.Color.orange(),
+                    timestamp=datetime.now()
+                )
+                confirm_embed.set_footer(text="Tapez autre chose pour annuler | Timeout: 30s")
+                await ctx.send(embed=confirm_embed)
+                
+                # Attendre confirmation
+                msg = await self.bot.wait_for("message", timeout=30.0, check=check_msg)
+                
+                if msg.content != "CONFIRMER":
+                    await ctx.send("❌ Opération annulée.")
+                    return
+                
+                # Appliquer les permissions
+                try:
+                    if overwrite is None:
+                        # Supprimer l'overwrite (retour aux permissions héritées)
+                        await channel.set_permissions(role, overwrite=None, reason=f"Permissions réinitialisées par {ctx.author}")
+                    else:
+                        await channel.set_permissions(role, overwrite=overwrite, reason=f"Permissions modifiées par {ctx.author}")
+                    
+                    success_embed = discord.Embed(
+                        title="✅ Permissions Appliquées",
+                        description=(
+                            f"Les permissions ont été mises à jour avec succès!\n\n"
+                            f"📍 **Salon:** {channel.mention}\n"
+                            f"👥 **Rôle:** {role.mention}\n\n"
+                            "**Permissions appliquées:**\n"
+                            + "\n".join(selected_perms)
+                        ),
+                        color=discord.Color.green(),
+                        timestamp=datetime.now()
+                    )
+                    success_embed.set_footer(text=f"Modifié par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+                    await ctx.send(embed=success_embed)
+                    
+                except discord.Forbidden:
+                    await ctx.send("❌ Je n'ai pas la permission de modifier les permissions de ce salon.")
+                except Exception as e:
+                    await ctx.send(f"❌ Erreur lors de l'application des permissions: {e}")
+            else:
+                await ctx.send("❌ Aucune permission sélectionnée.")
+        
+        except asyncio.TimeoutError:
+            await ctx.send("⏰ Temps écoulé. Opération annulée.")
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # COMMANDE : VOIR LES PERMISSIONS D'UN SALON
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    @commands.command(name="perms_view")
+    @commands.has_permissions(manage_channels=True)
+    async def perms_view(self, ctx, channel: discord.TextChannel = None):
+        """
+        👁️ Affiche les permissions configurées pour un salon.
+        Usage: !perms_view #salon
+        """
+        channel = channel or ctx.channel
+        
+        embed = discord.Embed(
+            title=f"🔐 Permissions de #{channel.name}",
+            description=f"Permissions configurées pour {channel.mention}",
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+        
+        # Compter les overwrites
+        overwrites_count = len(channel.overwrites)
+        
+        if overwrites_count == 0:
+            embed.add_field(
+                name="📊 Statut",
+                value="Aucune permission personnalisée configurée.\nToutes les permissions sont héritées.",
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="📊 Statistiques",
+                value=f"**{overwrites_count}** rôle(s)/membre(s) avec permissions personnalisées",
+                inline=False
+            )
+            
+            # Lister les overwrites (max 10)
+            overwrites_list = []
+            for target, overwrite in list(channel.overwrites.items())[:10]:
+                if isinstance(target, discord.Role):
+                    icon = "👥"
+                    name = target.name
+                else:
+                    icon = "👤"
+                    name = target.display_name
+                
+                perms = []
+                if overwrite.view_channel is True:
+                    perms.append("✅ Voir")
+                elif overwrite.view_channel is False:
+                    perms.append("🚫 Voir")
+                
+                if overwrite.send_messages is True:
+                    perms.append("✅ Écrire")
+                elif overwrite.send_messages is False:
+                    perms.append("🚫 Écrire")
+                
+                if overwrite.connect is True:
+                    perms.append("✅ Connecter")
+                elif overwrite.connect is False:
+                    perms.append("🚫 Connecter")
+                
+                perms_str = " • ".join(perms) if perms else "⚪ Héritées"
+                overwrites_list.append(f"{icon} **{name}**\n└ {perms_str}")
+            
+            if overwrites_count > 10:
+                overwrites_list.append(f"*...et {overwrites_count - 10} autre(s)*")
+            
+            embed.add_field(
+                name="🔑 Permissions Personnalisées",
+                value="\n\n".join(overwrites_list),
+                inline=False
+            )
+        
+        embed.add_field(
+            name="💡 Commandes",
+            value=(
+                "`!perms_setup` - Configurer les permissions\n"
+                "`!perms_copy` - Copier les permissions vers un autre salon\n"
+                "`!perms_reset` - Réinitialiser les permissions"
+            ),
+            inline=False
+        )
+        
+        embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+        await ctx.send(embed=embed)
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # COMMANDE : COPIER LES PERMISSIONS
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    @commands.command(name="perms_copy")
+    @commands.has_permissions(manage_channels=True)
+    async def perms_copy(self, ctx):
+        """
+        📋 Copie les permissions d'un salon vers un autre.
+        """
+        embed = discord.Embed(
+            title="📋 Copie de Permissions",
+            description=(
+                "**Étape 1/2:** Salon source\n\n"
+                "Mentionnez le salon DONT vous voulez copier les permissions."
+            ),
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+        await ctx.send(embed=embed)
+        
+        def check_msg(m):
+            return m.author == ctx.author and m.channel == ctx.channel
+        
+        try:
+            # Salon source
+            msg = await self.bot.wait_for("message", timeout=60.0, check=check_msg)
+            
+            source_channel = None
+            if msg.channel_mentions:
+                source_channel = msg.channel_mentions[0]
+            elif msg.content.isdigit():
+                source_channel = ctx.guild.get_channel(int(msg.content))
+            
+            if not source_channel:
+                await ctx.send("❌ Salon invalide.")
+                return
+            
+            # Salon cible
+            embed2 = discord.Embed(
+                title="📋 Copie de Permissions",
+                description=(
+                    f"**Étape 2/2:** Salon cible\n\n"
+                    f"📍 **Source:** {source_channel.mention}\n\n"
+                    "Mentionnez le salon VERS lequel copier les permissions."
+                ),
+                color=discord.Color.blue(),
+                timestamp=datetime.now()
+            )
+            await ctx.send(embed=embed2)
+            
+            msg = await self.bot.wait_for("message", timeout=60.0, check=check_msg)
+            
+            target_channel = None
+            if msg.channel_mentions:
+                target_channel = msg.channel_mentions[0]
+            elif msg.content.isdigit():
+                target_channel = ctx.guild.get_channel(int(msg.content))
+            
+            if not target_channel:
+                await ctx.send("❌ Salon invalide.")
+                return
+            
+            # Copier les permissions
+            copied = 0
+            for target, overwrite in source_channel.overwrites.items():
+                try:
+                    await target_channel.set_permissions(target, overwrite=overwrite, reason=f"Permissions copiées depuis #{source_channel.name} par {ctx.author}")
+                    copied += 1
+                except:
+                    pass
+            
+            success_embed = discord.Embed(
+                title="✅ Permissions Copiées",
+                description=(
+                    f"**{copied}** permission(s) copiée(s)\n\n"
+                    f"📍 **De:** {source_channel.mention}\n"
+                    f"📍 **Vers:** {target_channel.mention}"
+                ),
+                color=discord.Color.green(),
+                timestamp=datetime.now()
+            )
+            await ctx.send(embed=success_embed)
+        
+        except asyncio.TimeoutError:
+            await ctx.send("⏰ Temps écoulé.")
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # COMMANDE : AIDE ROLES
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    @commands.command(name="roles_help")
+    async def roles_help(self, ctx):
+        """
+        📖 Affiche l'aide pour les commandes de gestion des rôles.
+        """
+        embed = discord.Embed(
+            title="📖 Aide - Gestion des Rôles & Permissions",
+            description="Commandes disponibles pour gérer la structure des rôles et permissions du serveur.",
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+        
+        # Commandes de rôles
+        embed.add_field(
+            name="🎭 Gestion des Rôles",
+            value=(
+                "`!roles_preview` - Aperçu de la structure\n"
+                "`!roles_current` - Liste des rôles actuels\n"
+                "`!roles_create` - Créer les nouveaux rôles\n"
+                "`!roles_reorder` - Réorganiser les positions\n"
+                "`!roles_delete_old` - Supprimer les anciens\n"
+                "`!roles_setup` - Setup complet\n"
+                "`!roles_export` - Exporter les IDs"
+            ),
+            inline=False
+        )
+        
+        # Commandes de permissions
+        embed.add_field(
+            name="🔐 Gestion des Permissions",
+            value=(
+                "`!perms_setup` - Configurer les permissions d'un salon\n"
+                "`!perms_view [#salon]` - Voir les permissions d'un salon\n"
+                "`!perms_copy` - Copier les permissions entre salons"
+            ),
+            inline=False
+        )
+        
+        embed.set_footer(text="⚠️ Les commandes admin sont irréversibles!")
+        await ctx.send(embed=embed)
+
 
 async def setup(bot):
     """Setup pour discord.py 2.0+"""
