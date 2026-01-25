@@ -7,210 +7,165 @@ from datetime import datetime
 import logging
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# CONFIGURATION DES RÔLES - Structure complète
+# CONFIGURATION DES RÔLES - Structure complète basée sur les screenshots
 # ═══════════════════════════════════════════════════════════════════════════════
-
-# Format: Liste de catégories, chaque catégorie contient:
-# - "category": nom de la catégorie (pour affichage)
-# - "separator": nom du rôle séparateur (optionnel)
-# - "color": couleur hex de la catégorie
-# - "roles": liste des rôles avec name, hoist, mentionable
 
 ROLES_STRUCTURE = [
     # ─────────────────────────────────────────────────────────────────────────
-    # DIRECTION - Fondateurs et direction
+    # DIRECTION - Fondateurs et direction (Or royal #FFD700)
     # ─────────────────────────────────────────────────────────────────────────
     {
         "category": "DIRECTION",
-        "separator": "════════ DIRECTION ════════",
-        "color": 0x5BB85B,
+        "separator": "══════ 👑 DIRECTION ══════",
+        "color": 0xFFD700,
         "roles": [
-            {"name": "Maître des Origines", "hoist": True, "mentionable": False},
-            {"name": "Règne Absolu", "hoist": True, "mentionable": False},
-            {"name": "Vénérable", "hoist": True, "mentionable": False},
+            {"name": "✨ Maître des Origines", "hoist": True, "mentionable": False},
+            {"name": "👑 Équipe LanorTrad", "hoist": True, "mentionable": False},
+            {"name": "⭐ Princesa", "hoist": True, "mentionable": False},
         ]
     },
     
     # ─────────────────────────────────────────────────────────────────────────
-    # BOT - Bots du serveur
+    # BOTS - Bots du serveur (#7F8C8D)
     # ─────────────────────────────────────────────────────────────────────────
     {
-        "category": "BOT",
-        "separator": "════════ BOT ════════",
-        "color": 0x5BB85B,
+        "category": "BOTS",
+        "separator": "══════ 🤖 BOTS ══════",
+        "color": 0x7F8C8D,
         "roles": [
-            {"name": "DoubleM", "hoist": False, "mentionable": False},
-            {"name": "Nadeko", "hoist": False, "mentionable": False},
-            {"name": "MEE6", "hoist": False, "mentionable": False},
+            # Les rôles des bots sont généralement créés automatiquement
+            # On ne crée pas de rôles ici, juste le séparateur
         ]
     },
     
     # ─────────────────────────────────────────────────────────────────────────
-    # STAFF - Équipe de modération
+    # STAFF - Équipe de modération (Rouge foncé #C0392B)
     # ─────────────────────────────────────────────────────────────────────────
     {
         "category": "STAFF",
-        "separator": "════════ STAFF ════════",
-        "color": 0x698B88,
+        "separator": "══════ ♡ STAFF ══════",
+        "color": 0xC0392B,
         "roles": [
-            {"name": "Gardiens de l'Ombre", "hoist": True, "mentionable": False},
-            {"name": "Staff - membre", "hoist": True, "mentionable": True},
-            {"name": "Goûteur", "hoist": True, "mentionable": False},
+            {"name": "♡ Gardiens de l'Ordre", "hoist": True, "mentionable": False},
+            {"name": "🎉 Staff Animation", "hoist": True, "mentionable": True},
+            {"name": "🤝 Collabs", "hoist": True, "mentionable": True},
         ]
     },
     
     # ─────────────────────────────────────────────────────────────────────────
-    # ÉQUIPE SCANTRAD - Équipe de traduction
+    # ÉQUIPE SCANTRAD - Équipe de traduction (Violet manga #9B59B6)
     # ─────────────────────────────────────────────────────────────────────────
     {
         "category": "ÉQUIPE SCANTRAD",
-        "separator": "═══ ÉQUIPE SCANTRAD ═══",
-        "color": 0xC27C0E,
+        "separator": "══════ 🌸 ÉQUIPE SCANTRAD ══════",
+        "color": 0x9B59B6,
         "roles": [
-            {"name": "Chef de Projet", "hoist": True, "mentionable": True},
-            {"name": "Traducteur", "hoist": True, "mentionable": True},
-            {"name": "Éditeur", "hoist": True, "mentionable": True},
-            {"name": "Cleaner", "hoist": True, "mentionable": True},
-            {"name": "Correcteur", "hoist": True, "mentionable": True},
-            {"name": "QCheck", "hoist": True, "mentionable": True},
+            {"name": "📜 Alchimiste des Mots", "hoist": True, "mentionable": True},
+            {"name": "🎨 Purificateur d'Art", "hoist": True, "mentionable": True},
+            {"name": "🌸 Artisan des Pages", "hoist": True, "mentionable": True},
+            {"name": "🔍 Détective des Fautes", "hoist": True, "mentionable": True},
         ]
     },
     
     # ─────────────────────────────────────────────────────────────────────────
-    # PARTENAIRES
+    # PARTENAIRES (#16A085)
     # ─────────────────────────────────────────────────────────────────────────
     {
         "category": "PARTENAIRES",
-        "separator": "════════ PARTENAIRES ════════",
-        "color": 0xBB844B,
+        "separator": "══════ 💛 PARTENAIRES ══════",
+        "color": 0x16A085,
         "roles": [
-            {"name": "Partenaire", "hoist": True, "mentionable": True},
+            {"name": "💛 Kamina Traduction", "hoist": True, "mentionable": True},
         ]
     },
     
     # ─────────────────────────────────────────────────────────────────────────
-    # SÉLECTION TRADUCTION - Projets de traduction
+    # SOUTIEN - Boosters (#E84393)
     # ─────────────────────────────────────────────────────────────────────────
     {
-        "category": "SÉLECTION TRADUCTION",
-        "separator": "═══ SÉLECTION TRADUCTION ═══",
-        "color": 0x7289DA,
+        "category": "SOUTIEN",
+        "separator": "══════ 🚀 SOUTIEN ══════",
+        "color": 0xE84393,
         "roles": [
-            {"name": "Gestion Traduction", "hoist": False, "mentionable": True},
-            {"name": "Catenaccio", "hoist": False, "mentionable": True},
+            {"name": "🚀 Booster", "hoist": True, "mentionable": False},
         ]
     },
     
     # ─────────────────────────────────────────────────────────────────────────
-    # BOOSTERS - Soutiens Nitro
+    # LECTEURS PREMIUM (#F1C40F)
     # ─────────────────────────────────────────────────────────────────────────
     {
-        "category": "BOOSTERS",
-        "separator": "════════ BOOSTERS ════════",
-        "color": 0xFF73FA,
+        "category": "LECTEURS PREMIUM",
+        "separator": "══════ 👑 LECTEURS PREMIUM ══════",
+        "color": 0xF1C40F,
         "roles": [
-            {"name": "Booster", "hoist": True, "mentionable": False},
+            {"name": "👑 Lecteurs Suprême", "hoist": True, "mentionable": False},
+            {"name": "🏆 Lecteurs VIP", "hoist": True, "mentionable": False},
+            {"name": "📘 Lecteurs Réguliers", "hoist": True, "mentionable": False},
+            {"name": "📖 Lecteurs", "hoist": True, "mentionable": False},
         ]
     },
     
     # ─────────────────────────────────────────────────────────────────────────
-    # SONDAGE
+    # PROJETS / MANGAS (#3498DB)
     # ─────────────────────────────────────────────────────────────────────────
     {
-        "category": "SONDAGE",
-        "separator": "════════ SONDAGE ════════",
-        "color": 0x9B59B6,
-        "roles": [
-            {"name": "Sondage", "hoist": False, "mentionable": True},
-        ]
-    },
-    
-    # ─────────────────────────────────────────────────────────────────────────
-    # LECTEURS AVANCÉS
-    # ─────────────────────────────────────────────────────────────────────────
-    {
-        "category": "LECTEURS AVANCÉS",
-        "separator": "═══ LECTEURS AVANCÉS ═══",
-        "color": 0x5CC24F,
-        "roles": [
-            {"name": "Lecteur Avancé", "hoist": True, "mentionable": False},
-        ]
-    },
-    
-    # ─────────────────────────────────────────────────────────────────────────
-    # LECTEUR - MANGA
-    # ─────────────────────────────────────────────────────────────────────────
-    {
-        "category": "LECTEUR - MANGA",
-        "separator": "═══ LECTEUR - MANGA ═══",
+        "category": "PROJETS / MANGAS",
+        "separator": "══════ 📚 PROJETS / MANGAS ══════",
         "color": 0x3498DB,
         "roles": [
-            {"name": "Lecteurs Sujudan", "hoist": False, "mentionable": True},
-            {"name": "Lecteurs OFF", "hoist": False, "mentionable": True},
-            {"name": "Lecteurs -NightOwl", "hoist": False, "mentionable": True},
-            {"name": "Lecteur Fan des Thérons", "hoist": False, "mentionable": True},
+            {"name": "🔥 Ao No Exorcist", "hoist": False, "mentionable": True},
+            {"name": "🔴 Satsudou", "hoist": False, "mentionable": True},
+            {"name": "🏙️ Tokyo Underworld", "hoist": False, "mentionable": True},
+            {"name": "👹 Tougen Anki", "hoist": False, "mentionable": True},
+            {"name": "⚽ Catenaccio", "hoist": False, "mentionable": True},
+            {"name": "🤝 Projets Collab", "hoist": False, "mentionable": True},
         ]
     },
     
     # ─────────────────────────────────────────────────────────────────────────
-    # PROJETS / MANGA
+    # COMMUNAUTÉ (#2ECC71)
     # ─────────────────────────────────────────────────────────────────────────
     {
-        "category": "PROJETS / MANGA",
-        "separator": "═══ PROJETS / MANGA ═══",
-        "color": 0xE91E63,
+        "category": "COMMUNAUTÉ",
+        "separator": "══════ 🎮 COMMUNAUTÉ ══════",
+        "color": 0x2ECC71,
         "roles": [
-            {"name": "📚 Tougen Anki", "hoist": False, "mentionable": True},
-            {"name": "📚 Ao No Exorcist", "hoist": False, "mentionable": True},
-            {"name": "📚 Tokyo Underworld", "hoist": False, "mentionable": True},
-            {"name": "📚 Satsudou", "hoist": False, "mentionable": True},
-            {"name": "📚 Catenaccio", "hoist": False, "mentionable": True},
+            {"name": "🎨 Artiste", "hoist": False, "mentionable": False},
+            {"name": "📚 Collectionneurs", "hoist": False, "mentionable": False},
+            {"name": "🎧 Musique", "hoist": False, "mentionable": False},
+            {"name": "📷 Photographie", "hoist": False, "mentionable": False},
+            {"name": "🎮 Jeux vidéo", "hoist": False, "mentionable": False},
         ]
     },
     
     # ─────────────────────────────────────────────────────────────────────────
-    # COMMUNITY
-    # ─────────────────────────────────────────────────────────────────────────
-    {
-        "category": "COMMUNITY",
-        "separator": "════════ COMMUNITY ════════",
-        "color": 0x5D7571,
-        "roles": [
-            {"name": "Définir", "hoist": False, "mentionable": False},
-            {"name": "QCommunautaire", "hoist": False, "mentionable": False},
-            {"name": "GiftGiver", "hoist": False, "mentionable": False},
-            {"name": "Théoricien", "hoist": False, "mentionable": False},
-            {"name": "Twittos", "hoist": False, "mentionable": False},
-            {"name": "Sans -rôles", "hoist": False, "mentionable": False},
-        ]
-    },
-    
-    # ─────────────────────────────────────────────────────────────────────────
-    # NOTIFICATIONS
+    # NOTIFICATIONS (#E67E22)
     # ─────────────────────────────────────────────────────────────────────────
     {
         "category": "NOTIFICATIONS",
-        "separator": "════════ NOTIFICATIONS ════════",
+        "separator": "══════ 📣 NOTIFICATIONS ══════",
         "color": 0xE67E22,
         "roles": [
-            {"name": "🔔 Annonces", "hoist": False, "mentionable": True},
+            {"name": "📢 Annonces", "hoist": False, "mentionable": True},
             {"name": "🎉 Événements", "hoist": False, "mentionable": True},
             {"name": "🎁 Giveaway", "hoist": False, "mentionable": True},
-            {"name": "🤝 Partenaires", "hoist": False, "mentionable": True},
+            {"name": "💛 Partenaires", "hoist": False, "mentionable": True},
+            {"name": "🐦 Twittos", "hoist": False, "mentionable": True},
+            {"name": "🎵 Tiktok", "hoist": False, "mentionable": True},
+            {"name": "👀 Spoilers", "hoist": False, "mentionable": True},
         ]
     },
     
     # ─────────────────────────────────────────────────────────────────────────
-    # COMPORTEMENT
+    # COMPORTEMENT (#1ABC9C)
     # ─────────────────────────────────────────────────────────────────────────
     {
         "category": "COMPORTEMENT",
-        "separator": "════════ COMPORTEMENT ════════",
+        "separator": "══════ 🌸 COMPORTEMENT ══════",
         "color": 0x1ABC9C,
         "roles": [
-            {"name": "✅ Vérifié", "hoist": False, "mentionable": False},
-            {"name": "⚠️ Avertissement", "hoist": False, "mentionable": False},
-            {"name": "🔇 Mute", "hoist": False, "mentionable": False},
+            {"name": "✅ Lecteurs Respectueux", "hoist": False, "mentionable": False},
         ]
     },
 ]
@@ -222,12 +177,14 @@ ROLES_STRUCTURE = [
 PROTECTED_ROLES = [
     "@everyone",
     "Server Booster",
-    # Ajouter les noms des bots à protéger
+    # Bots
+    "DraftBot",
     "DoubleM",
     "Nadeko", 
     "MEE6",
     "Dyno",
     "Carl-bot",
+    "BOTS",
 ]
 
 # Noms partiels de bots à protéger (si le nom contient ces mots)
@@ -310,7 +267,7 @@ class RolesSetup(commands.Cog):
                     indicators += " 📢"
                 roles_list.append(f"• {role['name']}{indicators}")
             
-            field_value = "\n".join(roles_list) if roles_list else "*(vide)*"
+            field_value = "\n".join(roles_list) if roles_list else "*(vide - séparateur uniquement)*"
             if len(field_value) > 1024:
                 field_value = field_value[:1020] + "..."
             
@@ -321,7 +278,7 @@ class RolesSetup(commands.Cog):
                 inline=False
             )
         
-        embed.set_footer(text="👑 = Hoist | 📢 = Mentionnable")
+        embed.set_footer(text="👑 = Affiché séparément | 📢 = Mentionnable")
         await ctx.send(embed=embed)
     
     # ═══════════════════════════════════════════════════════════════════════════
@@ -416,7 +373,7 @@ class RolesSetup(commands.Cog):
                 + "\n".join([f"• {r.name}" for r in deletable_roles[:20]])
                 + (f"\n*...et {len(deletable_roles) - 20} autres*" if len(deletable_roles) > 20 else "")
                 + "\n\n⚠️ **Cette action est IRRÉVERSIBLE!**\n\n"
-                "Tapez `CONFIRMER SETUP` pour continuer."
+                "Tapez `CONFIRMER` pour continuer."
             ),
             color=discord.Color.red(),
             timestamp=datetime.now()
@@ -430,7 +387,7 @@ class RolesSetup(commands.Cog):
         try:
             msg = await self.bot.wait_for("message", timeout=30.0, check=check)
             
-            if msg.content != "CONFIRMER SETUP":
+            if msg.content != "CONFIRMER":
                 await ctx.send("❌ Confirmation incorrecte. Opération annulée.")
                 return
             
@@ -531,6 +488,7 @@ class RolesSetup(commands.Cog):
             
             created = 0
             errors = 0
+            skipped = 0
             created_roles = []
             
             # Inverser la structure pour créer du bas vers le haut
@@ -546,6 +504,7 @@ class RolesSetup(commands.Cog):
                         existing = discord.utils.get(guild.roles, name=role_data["name"])
                         if existing:
                             created_roles.append(existing)
+                            skipped += 1
                             continue
                         
                         role = await guild.create_role(
@@ -568,6 +527,7 @@ class RolesSetup(commands.Cog):
                         existing = discord.utils.get(guild.roles, name=separator)
                         if existing:
                             created_roles.append(existing)
+                            skipped += 1
                         else:
                             role = await guild.create_role(
                                 name=separator,
@@ -588,6 +548,7 @@ class RolesSetup(commands.Cog):
                 title="✅ Création Terminée",
                 description=(
                     f"**{created}** rôles créés\n"
+                    f"**{skipped}** rôles existants (ignorés)\n"
                     f"**{errors}** erreurs\n\n"
                     "Utilisez `!roles_reorder` pour organiser les positions."
                 ),
@@ -874,13 +835,17 @@ class RolesSetup(commands.Cog):
             if separator:
                 role = discord.utils.get(guild.roles, name=separator)
                 if role:
-                    safe_name = separator.replace("═", "").replace(" ", "_").strip("_")
+                    safe_name = cat_name.replace(" ", "_").replace("/", "_")
                     output += f'    "sep_{safe_name}": {role.id},\n'
             
             for role_data in category.get("roles", []):
                 role = discord.utils.get(guild.roles, name=role_data["name"])
                 if role:
-                    safe_name = role_data["name"].replace(" ", "_").replace("📚", "").replace("🔔", "").replace("🎉", "").replace("🎁", "").replace("🤝", "").replace("✅", "").replace("⚠️", "").replace("🔇", "").strip("_")
+                    # Nettoyer le nom pour en faire une clé valide
+                    safe_name = role_data["name"]
+                    for char in ["📜", "🎨", "🌸", "🔍", "✨", "👑", "⭐", "♡", "🎉", "🤝", "💛", "🚀", "🏆", "📘", "📖", "🔥", "🔴", "🏙️", "👹", "⚽", "📚", "🎧", "📷", "🎮", "📢", "🎁", "🐦", "🎵", "👀", "✅", "🤖"]:
+                        safe_name = safe_name.replace(char, "")
+                    safe_name = safe_name.strip().replace(" ", "_").replace("'", "")
                     output += f'    "{safe_name}": {role.id},\n'
         
         output += "}\n"
