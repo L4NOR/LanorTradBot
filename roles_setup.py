@@ -904,15 +904,19 @@ class RolesSetup(commands.Cog):
     @commands.has_permissions(manage_channels=True)
     async def perms_setup(self, ctx):
         """
-        🔐 Configure les permissions d'un rôle pour un salon de manière interactive.
+        🔐 Configure les permissions d'un rôle pour un ou plusieurs salons de manière interactive.
         """
-        # ÉTAPE 1: Sélection du salon
+        # ÉTAPE 1: Sélection des salons
         embed_channel = discord.Embed(
             title="🔐 Configuration des Permissions",
             description=(
-                "**Étape 1/3:** Sélection du salon\n\n"
-                "Mentionnez le salon dont vous voulez modifier les permissions.\n"
-                "Exemple: #général ou copiez l'ID du salon"
+                "**Étape 1/3:** Sélection des salons\n\n"
+                "Mentionnez **un ou plusieurs salons** dont vous voulez modifier les permissions.\n\n"
+                "**Exemples:**\n"
+                "• `#général` - Un seul salon\n"
+                "• `#général #annonces #règles` - Plusieurs salons\n"
+                "• `1234567890` - Par ID\n"
+                "• `#général 1234567890 #autres` - Mix de mentions et IDs"
             ),
             color=discord.Color.blue(),
             timestamp=datetime.now()
@@ -924,23 +928,45 @@ class RolesSetup(commands.Cog):
             return m.author == ctx.author and m.channel == ctx.channel
         
         try:
-            # Attendre le salon
+            # Attendre les salons
             msg = await self.bot.wait_for("message", timeout=60.0, check=check_msg)
             
             if msg.content.lower() == "annuler":
                 await ctx.send("❌ Opération annulée.")
                 return
             
-            # Récupérer le salon
-            channel = None
-            if msg.channel_mentions:
-                channel = msg.channel_mentions[0]
-            elif msg.content.isdigit():
-                channel = ctx.guild.get_channel(int(msg.content))
+            # Récupérer tous les salons mentionnés
+            channels = []
             
-            if not channel:
-                await ctx.send("❌ Salon invalide. Opération annulée.")
+            # Ajouter les salons mentionnés
+            if msg.channel_mentions:
+                channels.extend(msg.channel_mentions)
+            
+            # Chercher les IDs dans le message
+            words = msg.content.split()
+            for word in words:
+                if word.isdigit():
+                    channel = ctx.guild.get_channel(int(word))
+                    if channel and channel not in channels:
+                        channels.append(channel)
+            
+            if not channels:
+                await ctx.send("❌ Aucun salon valide trouvé. Opération annulée.")
                 return
+            
+            # Afficher les salons sélectionnés
+            channels_list = "\n".join([f"• {ch.mention}" for ch in channels])
+            confirm_channels = discord.Embed(
+                title="✅ Salons Sélectionnés",
+                description=(
+                    f"**{len(channels)} salon(s) sélectionné(s):**\n\n"
+                    f"{channels_list}\n\n"
+                    "Les permissions seront appliquées à **tous ces salons**."
+                ),
+                color=discord.Color.green(),
+                timestamp=datetime.now()
+            )
+            await ctx.send(embed=confirm_channels)
             
             # ÉTAPE 2: Sélection du rôle
             embed_role = discord.Embed(
@@ -996,7 +1022,7 @@ class RolesSetup(commands.Cog):
                 title="🔐 Configuration des Permissions",
                 description=(
                     f"**Étape 3/3:** Choix des permissions\n\n"
-                    f"📍 **Salon:** {channel.mention}\n"
+                    f"📍 **Salon(s):** {len(channels)}\n"
                     f"👥 **Rôle:** {role.mention}\n\n"
                     "**Sélectionnez les permissions à activer:**\n"
                     "*(Tapez les numéros séparés par des espaces)*\n\n"
@@ -1071,15 +1097,16 @@ class RolesSetup(commands.Cog):
             
             # Confirmation finale
             if selected_perms:
+                channels_display = "\n".join([f"• {ch.mention}" for ch in channels])
                 confirm_embed = discord.Embed(
                     title="⚠️ Confirmation Requise",
                     description=(
                         "**Résumé des modifications:**\n\n"
-                        f"📍 **Salon:** {channel.mention}\n"
+                        f"📍 **Salon(s) ({len(channels)}):**\n{channels_display}\n\n"
                         f"👥 **Rôle:** {role.mention}\n\n"
                         "**Permissions sélectionnées:**\n"
                         + "\n".join(selected_perms) +
-                        "\n\n**Tapez `CONFIRMER` pour appliquer les changements.**"
+                        "\n\n**Tapez `CONFIRMER` pour appliquer les changements à TOUS les salons.**"
                     ),
                     color=discord.Color.orange(),
                     timestamp=datetime.now()
@@ -1094,33 +1121,85 @@ class RolesSetup(commands.Cog):
                     await ctx.send("❌ Opération annulée.")
                     return
                 
-                # Appliquer les permissions
-                try:
-                    if overwrite is None:
-                        # Supprimer l'overwrite (retour aux permissions héritées)
-                        await channel.set_permissions(role, overwrite=None, reason=f"Permissions réinitialisées par {ctx.author}")
-                    else:
-                        await channel.set_permissions(role, overwrite=overwrite, reason=f"Permissions modifiées par {ctx.author}")
-                    
-                    success_embed = discord.Embed(
-                        title="✅ Permissions Appliquées",
-                        description=(
-                            f"Les permissions ont été mises à jour avec succès!\n\n"
-                            f"📍 **Salon:** {channel.mention}\n"
-                            f"👥 **Rôle:** {role.mention}\n\n"
-                            "**Permissions appliquées:**\n"
-                            + "\n".join(selected_perms)
-                        ),
-                        color=discord.Color.green(),
-                        timestamp=datetime.now()
+                # Appliquer les permissions à TOUS les salons
+                success_count = 0
+                failed_count = 0
+                failed_channels = []
+                
+                progress_embed = discord.Embed(
+                    title="⏳ Application en cours...",
+                    description=f"Application des permissions à {len(channels)} salon(s)...",
+                    color=discord.Color.blue()
+                )
+                progress_msg = await ctx.send(embed=progress_embed)
+                
+                for channel in channels:
+                    try:
+                        if overwrite is None:
+                            # Supprimer l'overwrite (retour aux permissions héritées)
+                            await channel.set_permissions(role, overwrite=None, reason=f"Permissions réinitialisées par {ctx.author}")
+                        else:
+                            await channel.set_permissions(role, overwrite=overwrite, reason=f"Permissions modifiées par {ctx.author}")
+                        success_count += 1
+                        await asyncio.sleep(0.3)  # Rate limit
+                    except discord.Forbidden:
+                        failed_count += 1
+                        failed_channels.append(channel.mention)
+                    except Exception as e:
+                        failed_count += 1
+                        failed_channels.append(f"{channel.mention} ({str(e)[:30]})")
+                
+                # Résultat final
+                result_color = discord.Color.green() if failed_count == 0 else discord.Color.orange()
+                success_embed = discord.Embed(
+                    title="✅ Permissions Appliquées" if failed_count == 0 else "⚠️ Permissions Partiellement Appliquées",
+                    color=result_color,
+                    timestamp=datetime.now()
+                )
+                
+                success_embed.add_field(
+                    name="📊 Résumé",
+                    value=(
+                        f"✅ **Réussis:** {success_count}/{len(channels)}\n"
+                        f"❌ **Échecs:** {failed_count}/{len(channels)}"
+                    ),
+                    inline=False
+                )
+                
+                success_embed.add_field(
+                    name="👥 Rôle",
+                    value=role.mention,
+                    inline=True
+                )
+                
+                success_embed.add_field(
+                    name="📋 Permissions",
+                    value="\n".join(selected_perms[:5]) + (f"\n*+{len(selected_perms)-5} autres*" if len(selected_perms) > 5 else ""),
+                    inline=True
+                )
+                
+                if failed_channels:
+                    failed_display = "\n".join(failed_channels[:5])
+                    if len(failed_channels) > 5:
+                        failed_display += f"\n*...et {len(failed_channels)-5} autres*"
+                    success_embed.add_field(
+                        name="❌ Salons en échec",
+                        value=failed_display,
+                        inline=False
                     )
-                    success_embed.set_footer(text=f"Modifié par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
-                    await ctx.send(embed=success_embed)
-                    
-                except discord.Forbidden:
-                    await ctx.send("❌ Je n'ai pas la permission de modifier les permissions de ce salon.")
-                except Exception as e:
-                    await ctx.send(f"❌ Erreur lors de l'application des permissions: {e}")
+                
+                if success_count > 0:
+                    success_display = "\n".join([ch.mention for ch in channels[:10] if ch.mention not in failed_channels])
+                    if len(channels) > 10:
+                        success_display += f"\n*...et {len(channels)-10} autres*"
+                    success_embed.add_field(
+                        name="✅ Salons modifiés",
+                        value=success_display,
+                        inline=False
+                    )
+                
+                success_embed.set_footer(text=f"Modifié par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+                await progress_msg.edit(embed=success_embed)
             else:
                 await ctx.send("❌ Aucune permission sélectionnée.")
         
