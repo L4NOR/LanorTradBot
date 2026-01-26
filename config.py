@@ -39,7 +39,8 @@ MESSAGES = {
 
 # IDs des rôles
 ROLES = {
-    "member": 1465027850120986967,
+    "member": 1465027926054535324,
+    "access": 1465027850120986967,
     "booster": 1335403910113923162,
     "catenaccio": 1465027907968831541,
     "partenaires_ping": 1465027864318447658
@@ -58,4 +59,5 @@ COLORS = {
 }
 
 # Autres configurations
+
 EMBED_FOOTER = "Bot Discord"
