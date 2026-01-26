@@ -11,34 +11,5 @@
         "task": "traduire",
         "date_limite": "2026-01-31",
         "channel_id": 1431607377882382396
-    },
-    "937386825562062858_Tougen_Anki_221_qcheck": {
-        "user_id": 937386825562062858,
-        "manga": "Tougen Anki",
-        "chapitres": [
-            221
-        ],
-        "task": "qcheck",
-        "date_limite": "2026-01-26",
-        "channel_id": 1431607377882382396
-    },
-    "599196449044955156_Catenaccio_37-38-39-40-41-42-43-44-45-46_qcheck": {
-        "user_id": 599196449044955156,
-        "manga": "Catenaccio",
-        "chapitres": [
-            37,
-            38,
-            39,
-            40,
-            41,
-            42,
-            43,
-            44,
-            45,
-            46
-        ],
-        "task": "qcheck",
-        "date_limite": "2026-01-25",
-        "channel_id": 1431607377882382396
     }
 }

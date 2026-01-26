@@ -39,13 +39,10 @@ MESSAGES = {
 
 # IDs des rôles
 ROLES = {
-    "member": 1332401973290340472,
-    "access": 1332763756115005501,
-    "booster": 1332117069562384385,
-    "catenaccio": 1332429989085184010,
-    "uzugami": 1332430247894847529,
-    "manga_default": 1326795946134343692,
-    "partenaires_ping": 1332446295683633304
+    "member": 1465027850120986967,
+    "booster": 1335403910113923162,
+    "catenaccio": 1465027907968831541,
+    "partenaires_ping": 1465027864318447658
 }
 
 # Port du serveur web

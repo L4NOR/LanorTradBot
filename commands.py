@@ -68,11 +68,11 @@ MANGA_CHANNELS = {
 
 # Dictionnaire pour mapper les mangas aux rôles
 MANGA_ROLES = {
-    "Catenaccio": 1332429989085184010,
-    "Satsudou": 1326778585478070283,
-    "Ao No Exorcist": 1326778473079111763,
-    "Tokyo Underworld": 1326778697218392149,
-    "Tougen Anki": 1326778962143215677
+    "Catenaccio": 1465027907968831541,
+    "Satsudou": 1465027916999032976,
+    "Ao No Exorcist": 1465027919951958220,
+    "Tokyo Underworld": 1465027914050437184,
+    "Tougen Anki": 1465027911235928155
 }
 
 def est_chapitre_complet(tasks):
@@ -282,7 +282,7 @@ def setup(bot):
     @bot.command()
     async def help(ctx, *, command_name: str = None):
         """Affiche le menu d'aide interactif"""
-        admin_roles = [1326417422663680090, 1330147432847114321, 1331346420883525682]
+        admin_roles = [1465027983445331990, 1465027980974620833, 1465027978324086846]
         user_roles = [role.id for role in ctx.author.roles]
         is_admin = any(role in user_roles for role in admin_roles)
         
