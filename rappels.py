@@ -206,7 +206,7 @@ class RappelTask(commands.Cog):
         print("🤖 Bot prêt, démarrage de la surveillance des rappels...")
 
     @commands.command(name='add_rappel')
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
+    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
     async def add_rappel(self, ctx):
         """Créer un rappel de task pour un utilisateur en demandant toutes les informations nécessaires."""
         mangas = {
@@ -560,7 +560,7 @@ class RappelTask(commands.Cog):
             return
 
     @commands.command(name='list_rappels')
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
+    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
     async def list_rappels(self, ctx):
         """Liste les rappels actifs avec pagination"""
         if not rappeals_actifs:
@@ -672,7 +672,7 @@ class RappelTask(commands.Cog):
                 break
 
     @commands.command(name='delete_rappel')
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
+    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
     async def delete_rappel(self, ctx, *, rappel_id: str):
         """Supprime un rappel par son ID"""
         if rappel_id in rappeals_actifs:
@@ -700,7 +700,7 @@ class RappelTask(commands.Cog):
             await ctx.send(f"❌ ID de rappel **{rappel_id}** introuvable.")
 
     @commands.command(name="actualiser_rappels")
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
+    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
     async def actualiser_rappels(self, ctx, action: str = "save"):
         """Commande d'administration pour sauvegarder ou recharger l'état des rappels"""
         action = (action or "").lower()
@@ -772,7 +772,7 @@ class RappelTask(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command(name='test_rappel')
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
+    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
     async def test_rappel(self, ctx):
         """Teste l'envoi d'un rappel immédiatement (pour debug)"""
         await ctx.send("🧪 Test de l'envoi des rappels en cours...")

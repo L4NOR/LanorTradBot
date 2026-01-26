@@ -252,7 +252,7 @@ class AdminData(commands.Cog):
         self.bot = bot
     
     @commands.command(name="data")
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
+    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
     async def data_manager(self, ctx, action: str = None, target: str = None):
         """
         Gestionnaire de données centralisé.
@@ -604,7 +604,7 @@ class AdminData(commands.Cog):
             await msg.edit(embed=embed)
     
     @commands.command(name="backup")
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
+    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
     async def backup_all(self, ctx):
         """Sauvegarde et exporte TOUTES les données en une commande"""
         await self.save_modules(ctx, DATA_GROUPS["all"]["modules"], "Tout")
@@ -612,7 +612,7 @@ class AdminData(commands.Cog):
         await self.export_modules(ctx, DATA_GROUPS["all"]["modules"], "Tout")
     
     @commands.command(name="data_list")
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
+    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
     async def data_list(self, ctx):
         """Liste tous les modules et groupes disponibles"""
         embed = discord.Embed(
