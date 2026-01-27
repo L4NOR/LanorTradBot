@@ -71,6 +71,11 @@ async def main():
     import roles_setup
     await roles_setup.setup(bot)
     logging.info("✅ Module Roles Setup chargé")
+
+    # Charger le système de role selector
+    import role_selector
+    await role_selector.setup(bot)
+    logging.info("✅ Module Role Selector chargé")
     
     # =======================================================
 
