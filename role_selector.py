@@ -18,12 +18,11 @@ ROLE_CATEGORIES = {
         "emoji": "📚",
         "parent_role_id": 1465027922833440833,  # Rôle parent "manga"
         "roles": [
-            {"name": "Ao No Exorcist", "emoji": "🔥"},
-            {"name": "Satsudou", "emoji": "⚔️"},
-            {"name": "Tokyo Underworld", "emoji": "🏙️"},
-            {"name": "Tougen Anki", "emoji": "👹"},
-            {"name": "Catenaccio", "emoji": "⚽"},
-            {"name": "Projets Collab", "emoji": "🤝"},
+            {"name": "Ao No Exorcist", "emoji": "🔥", "id": 1465027919951958220},
+            {"name": "Satsudou", "emoji": "⚔️", "id": 1465027916999032976},
+            {"name": "Tokyo Underworld", "emoji": "🏙️", "id": 1465027914050437184},
+            {"name": "Tougen Anki", "emoji": "👹", "id": 1465027911235928155},
+            {"name": "Catenaccio", "emoji": "⚽", "id": 1465027907968831541},
         ]
     },
     "notifications": {
@@ -33,13 +32,13 @@ ROLE_CATEGORIES = {
         "emoji": "🔔",
         "parent_role_id": 1465027873751433520,  # Rôle parent "notifications"
         "roles": [
-            {"name": "Annonces", "emoji": "📢"},
-            {"name": "Événements", "emoji": "🎉"},
-            {"name": "Giveaway", "emoji": "🎁"},
-            {"name": "Partenaires", "emoji": "💛"},
-            {"name": "Twittos", "emoji": "🐦"},
-            {"name": "Tiktok", "emoji": "🎵"},
-            {"name": "Spoilers", "emoji": "👀"},
+            {"name": "Annonces", "emoji": "📢", "id": 1465027871339708439},
+            {"name": "Événements", "emoji": "🎉", "id": 1465027869196423239},
+            {"name": "Giveaway", "emoji": "🎁", "id": 1465027866826772785},
+            {"name": "Partenaires", "emoji": "💛", "id": 1465027864318447658},
+            {"name": "Twittos", "emoji": "🐦", "id": 1465027861365919756},
+            {"name": "Tiktok", "emoji": "🎵", "id": 1465027858853527644},
+            {"name": "Spoilers", "emoji": "👀", "id": 1465027856508649543},
         ]
     },
     "community": {
@@ -49,11 +48,11 @@ ROLE_CATEGORIES = {
         "emoji": "🎨",
         "parent_role_id": 1465027902419636296,  # Rôle parent "communauté"
         "roles": [
-            {"name": "Artiste", "emoji": "🎨"},
-            {"name": "Collectionneurs", "emoji": "📚"},
-            {"name": "Musique", "emoji": "🎧"},
-            {"name": "Photographie", "emoji": "📷"},
-            {"name": "Jeux vidéo", "emoji": "🎮"},
+            {"name": "Artiste", "emoji": "🎨", "id": 1465027899466846260},
+            {"name": "Collectionneurs", "emoji": "📚", "id": 1465027897336004638},
+            {"name": "Musique", "emoji": "🎧", "id": 1465027894668689642},
+            {"name": "Photographie", "emoji": "📷", "id": 1465027891942129714},
+            {"name": "Jeux vidéo", "emoji": "🎮", "id": 1465027882253287607},
         ]
     }
 }
