@@ -64,14 +64,15 @@ ROLE_CATEGORIES = {
 class RoleButton(Button):
     """Bouton pour toggle un rôle individuel"""
     
-    def __init__(self, role_name: str, emoji: str, category_key: str, parent_role_id: int):
+    def __init__(self, role_name: str, emoji: str, role_id: int, category_key: str, parent_role_id: int):
         super().__init__(
             style=discord.ButtonStyle.secondary,
             label=role_name,
             emoji=emoji,
-            custom_id=f"role_btn_{role_name}"
+            custom_id=f"role_btn_{role_id}"
         )
         self.role_name = role_name
+        self.role_id = role_id
         self.category_key = category_key
         self.parent_role_id = parent_role_id
     
@@ -80,11 +81,12 @@ class RoleButton(Button):
         # Defer pour éviter le timeout
         await interaction.response.defer(ephemeral=True)
         
-        role = discord.utils.get(interaction.guild.roles, name=self.role_name)
+        # CORRECTION: Utiliser l'ID au lieu du nom
+        role = interaction.guild.get_role(self.role_id)
         
         if not role:
             await interaction.followup.send(
-                f"❌ Le rôle **{self.role_name}** n'existe pas. Contactez un administrateur.",
+                f"❌ Le rôle **{self.role_name}** n'existe pas (ID: {self.role_id}). Contactez un administrateur.",
                 ephemeral=True
             )
             return
@@ -101,7 +103,7 @@ class RoleButton(Button):
                 category_data = ROLE_CATEGORIES[self.category_key]
                 has_other_roles = False
                 for role_info in category_data["roles"]:
-                    other_role = discord.utils.get(interaction.guild.roles, name=role_info["name"])
+                    other_role = interaction.guild.get_role(role_info["id"])
                     if other_role and other_role in member.roles and other_role != role:
                         has_other_roles = True
                         break
@@ -152,7 +154,7 @@ class RoleSelect(Select):
             options.append(
                 discord.SelectOption(
                     label=role_info["name"],
-                    value=role_info["name"],
+                    value=str(role_info["id"]),  # CORRECTION: Utiliser l'ID comme value
                     emoji=role_info["emoji"],
                     description=f"Toggle le rôle {role_info['name']}"
                 )
@@ -176,11 +178,20 @@ class RoleSelect(Select):
         
         member = interaction.user
         
-        # Récupérer tous les rôles de cette catégorie
-        category_role_names = [r["name"] for r in self.category_data["roles"]]
-        category_roles = [discord.utils.get(interaction.guild.roles, name=name) 
-                         for name in category_role_names]
-        category_roles = [r for r in category_roles if r]  # Filtrer les None
+        # CORRECTION: Utiliser les IDs au lieu des noms
+        # Créer un dict ID -> role object pour tous les rôles de cette catégorie
+        category_roles_by_id = {}
+        for role_info in self.category_data["roles"]:
+            role = interaction.guild.get_role(role_info["id"])
+            if role:
+                category_roles_by_id[str(role_info["id"])] = role
+            else:
+                print(f"⚠️ Rôle introuvable: {role_info['name']} (ID: {role_info['id']})")
+        
+        # Debug: afficher les rôles trouvés
+        print(f"🔍 Rôles trouvés pour {self.category_key}: {[r.name for r in category_roles_by_id.values()]}")
+        print(f"🔍 IDs sélectionnés: {self.values}")
+        print(f"🔍 Rôles actuels du membre: {[r.name for r in member.roles]}")
         
         # Récupérer le rôle parent
         parent_role_id = self.category_data.get("parent_role_id")
@@ -190,25 +201,37 @@ class RoleSelect(Select):
         to_add = []
         to_remove = []
         
-        for role in category_roles:
-            if role.name in self.values:
+        # Convertir self.values en set pour recherche rapide
+        selected_ids = set(self.values)
+        
+        for role_id_str, role in category_roles_by_id.items():
+            if role_id_str in selected_ids:
+                # L'utilisateur a sélectionné ce rôle
                 if role not in member.roles:
                     to_add.append(role)
+                    print(f"➕ À ajouter: {role.name}")
             else:
+                # L'utilisateur n'a PAS sélectionné ce rôle
                 if role in member.roles:
                     to_remove.append(role)
+                    print(f"➖ À retirer: {role.name}")
         
         try:
+            # Ajouter les rôles
             if to_add:
                 await member.add_roles(*to_add)
+                print(f"✅ Rôles ajoutés: {[r.name for r in to_add]}")
+            
+            # Retirer les rôles
             if to_remove:
                 await member.remove_roles(*to_remove)
+                print(f"✅ Rôles retirés: {[r.name for r in to_remove]}")
             
             # Gestion du rôle parent
             if parent_role:
                 # Vérifier si l'utilisateur a au moins un rôle de cette catégorie après les modifications
                 has_category_role = False
-                for role in category_roles:
+                for role in category_roles_by_id.values():
                     if role in member.roles or role in to_add:
                         if role not in to_remove:
                             has_category_role = True
@@ -218,10 +241,12 @@ class RoleSelect(Select):
                     # Ajouter le rôle parent si l'utilisateur a au moins un rôle de cette catégorie
                     if parent_role not in member.roles:
                         await member.add_roles(parent_role)
+                        print(f"✅ Rôle parent ajouté: {parent_role.name}")
                 else:
                     # Retirer le rôle parent si l'utilisateur n'a plus aucun rôle de cette catégorie
                     if parent_role in member.roles:
                         await member.remove_roles(parent_role)
+                        print(f"✅ Rôle parent retiré: {parent_role.name}")
             
             # Message de confirmation
             added = [r.name for r in to_add]
@@ -244,14 +269,17 @@ class RoleSelect(Select):
                     ephemeral=True
                 )
         
-        except discord.Forbidden:
+        except discord.Forbidden as e:
+            print(f"❌ Erreur Forbidden: {e}")
             await interaction.followup.send(
-                "❌ Je n'ai pas la permission de gérer ces rôles.",
+                "❌ Je n'ai pas la permission de gérer ces rôles. Vérifiez que mon rôle est bien au-dessus des rôles à attribuer dans la hiérarchie du serveur.",
                 ephemeral=True
             )
         except Exception as e:
             # Gestion d'erreur générique pour éviter les crashs silencieux
             print(f"❌ Erreur dans RoleSelect callback: {e}")
+            import traceback
+            traceback.print_exc()
             try:
                 await interaction.followup.send(
                     f"❌ Une erreur s'est produite: {str(e)}",
@@ -279,19 +307,14 @@ class MyRolesButton(Button):
         
         member = interaction.user
         
-        # Collecter tous les rôles auto-assignables
-        auto_assignable_roles = set()
-        for category_data in ROLE_CATEGORIES.values():
-            for role_info in category_data["roles"]:
-                auto_assignable_roles.add(role_info["name"])
-        
         # Trouver les rôles de l'utilisateur qui sont auto-assignables
         user_auto_roles = {}
         for category_key, category_data in ROLE_CATEGORIES.items():
             category_roles = []
             for role_info in category_data["roles"]:
-                role = discord.utils.get(member.roles, name=role_info["name"])
-                if role:
+                # CORRECTION: Utiliser l'ID au lieu du nom
+                role = interaction.guild.get_role(role_info["id"])
+                if role and role in member.roles:
                     category_roles.append(f"{role_info['emoji']} {role.name}")
             
             if category_roles:
@@ -482,12 +505,12 @@ class RoleSelector(commands.Cog):
         missing_roles = []
         existing_roles = []
         
-        # Vérifier tous les rôles
+        # Vérifier tous les rôles PAR ID
         for category_data in ROLE_CATEGORIES.values():
             for role_info in category_data["roles"]:
-                role = discord.utils.get(ctx.guild.roles, name=role_info["name"])
+                role = ctx.guild.get_role(role_info["id"])
                 if role:
-                    existing_roles.append(role_info["name"])
+                    existing_roles.append(f"{role_info['emoji']} {role.name} (ID: {role_info['id']})")
                 else:
                     missing_roles.append(role_info)
         
@@ -499,90 +522,28 @@ class RoleSelector(commands.Cog):
         
         report_embed.add_field(
             name=f"✅ Rôles existants ({len(existing_roles)})",
-            value="\n".join(existing_roles) if existing_roles else "Aucun",
+            value="\n".join(existing_roles[:10]) + (f"\n*...et {len(existing_roles) - 10} autres*" if len(existing_roles) > 10 else "") if existing_roles else "Aucun",
             inline=False
         )
         
         if missing_roles:
-            missing_text = "\n".join([f"{r['emoji']} {r['name']}" for r in missing_roles])
+            missing_text = "\n".join([f"{r['emoji']} {r['name']} (ID attendu: {r['id']})" for r in missing_roles])
             report_embed.add_field(
                 name=f"❌ Rôles manquants ({len(missing_roles)})",
                 value=missing_text,
                 inline=False
             )
             
+            report_embed.description = (
+                "⚠️ **ATTENTION**: Les IDs sont définis dans la configuration.\n"
+                "Si vous créez ces rôles, ils auront de NOUVEAUX IDs.\n"
+                "Vous devrez mettre à jour la configuration avec les nouveaux IDs."
+            )
             report_embed.set_footer(text="Réagissez avec ✅ pour créer les rôles manquants")
         else:
             report_embed.description = "🎉 Tous les rôles existent déjà !"
         
-        report_msg = await ctx.send(embed=report_embed)
-        
-        if not missing_roles:
-            return
-        
-        # Demander confirmation pour créer
-        await report_msg.add_reaction("✅")
-        await report_msg.add_reaction("❌")
-        
-        def check(reaction, user):
-            return (user == ctx.author and 
-                   str(reaction.emoji) in ["✅", "❌"] and 
-                   reaction.message.id == report_msg.id)
-        
-        try:
-            reaction, _ = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
-            await report_msg.clear_reactions()
-            
-            if str(reaction.emoji) == "❌":
-                await ctx.send("❌ Création annulée.")
-                return
-            
-            # Créer les rôles manquants
-            created = []
-            failed = []
-            
-            progress_msg = await ctx.send("⏳ Création des rôles en cours...")
-            
-            for role_info in missing_roles:
-                try:
-                    new_role = await ctx.guild.create_role(
-                        name=role_info["name"],
-                        mentionable=True,
-                        reason="Synchronisation du système de rôles"
-                    )
-                    created.append(f"✅ {role_info['emoji']} {new_role.mention}")
-                    await asyncio.sleep(0.5)  # Rate limit protection
-                except Exception as e:
-                    failed.append(f"❌ {role_info['name']}: {str(e)}")
-            
-            await progress_msg.delete()
-            
-            # Rapport final
-            final_embed = discord.Embed(
-                title="✅ Synchronisation Terminée",
-                color=discord.Color.green()
-            )
-            
-            if created:
-                final_embed.add_field(
-                    name=f"Rôles créés ({len(created)})",
-                    value="\n".join(created),
-                    inline=False
-                )
-            
-            if failed:
-                final_embed.add_field(
-                    name=f"Échecs ({len(failed)})",
-                    value="\n".join(failed),
-                    inline=False
-                )
-                final_embed.color = discord.Color.orange()
-            
-            await ctx.send(embed=final_embed)
-        
-        except asyncio.TimeoutError:
-            await report_msg.clear_reactions()
-            await ctx.send("⏰ Temps écoulé. Opération annulée.")
+        await ctx.send(embed=report_embed)
     
     @commands.command(name="roles_stats")
     @commands.has_permissions(administrator=True)
@@ -600,7 +561,8 @@ class RoleSelector(commands.Cog):
             stats_text = []
             
             for role_info in category_data["roles"]:
-                role = discord.utils.get(ctx.guild.roles, name=role_info["name"])
+                # CORRECTION: Utiliser l'ID au lieu du nom
+                role = ctx.guild.get_role(role_info["id"])
                 if role:
                     count = len(role.members)
                     percentage = (count / total_members * 100) if total_members > 0 else 0
@@ -608,7 +570,7 @@ class RoleSelector(commands.Cog):
                         f"{role_info['emoji']} **{role.name}**: {count} ({percentage:.1f}%)"
                     )
                 else:
-                    stats_text.append(f"{role_info['emoji']} **{role_info['name']}**: ❌ N'existe pas")
+                    stats_text.append(f"{role_info['emoji']} **{role_info['name']}**: ❌ N'existe pas (ID: {role_info['id']})")
             
             embed.add_field(
                 name=f"{category_data['emoji']} {category_data['title']}",
@@ -617,6 +579,60 @@ class RoleSelector(commands.Cog):
             )
         
         embed.set_footer(text=f"Total: {total_members} membres")
+        
+        await ctx.send(embed=embed)
+    
+    @commands.command(name="debug_role")
+    @commands.has_permissions(administrator=True)
+    async def debug_role(self, ctx, role_id: int):
+        """Affiche les infos de debug d'un rôle par son ID"""
+        role = ctx.guild.get_role(role_id)
+        
+        if not role:
+            await ctx.send(f"❌ Aucun rôle trouvé avec l'ID `{role_id}`")
+            return
+        
+        bot_member = ctx.guild.get_member(self.bot.user.id)
+        bot_top_role = bot_member.top_role
+        
+        embed = discord.Embed(
+            title=f"🔍 Debug: {role.name}",
+            color=role.color
+        )
+        
+        embed.add_field(name="ID", value=f"`{role.id}`", inline=True)
+        embed.add_field(name="Nom", value=role.name, inline=True)
+        embed.add_field(name="Position", value=str(role.position), inline=True)
+        embed.add_field(name="Membres", value=str(len(role.members)), inline=True)
+        embed.add_field(name="Mentionnable", value="✅" if role.mentionable else "❌", inline=True)
+        embed.add_field(name="Géré par", value="Bot" if role.managed else "Manuel", inline=True)
+        
+        embed.add_field(
+            name="🤖 Position du bot",
+            value=f"{bot_top_role.name} (pos: {bot_top_role.position})",
+            inline=False
+        )
+        
+        can_manage = bot_top_role.position > role.position and not role.managed
+        embed.add_field(
+            name="Peut gérer ce rôle?",
+            value="✅ Oui" if can_manage else "❌ Non",
+            inline=False
+        )
+        
+        if not can_manage:
+            if role.managed:
+                embed.add_field(
+                    name="⚠️ Problème",
+                    value="Ce rôle est géré par une intégration (bot, boost, etc.) et ne peut pas être attribué manuellement.",
+                    inline=False
+                )
+            elif bot_top_role.position <= role.position:
+                embed.add_field(
+                    name="⚠️ Problème",
+                    value=f"Le rôle du bot ({bot_top_role.position}) doit être au-dessus de ce rôle ({role.position}) dans la hiérarchie.",
+                    inline=False
+                )
         
         await ctx.send(embed=embed)
 
