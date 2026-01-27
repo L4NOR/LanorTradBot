@@ -77,10 +77,13 @@ class RoleButton(Button):
     
     async def callback(self, interaction: discord.Interaction):
         """Toggle le rôle quand le bouton est cliqué"""
+        # Defer pour éviter le timeout
+        await interaction.response.defer(ephemeral=True)
+        
         role = discord.utils.get(interaction.guild.roles, name=self.role_name)
         
         if not role:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Le rôle **{self.role_name}** n'existe pas. Contactez un administrateur.",
                 ephemeral=True
             )
@@ -107,7 +110,7 @@ class RoleButton(Button):
                 if not has_other_roles and parent_role and parent_role in member.roles:
                     await member.remove_roles(parent_role)
                 
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"✅ Le rôle **{role.name}** vous a été retiré !",
                     ephemeral=True
                 )
@@ -119,15 +122,24 @@ class RoleButton(Button):
                 if parent_role and parent_role not in member.roles:
                     await member.add_roles(parent_role)
                 
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"✅ Vous avez reçu le rôle **{role.name}** !",
                     ephemeral=True
                 )
         except discord.Forbidden:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "❌ Je n'ai pas la permission de gérer ce rôle.",
                 ephemeral=True
             )
+        except Exception as e:
+            print(f"❌ Erreur dans RoleButton callback: {e}")
+            try:
+                await interaction.followup.send(
+                    f"❌ Une erreur s'est produite: {str(e)}",
+                    ephemeral=True
+                )
+            except:
+                pass
 
 
 class RoleSelect(Select):
@@ -159,6 +171,9 @@ class RoleSelect(Select):
     
     async def callback(self, interaction: discord.Interaction):
         """Gère la sélection multiple de rôles avec attribution automatique du rôle parent"""
+        # IMPORTANT: Defer immédiatement pour éviter le timeout de 3 secondes
+        await interaction.response.defer(ephemeral=True)
+        
         member = interaction.user
         
         # Récupérer tous les rôles de cette catégorie
@@ -219,21 +234,31 @@ class RoleSelect(Select):
                 msg_parts.append(f"**Retirés:** {', '.join(removed)}")
             
             if msg_parts:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "✅ Rôles mis à jour !\n" + "\n".join(msg_parts),
                     ephemeral=True
                 )
             else:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "ℹ️ Aucun changement détecté.",
                     ephemeral=True
                 )
         
         except discord.Forbidden:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "❌ Je n'ai pas la permission de gérer ces rôles.",
                 ephemeral=True
             )
+        except Exception as e:
+            # Gestion d'erreur générique pour éviter les crashs silencieux
+            print(f"❌ Erreur dans RoleSelect callback: {e}")
+            try:
+                await interaction.followup.send(
+                    f"❌ Une erreur s'est produite: {str(e)}",
+                    ephemeral=True
+                )
+            except:
+                pass
 
 
 class MyRolesButton(Button):
@@ -249,6 +274,9 @@ class MyRolesButton(Button):
     
     async def callback(self, interaction: discord.Interaction):
         """Affiche les rôles auto-assignables de l'utilisateur"""
+        # Defer pour éviter tout timeout potentiel
+        await interaction.response.defer(ephemeral=True)
+        
         member = interaction.user
         
         # Collecter tous les rôles auto-assignables
@@ -286,7 +314,7 @@ class MyRolesButton(Button):
         else:
             embed.description = "Vous n'avez aucun rôle auto-assignable pour le moment."
         
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 class RoleSelectView(View):
