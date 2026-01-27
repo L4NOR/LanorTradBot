@@ -1,4 +1,5 @@
 import discord
+from config import ADMIN_ROLES
 from discord.ext import commands
 import json
 import os

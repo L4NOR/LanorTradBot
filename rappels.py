@@ -1,6 +1,8 @@
 # rappels.py
 import discord
 from discord.ext import commands, tasks
+from config import ADMIN_ROLES, MANGA_EMOJIS, TASK_EMOJIS
+from utils import load_json, save_json
 import json
 import os
 import datetime
@@ -13,44 +15,44 @@ RAPPELS_META_FILE = "data/rappels_tasks_meta.json"
 os.makedirs("data", exist_ok=True)
 
 # Structure: {"id": {"user_id": int, "manga": str, "chapitres": [int], "task": str, "date_limite": str, "channel_id": int}}
-rappeals_actifs = {}
+rappels_actifs = {}
 
 # Variable pour éviter d'envoyer plusieurs rappels dans la même minute
 last_rappel_time = None
 
 # Charger les rappels depuis le fichier
 def charger_rappels():
-    global rappeals_actifs
+    global rappels_actifs
     if os.path.exists(RAPPELS_FILE):
         with open(RAPPELS_FILE, "r", encoding="utf-8") as f:
             contenu = f.read().strip()
             if not contenu:
-                rappeals_actifs = {}
+                rappels_actifs = {}
             else:
                 try:
-                    rappeals_actifs = json.loads(contenu)
-                    print(f"📋 {len(rappeals_actifs)} rappel(s) chargé(s)")
+                    rappels_actifs = json.loads(contenu)
+                    print(f"📋 {len(rappels_actifs)} rappel(s) chargé(s)")
                 except Exception as e:
                     print(f"Erreur lors du chargement des rappels: {e}")
-                    rappeals_actifs = {}
+                    rappels_actifs = {}
     else:
-        rappeals_actifs = {}
+        rappels_actifs = {}
 
 # Sauvegarder les rappels dans le fichier
 def sauvegarder_rappels():
     try:
         with open(RAPPELS_FILE, "w", encoding="utf-8") as f:
-            json.dump(rappeals_actifs, f, ensure_ascii=False, indent=4)
+            json.dump(rappels_actifs, f, ensure_ascii=False, indent=4)
         
         meta = {
             "last_saved": datetime.datetime.utcnow().isoformat() + "Z",
-            "rappel_count": len(rappeals_actifs),
-            "rappels_actifs": list(rappeals_actifs.keys())
+            "rappel_count": len(rappels_actifs),
+            "rappels_actifs": list(rappels_actifs.keys())
         }
         with open(RAPPELS_META_FILE, "w", encoding="utf-8") as mf:
             json.dump(meta, mf, ensure_ascii=False, indent=4)
         
-        print(f"✅ Rappels sauvegardés avec succès ({len(rappeals_actifs)} rappels)")
+        print(f"✅ Rappels sauvegardés avec succès ({len(rappels_actifs)} rappels)")
     except Exception as e:
         print(f"❌ Erreur lors de la sauvegarde des rappels: {e}")
 
@@ -94,7 +96,7 @@ async def envoyer_rappel(bot):
         rappels_ignores = 0
         rappels_erreurs = 0
         
-        for rappel_id, rappel in list(rappeals_actifs.items()):
+        for rappel_id, rappel in list(rappels_actifs.items()):
             try:
                 # Parser la date limite
                 date_limite_str = rappel.get("date_limite", "")
@@ -177,7 +179,7 @@ class RappelTask(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         charger_rappels()
-        print(f"📋 {len(rappeals_actifs)} rappel(s) chargé(s)")
+        print(f"📋 {len(rappels_actifs)} rappel(s) chargé(s)")
 
     async def cog_load(self):
         """Appelé quand le cog est chargé"""
@@ -206,7 +208,7 @@ class RappelTask(commands.Cog):
         print("🤖 Bot prêt, démarrage de la surveillance des rappels...")
 
     @commands.command(name='add_rappel')
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def add_rappel(self, ctx):
         """Créer un rappel de task pour un utilisateur en demandant toutes les informations nécessaires."""
         mangas = {
@@ -512,7 +514,7 @@ class RappelTask(commands.Cog):
             if str(reaction.emoji) == "✅":
                 # Créer un ID unique pour le rappel
                 rappel_id = f"{user.id}_{manga.replace(' ', '_')}_{'-'.join(map(str, chapitres))}_{task}"
-                rappeals_actifs[rappel_id] = {
+                rappels_actifs[rappel_id] = {
                     "user_id": user.id,
                     "manga": manga,
                     "chapitres": chapitres,
@@ -560,10 +562,10 @@ class RappelTask(commands.Cog):
             return
 
     @commands.command(name='list_rappels')
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def list_rappels(self, ctx):
         """Liste les rappels actifs avec pagination"""
-        if not rappeals_actifs:
+        if not rappels_actifs:
             embed = discord.Embed(
                 title="📋 Rappels Actifs",
                 description="🔍 Aucun rappel actif pour le moment.",
@@ -573,7 +575,7 @@ class RappelTask(commands.Cog):
             return
         
         # Créer des pages d'embeds (3 rappels par page)
-        rappels_list = list(rappeals_actifs.items())
+        rappels_list = list(rappels_actifs.items())
         pages = []
         items_per_page = 3
         
@@ -672,12 +674,12 @@ class RappelTask(commands.Cog):
                 break
 
     @commands.command(name='delete_rappel')
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def delete_rappel(self, ctx, *, rappel_id: str):
         """Supprime un rappel par son ID"""
-        if rappel_id in rappeals_actifs:
-            rappel_info = rappeals_actifs[rappel_id]
-            del rappeals_actifs[rappel_id]
+        if rappel_id in rappels_actifs:
+            rappel_info = rappels_actifs[rappel_id]
+            del rappels_actifs[rappel_id]
             sauvegarder_rappels()
             
             chapitres = rappel_info.get("chapitres", [rappel_info.get("chapitre", 0)])
@@ -700,7 +702,7 @@ class RappelTask(commands.Cog):
             await ctx.send(f"❌ ID de rappel **{rappel_id}** introuvable.")
 
     @commands.command(name="actualiser_rappels")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def actualiser_rappels(self, ctx, action: str = "save"):
         """Commande d'administration pour sauvegarder ou recharger l'état des rappels"""
         action = (action or "").lower()
@@ -721,13 +723,13 @@ class RappelTask(commands.Cog):
                 color=discord.Color(0x2ECC71),
                 timestamp=datetime.datetime.utcnow()
             )
-            embed.add_field(name="📊 Nombre de rappels", value=f"**{len(rappeals_actifs)}** rappel(s)", inline=True)
+            embed.add_field(name="📊 Nombre de rappels", value=f"**{len(rappels_actifs)}** rappel(s)", inline=True)
             embed.add_field(name="⏰ Dernière sauvegarde", value=meta.get("last_saved", "N/A"), inline=True)
             
-            if rappeals_actifs:
-                rappels_preview = "\n".join([f"• `{rid[:40]}...`" for rid in list(rappeals_actifs.keys())[:5]])
-                if len(rappeals_actifs) > 5:
-                    rappels_preview += f"\n... et {len(rappeals_actifs) - 5} autre(s)"
+            if rappels_actifs:
+                rappels_preview = "\n".join([f"• `{rid[:40]}...`" for rid in list(rappels_actifs.keys())[:5]])
+                if len(rappels_actifs) > 5:
+                    rappels_preview += f"\n... et {len(rappels_actifs) - 5} autre(s)"
                 embed.add_field(name="📋 Rappels enregistrés", value=rappels_preview, inline=False)
             
             embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
@@ -749,13 +751,13 @@ class RappelTask(commands.Cog):
                 color=discord.Color(0x3498DB),
                 timestamp=datetime.datetime.utcnow()
             )
-            embed.add_field(name="📊 Nombre de rappels chargés", value=f"**{len(rappeals_actifs)}** rappel(s)", inline=True)
+            embed.add_field(name="📊 Nombre de rappels chargés", value=f"**{len(rappels_actifs)}** rappel(s)", inline=True)
             embed.add_field(name="⏰ Dernière sauvegarde", value=meta.get("last_saved", "N/A"), inline=True)
             
-            if rappeals_actifs:
-                rappels_preview = "\n".join([f"• `{rid[:40]}...`" for rid in list(rappeals_actifs.keys())[:5]])
-                if len(rappeals_actifs) > 5:
-                    rappels_preview += f"\n... et {len(rappeals_actifs) - 5} autre(s)"
+            if rappels_actifs:
+                rappels_preview = "\n".join([f"• `{rid[:40]}...`" for rid in list(rappels_actifs.keys())[:5]])
+                if len(rappels_actifs) > 5:
+                    rappels_preview += f"\n... et {len(rappels_actifs) - 5} autre(s)"
                 embed.add_field(name="📋 Rappels chargés", value=rappels_preview, inline=False)
             
             embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
@@ -772,7 +774,7 @@ class RappelTask(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command(name='test_rappel')
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def test_rappel(self, ctx):
         """Teste l'envoi d'un rappel immédiatement (pour debug)"""
         await ctx.send("🧪 Test de l'envoi des rappels en cours...")

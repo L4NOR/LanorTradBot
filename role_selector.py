@@ -1,6 +1,7 @@
 # role_selector.py
 # Système de sélection de rôles MODERNE pour remplacer DraftBot
 import discord
+from config import ADMIN_ROLES
 from discord.ext import commands
 from discord.ui import Button, View, Select
 import asyncio

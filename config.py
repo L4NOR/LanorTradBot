@@ -3,24 +3,74 @@ import os
 import discord
 from dotenv import load_dotenv
 
-# Charger les variables d'environnement depuis .env
 load_dotenv()
 
-# Token du bot (à définir dans un fichier .env)
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONFIGURATION DE BASE
+# ═══════════════════════════════════════════════════════════════════════════════
+
 TOKEN = os.getenv("DISCORD_TOKEN")
-
-# Préfixe de commande
 PREFIX = os.getenv("COMMAND_PREFIX", "!")
+PORT = int(os.getenv('PORT', 8080))
 
-# Intents Discord (permissions)
+# ═══════════════════════════════════════════════════════════════════════════════
+# INTENTS DISCORD
+# ═══════════════════════════════════════════════════════════════════════════════
+
 INTENTS = discord.Intents.default()
-INTENTS.message_content = True  # Nécessaire pour lire le contenu des messages
-INTENTS.members = True  # Nécessaire pour les événements liés aux membres
-INTENTS.reactions = True  # Nécessaire pour les réactions
-INTENTS.guilds = True   # Nécessaire pour les événements liés aux guildes
-INTENTS.invites = True  # Nécessaire pour gérer les invitations
+INTENTS.message_content = True
+INTENTS.members = True
+INTENTS.reactions = True
+INTENTS.guilds = True
+INTENTS.invites = True
 
-# IDs des canaux
+# ═══════════════════════════════════════════════════════════════════════════════
+# UTILISATEURS SPÉCIAUX
+# ═══════════════════════════════════════════════════════════════════════════════
+
+TARGET_USER_ID = 608234789564186644
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# RÔLES ADMIN (centralisés - utilisés dans tout le bot)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ADMIN_ROLES = [
+    1465027983445331990,
+    1465027980974620833,
+    1465027978324086846
+]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# IDS DES RÔLES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ROLES = {
+    "member": 1465027926054535324,
+    "access": 1465027850120986967,
+    "booster": 1335403910113923162,
+    "catenaccio": 1465027907968831541,
+    "satsudou": 1465027916999032976,
+    "ao_no_exorcist": 1465027919951958220,
+    "tokyo_underworld": 1465027914050437184,
+    "tougen_anki": 1465027911235928155,
+    "partenaires_ping": 1465027864318447658,
+    "manga_parent": 1465027922833440833,
+    "notifications_parent": 1465027873751433520,
+    "community_parent": 1465027902419636296,
+}
+
+MANGA_ROLES = {
+    "Catenaccio": 1465027907968831541,
+    "Satsudou": 1465027916999032976,
+    "Ao No Exorcist": 1465027919951958220,
+    "Tokyo Underworld": 1465027914050437184,
+    "Tougen Anki": 1465027911235928155,
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# IDS DES CANAUX
+# ═══════════════════════════════════════════════════════════════════════════════
+
 CHANNELS = {
     "rules": 1326211105332265001,
     "welcome": 1326211276732502056,
@@ -29,35 +79,72 @@ CHANNELS = {
     "chapter_announcements": 1326213946188890142,
     "partenaires_channel": 1326357401099702393,
     "mod_contact": 1332088539076104192,
-    "sorties": 1326213946188890142
+    "sorties": 1326213946188890142,
+    "test": 1330221808753840159,
 }
 
-# IDs des messages
+MANGA_CHANNELS = {
+    "Tougen Anki": 1330144191816142941,
+    "Tokyo Underworld": 1330143657264943266,
+    "Satsudou": 1330142974646026371,
+    "Ao No Exorcist": 1329589897920512020,
+    "Catenaccio": 1330182024832614541,
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# IDS DES MESSAGES
+# ═══════════════════════════════════════════════════════════════════════════════
+
 MESSAGES = {
     "rules": 1333072612527439915
 }
 
-# IDs des rôles
-ROLES = {
-    "member": 1465027926054535324,
-    "access": 1465027850120986967,
-    "booster": 1335403910113923162,
-    "catenaccio": 1465027907968831541,
-    "partenaires_ping": 1465027864318447658
-}
+# ═══════════════════════════════════════════════════════════════════════════════
+# COULEURS
+# ═══════════════════════════════════════════════════════════════════════════════
 
-# Port du serveur web
-PORT = int(os.getenv('PORT', 8080))
-
-# Couleurs pour les embeds
 COLORS = {
-    "success": 0x2ECC71,  # Vert
-    "error": 0xE74C3C,    # Rouge
-    "info": 0x3498DB,     # Bleu
-    "warning": 0xF1C40F,  # Jaune
-    "boost": 0x9B59B6     # Violet
+    "success": 0x2ECC71,
+    "error": 0xE74C3C,
+    "info": 0x3498DB,
+    "warning": 0xF1C40F,
+    "boost": 0x9B59B6,
+    "giveaway": 0xff6b6b,
 }
 
-# Autres configurations
+RARITY_COLORS = {
+    "common": 0x9e9e9e,
+    "uncommon": 0x4caf50,
+    "rare": 0x2196f3,
+    "epic": 0x9c27b0,
+    "legendary": 0xff9800,
+}
 
-EMBED_FOOTER = "Bot Discord"
+# ═══════════════════════════════════════════════════════════════════════════════
+# EMOJIS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+MANGA_EMOJIS = {
+    "Ao No Exorcist": "👹",
+    "Satsudou": "🩸",
+    "Tougen Anki": "😈",
+    "Catenaccio": "⚽",
+    "Tokyo Underworld": "🗼",
+}
+
+TASK_EMOJIS = {
+    "clean": "🧹",
+    "trad": "🌍",
+    "traduire": "🌍",
+    "check": "✅",
+    "qcheck": "✅",
+    "edit": "✏️",
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AUTRES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+EMBED_FOOTER = "Bot Discord LanorTrad"
+PING_COOLDOWN_SECONDS = 300
+GIVEAWAY_EMOJI = "🎉"

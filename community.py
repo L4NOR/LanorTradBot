@@ -6,7 +6,7 @@ import json
 import os
 import asyncio
 from datetime import datetime, timedelta
-from config import COLORS
+from config import COLORS, ADMIN_ROLES
 
 # Fichiers de données
 REVIEWS_FILE = "data/reviews.json"

@@ -1,3 +1,4 @@
+# main.py
 import discord
 from discord.ext import commands
 import os
@@ -11,10 +12,14 @@ import announcements
 
 logging.basicConfig(level=logging.INFO)
 
+# Créer le dossier data au démarrage (une seule fois)
+os.makedirs("data", exist_ok=True)
+
+
 async def main():
     bot = commands.Bot(command_prefix=PREFIX, intents=INTENTS)
     
-    # Serveur web interne (pour uptime monitor par ex.)
+    # Serveur web interne
     async def setup_webserver():
         app = web.Application()
         async def health_check(request):
@@ -34,7 +39,7 @@ async def main():
     # Charger les commandes (synchrone)
     cmd.setup(bot)
 
-    # Charger le module d'annonces (commande interactive)
+    # Charger le module d'annonces
     announcements.setup(bot)
 
     # Charger les rappels (asynchrone)
@@ -45,9 +50,9 @@ async def main():
     import giveaway
     await giveaway.setup(bot)
     
-    # ========== NOUVEAUX MODULES COMMUNAUTAIRES ==========
+    # ========== MODULES COMMUNAUTAIRES ==========
     
-    # Charger le système communautaire (reviews, théories)
+    # Charger le système communautaire
     import community
     await community.setup(bot)
     logging.info("✅ Module Community chargé")
@@ -66,24 +71,20 @@ async def main():
     import admin_data
     await admin_data.setup(bot)
     logging.info("✅ Module Admin Data chargé")
-    
-    # Charger le système de gestion des rôles
-    import roles_setup
-    await roles_setup.setup(bot)
-    logging.info("✅ Module Roles Setup chargé")
 
     # Charger le système de role selector
     import role_selector
     await role_selector.setup(bot)
     logging.info("✅ Module Role Selector chargé")
     
-    # =======================================================
+    # ==============================================
 
     # Lancer le bot
     try:
         await bot.start(TOKEN)
     except Exception as e:
         logging.error(f"Erreur lors du démarrage du bot: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

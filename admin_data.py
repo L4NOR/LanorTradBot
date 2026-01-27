@@ -1,6 +1,7 @@
 # admin_data.py
 # Commandes d'administration centralisées pour la gestion des données
 import discord
+from config import ADMIN_ROLES, TARGET_USER_ID
 from discord.ext import commands
 import json
 import os
@@ -9,7 +10,6 @@ from datetime import datetime
 from config import COLORS
 
 # ID de l'utilisateur qui recevra les fichiers
-TARGET_USER_ID = 608234789564186644
 
 # Définition de tous les modules de données
 DATA_MODULES = {
@@ -252,7 +252,7 @@ class AdminData(commands.Cog):
         self.bot = bot
     
     @commands.command(name="data")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def data_manager(self, ctx, action: str = None, target: str = None):
         """
         Gestionnaire de données centralisé.
@@ -604,7 +604,7 @@ class AdminData(commands.Cog):
             await msg.edit(embed=embed)
     
     @commands.command(name="backup")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def backup_all(self, ctx):
         """Sauvegarde et exporte TOUTES les données en une commande"""
         await self.save_modules(ctx, DATA_GROUPS["all"]["modules"], "Tout")
@@ -612,7 +612,7 @@ class AdminData(commands.Cog):
         await self.export_modules(ctx, DATA_GROUPS["all"]["modules"], "Tout")
     
     @commands.command(name="data_list")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def data_list(self, ctx):
         """Liste tous les modules et groupes disponibles"""
         embed = discord.Embed(

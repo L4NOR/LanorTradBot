@@ -2,12 +2,12 @@
 import discord
 from discord.ext import commands
 import datetime
-from config import CHANNELS, MESSAGES, ROLES, COLORS
+from config import CHANNELS, MESSAGES, ROLES, COLORS, PING_COOLDOWN_SECONDS
 import logging
 
 # Dictionnaire pour stocker le dernier ping par canal (cooldown)
 last_ping_time = {}
-PING_COOLDOWN_SECONDS = 300  # 5 minutes de cooldown entre les pings
+
 
 def setup(bot):
     @bot.event
@@ -158,7 +158,6 @@ def setup(bot):
             return
         
         # CORRECTION CRITIQUE : Nécessaire pour que les commandes fonctionnent
-        # Cette ligne DOIT être appelée pour traiter les commandes
         await bot.process_commands(message)
     
     @bot.event

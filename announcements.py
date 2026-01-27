@@ -3,10 +3,8 @@
 import asyncio
 import discord
 from discord.ext import commands
-from config import CHANNELS
+from config import CHANNELS, ADMIN_ROLES
 import utils
-
-ADMIN_ROLES = [1465027983445331990, 1465027980974620833, 1465027978324086846]
 
 
 def setup(bot):
@@ -16,7 +14,7 @@ def setup(bot):
         """Commande interactive : demande les infos et publie l'annonce de chapitre."""
         author = ctx.author
         channel = ctx.channel
-        bot = ctx.bot
+        bot_instance = ctx.bot
 
         def check(m):
             return m.author == author and m.channel == channel
@@ -24,11 +22,11 @@ def setup(bot):
         try:
             embed_prompt = discord.Embed(title="📚 Quel est le nom de l'œuvre ?", description="(ex: Tougen Anki)", color=discord.Color.blue())
             await ctx.send(embed=embed_prompt)
-            msg = await bot.wait_for('message', check=check, timeout=60)
+            msg = await bot_instance.wait_for('message', check=check, timeout=60)
             manga_name = msg.content.strip()
             embed_prompt = discord.Embed(title="🔢 One-shot ?", description="Répondez `oui` si c'est un one-shot.", color=discord.Color.blue())
             await ctx.send(embed=embed_prompt)
-            msg = await bot.wait_for('message', check=check, timeout=30)
+            msg = await bot_instance.wait_for('message', check=check, timeout=30)
             is_oneshot = msg.content.strip().lower() in ("oui", "o", "yes", "y")
 
             if is_oneshot:
@@ -36,12 +34,10 @@ def setup(bot):
             else:
                 embed_prompt = discord.Embed(title="📝 Numéros de chapitres", description="Indiquez le(s) numéro(s) de chapitre séparés par des espaces ou des virgules (ex: `216 217 218`).", color=discord.Color.blue())
                 await ctx.send(embed=embed_prompt)
-                msg = await bot.wait_for('message', check=check, timeout=60)
+                msg = await bot_instance.wait_for('message', check=check, timeout=60)
                 raw = msg.content.strip()
-                # Nettoyage : remplacer virgules par espaces puis normaliser
                 raw_norm = raw.replace(',', ' ')
                 parts = [p for p in raw_norm.split() if p]
-                # Garder tels quels (utilisateur peut entrer des labels non numériques)
                 chapters_str = ", ".join(parts)
                 if not chapters_str:
                     await ctx.send("Aucun chapitre fourni. Annulation.")
@@ -49,7 +45,7 @@ def setup(bot):
 
             embed_prompt = discord.Embed(title="🔗 Lien de lecture", description="Fournissez le lien vers la page de lecture (URL complète)", color=discord.Color.blue())
             await ctx.send(embed=embed_prompt)
-            msg = await bot.wait_for('message', check=check, timeout=60)
+            msg = await bot_instance.wait_for('message', check=check, timeout=60)
             link = msg.content.strip()
             if not (link.startswith('http://') or link.startswith('https://')):
                 embed_err = discord.Embed(title="❌ Lien invalide", description="Le lien ne semble pas valide (doit commencer par http:// ou https://). Annulation.", color=discord.Color.red())
@@ -57,18 +53,15 @@ def setup(bot):
                 return
             embed_prompt = discord.Embed(title="✍️ Description optionnelle", description="Envoyez le texte ou `non` pour ignorer.", color=discord.Color.blue())
             await ctx.send(embed=embed_prompt)
-            msg = await bot.wait_for('message', check=check, timeout=120)
+            msg = await bot_instance.wait_for('message', check=check, timeout=120)
             descr = msg.content.strip()
             if descr.lower() in ("non", "n", "no"):
                 descr = None
 
-            # Construire et envoyer l'embed
-            # utils.create_chapter_announcement_embed attend (manga_name, chapter_number, chapter_link, description=None)
             chapter_param = chapters_str if not is_oneshot else "One-shot"
             embed = await utils.create_chapter_announcement_embed(manga_name, chapter_param, link, description=descr)
 
-            # Poster uniquement dans le canal dédié (ID forcé)
-            TARGET_CHANNEL_ID = 1326213946188890142
+            TARGET_CHANNEL_ID = CHANNELS["chapter_announcements"]
             target_channel = ctx.guild.get_channel(TARGET_CHANNEL_ID)
             if not target_channel:
                 embed_err = discord.Embed(title="⚠️ Canal introuvable", description=f"Le canal cible `{TARGET_CHANNEL_ID}` n'a pas été trouvé sur ce serveur.", color=discord.Color.orange())
@@ -77,7 +70,6 @@ def setup(bot):
 
             sent = await target_channel.send(embed=embed)
 
-            # Ajout de réactions d'engagement (optionnel)
             reactions = ['🔥', '👀', '❤']
             for r in reactions:
                 try:
@@ -102,10 +94,10 @@ def setup(bot):
     @commands.has_any_role(*ADMIN_ROLES)
     async def test_announce(ctx):
         """Test : crée un aperçu de l'annonce et l'envoie dans le canal de test (fixe)."""
-        TEST_CHANNEL_ID = 1330221808753840159
+        TEST_CHANNEL_ID = CHANNELS["test"]
         author = ctx.author
         channel = ctx.channel
-        bot = ctx.bot
+        bot_instance = ctx.bot
 
         def check(m):
             return m.author == author and m.channel == channel
@@ -113,12 +105,12 @@ def setup(bot):
         try:
             embed_prompt = discord.Embed(title="📚 [TEST] Quel est le nom de l'œuvre ?", description="(ex: Tougen Anki)", color=discord.Color.blue())
             await ctx.send(embed=embed_prompt)
-            msg = await bot.wait_for('message', check=check, timeout=60)
+            msg = await bot_instance.wait_for('message', check=check, timeout=60)
             manga_name = msg.content.strip()
 
             embed_prompt = discord.Embed(title="🔢 [TEST] One-shot ?", description="Répondez `oui` si c'est un one-shot.", color=discord.Color.blue())
             await ctx.send(embed=embed_prompt)
-            msg = await bot.wait_for('message', check=check, timeout=30)
+            msg = await bot_instance.wait_for('message', check=check, timeout=30)
             is_oneshot = msg.content.strip().lower() in ("oui", "o", "yes", "y")
 
             if is_oneshot:
@@ -126,7 +118,7 @@ def setup(bot):
             else:
                 embed_prompt = discord.Embed(title="📝 [TEST] Numéros de chapitres", description="Indiquez le(s) numéro(s) de chapitre séparés par des espaces ou des virgules (ex: `216 217 218`).", color=discord.Color.blue())
                 await ctx.send(embed=embed_prompt)
-                msg = await bot.wait_for('message', check=check, timeout=60)
+                msg = await bot_instance.wait_for('message', check=check, timeout=60)
                 raw = msg.content.strip()
                 raw_norm = raw.replace(',', ' ')
                 parts = [p for p in raw_norm.split() if p]
@@ -137,7 +129,7 @@ def setup(bot):
 
             embed_prompt = discord.Embed(title="🔗 [TEST] Lien de lecture", description="Fournissez le lien vers la page de lecture (URL complète)", color=discord.Color.blue())
             await ctx.send(embed=embed_prompt)
-            msg = await bot.wait_for('message', check=check, timeout=60)
+            msg = await bot_instance.wait_for('message', check=check, timeout=60)
             link = msg.content.strip()
             if not (link.startswith('http://') or link.startswith('https://')):
                 embed_err = discord.Embed(title="❌ Lien invalide", description="Le lien ne semble pas valide (doit commencer par http:// ou https://). Annulation.", color=discord.Color.red())
@@ -146,7 +138,7 @@ def setup(bot):
 
             embed_prompt = discord.Embed(title="✍️ [TEST] Description optionnelle", description="Envoyez le texte ou `non` pour ignorer.", color=discord.Color.blue())
             await ctx.send(embed=embed_prompt)
-            msg = await bot.wait_for('message', check=check, timeout=120)
+            msg = await bot_instance.wait_for('message', check=check, timeout=120)
             descr = msg.content.strip()
             if descr.lower() in ("non", "n", "no"):
                 descr = None

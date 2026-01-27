@@ -2,7 +2,7 @@
 import discord
 from discord.ext import commands
 from datetime import datetime
-from config import CHANNELS, ROLES, COLORS
+from config import CHANNELS, ROLES, COLORS, ADMIN_ROLES, MANGA_CHANNELS, MANGA_ROLES
 import logging
 import asyncio
 import json
@@ -57,23 +57,7 @@ def sauvegarder_etat_taches():
     except Exception as e:
         logging.error(f"Erreur lors de la sauvegarde des tâches: {e}")
 
-# Dictionnaire pour mapper les mangas aux salons
-MANGA_CHANNELS = {
-    "Tougen Anki": 1330144191816142941,
-    "Tokyo Underworld": 1330143657264943266,
-    "Satsudou": 1330142974646026371,
-    "Ao No Exorcist": 1329589897920512020,
-    "Catenaccio": 1330182024832614541
-}
-
-# Dictionnaire pour mapper les mangas aux rôles
-MANGA_ROLES = {
-    "Catenaccio": 1465027907968831541,
-    "Satsudou": 1465027916999032976,
-    "Ao No Exorcist": 1465027919951958220,
-    "Tokyo Underworld": 1465027914050437184,
-    "Tougen Anki": 1465027911235928155
-}
+# MANGA_CHANNELS et MANGA_ROLES sont importés depuis config.py
 
 def est_chapitre_complet(tasks):
     """Vérifie si toutes les tâches (clean, trad, check, edit) sont terminées"""
@@ -282,7 +266,7 @@ def setup(bot):
     @bot.command()
     async def help(ctx, *, command_name: str = None):
         """Affiche le menu d'aide interactif"""
-        admin_roles = [1465027983445331990, 1465027980974620833, 1465027978324086846]
+        admin_roles = ADMIN_ROLES
         user_roles = [role.id for role in ctx.author.roles]
         is_admin = any(role in user_roles for role in admin_roles)
         
@@ -909,7 +893,7 @@ def setup(bot):
         await ctx.send(embed=embed)
     
     @bot.command()
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def task(ctx, action: str, manga: str, *chapitres: str):
         """Met à jour l'état d'une tâche pour un ou plusieurs chapitres"""
         actions_valides = ["clean", "trad", "check", "edit"]
@@ -1050,7 +1034,7 @@ def setup(bot):
                     await thread_channel.send(message_aleatoire)
     
     @bot.command()
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def task_status(ctx, manga: str, chapitre: int):
         """Affiche l'état des tâches pour un chapitre donné"""
         manga_normalized = normaliser_manga_name(manga)
@@ -1118,7 +1102,7 @@ def setup(bot):
         await ctx.send(embed=embed)
     
     @bot.command()
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def delete_task(ctx, manga: str, chapitre: int):
         """Supprime toutes les tâches d'un chapitre"""
         manga_normalized = normaliser_manga_name(manga)
@@ -1166,7 +1150,7 @@ def setup(bot):
             await ctx.send(embed=embed)
     
     @bot.command(name="fix_tasks")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def fix_tasks(ctx):
         """Normalise les clés des tâches"""
         global etat_taches_global
@@ -1386,7 +1370,7 @@ def setup(bot):
             await message.edit(embed=embed)
     
     @bot.command(name="task_all")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def task_all(ctx, *, manga_filter: str = None):
         """Affiche toutes les tâches en cours (optionnel: spécifier un manga)"""
         if not etat_taches_global:
@@ -1554,7 +1538,7 @@ def setup(bot):
                     break
     
     @bot.command(name="actualiser")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def actualiser(ctx):
         """Sauvegarder et envoyer les données"""
         TARGET_USER_ID = 608234789564186644
@@ -1605,7 +1589,7 @@ def setup(bot):
                 import rappels
                 file_type = "rappels"
                 main_file, meta_file = rappels.RAPPELS_FILE, rappels.RAPPELS_META_FILE
-                data = rappels.rappeals_actifs
+                data = rappels.rappels_actifs
                 rappels.sauvegarder_rappels()
             else:
                 import giveaway

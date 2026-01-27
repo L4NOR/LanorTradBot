@@ -6,7 +6,7 @@ import json
 import os
 import random
 from datetime import datetime, timedelta
-from config import COLORS
+from config import COLORS, ADMIN_ROLES
 
 SHOP_FILE = "data/shop_inventory.json"
 SHOP_ITEMS_FILE = "data/shop_items.json"
@@ -1134,7 +1134,7 @@ class ShopSystem(commands.Cog):
     # ==================== COMMANDES ADMIN ====================
     
     @commands.command(name="shop_add")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def shop_add_item(self, ctx):
         """Ajoute un item à la boutique (interactif)"""
         def check(m):
@@ -1200,7 +1200,7 @@ class ShopSystem(commands.Cog):
             await ctx.send("❌ Valeur invalide.")
     
     @commands.command(name="shop_remove")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def shop_remove_item(self, ctx, item_id: str):
         """Retire un item de la boutique"""
         if item_id not in shop_items:
@@ -1216,7 +1216,7 @@ class ShopSystem(commands.Cog):
         await ctx.send(f"✅ **{item_name}** retiré de la boutique.")
     
     @commands.command(name="give_item")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def give_item(self, ctx, member: discord.Member, *, item_name: str):
         """Donne un item à un membre"""
         item_data = get_shop_item(item_name)
@@ -1240,7 +1240,7 @@ class ShopSystem(commands.Cog):
         await ctx.send(f"✅ **{item_data.get('name', item_name)}** donné à {member.mention} !")
     
     @commands.command(name="set_points")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def set_points(self, ctx, member: discord.Member, amount: int):
         """Définit les points d'un membre"""
         try:
@@ -1255,7 +1255,7 @@ class ShopSystem(commands.Cog):
             await ctx.send(f"❌ Erreur: {e}")
     
     @commands.command(name="add_points_admin")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def add_points_admin(self, ctx, member: discord.Member, amount: int):
         """Ajoute/retire des points à un membre"""
         try:
@@ -1271,7 +1271,7 @@ class ShopSystem(commands.Cog):
             await ctx.send(f"❌ Erreur: {e}")
     
     @commands.command(name="forcedraw")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def force_lottery_draw(self, ctx):
         """Force un tirage de loterie"""
         participants = lottery_data.get("participants", [])
@@ -1290,7 +1290,7 @@ class ShopSystem(commands.Cog):
             await ctx.send(f"🎉 **{winner_name}** a remporté **{last['jackpot']:,}** points !")
     
     @commands.command(name="setjackpot")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def set_jackpot(self, ctx, amount: int):
         """Définit le jackpot de la loterie"""
         lottery_data["current_jackpot"] = amount
@@ -1298,7 +1298,7 @@ class ShopSystem(commands.Cog):
         await ctx.send(f"✅ Jackpot défini à **{amount:,}** points.")
     
     @commands.command(name="configrole")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def config_shop_role(self, ctx, item_id: str, role: discord.Role):
         """Configure un rôle pour un article"""
         if item_id not in shop_items:
@@ -1313,7 +1313,7 @@ class ShopSystem(commands.Cog):
         await ctx.send(f"✅ Le rôle {role.mention} a été configuré pour **{shop_items[item_id].get('name', item_id)}**")
     
     @commands.command(name="pending_roles")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def list_pending_roles(self, ctx):
         """Liste les rôles en attente d'attribution"""
         pending = []
@@ -1350,7 +1350,7 @@ class ShopSystem(commands.Cog):
         await ctx.send(embed=embed)
     
     @commands.command(name="give_role")
-    @commands.has_any_role(1465027983445331990, 1465027980974620833, 1465027978324086846)
+    @commands.has_any_role(*ADMIN_ROLES)
     async def give_pending_role(self, ctx, member: discord.Member, item_id: str, role: discord.Role):
         """Attribue un rôle en attente à un membre"""
         inv = get_user_inventory(member.id)
