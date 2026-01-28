@@ -205,17 +205,19 @@ class RoleSelect(Select):
         # Convertir self.values en set pour recherche rapide
         selected_ids = set(self.values)
         
-        for role_id_str, role in category_roles_by_id.items():
-            if role_id_str in selected_ids:
-                # L'utilisateur a sélectionné ce rôle
-                if role not in member.roles:
-                    to_add.append(role)
-                    print(f"➕ À ajouter: {role.name}")
-            else:
-                # L'utilisateur n'a PAS sélectionné ce rôle
+        # MODE TOGGLE: On toggle uniquement les rôles sélectionnés
+        # Les rôles non sélectionnés ne sont PAS touchés
+        for role_id_str in selected_ids:
+            role = category_roles_by_id.get(role_id_str)
+            if role:
                 if role in member.roles:
+                    # Le membre a déjà ce rôle → le retirer
                     to_remove.append(role)
-                    print(f"➖ À retirer: {role.name}")
+                    print(f"➖ À retirer (toggle): {role.name}")
+                else:
+                    # Le membre n'a pas ce rôle → l'ajouter
+                    to_add.append(role)
+                    print(f"➕ À ajouter (toggle): {role.name}")
         
         try:
             # Ajouter les rôles
@@ -230,13 +232,20 @@ class RoleSelect(Select):
             
             # Gestion du rôle parent
             if parent_role:
-                # Vérifier si l'utilisateur a au moins un rôle de cette catégorie après les modifications
-                has_category_role = False
+                # Recalculer les rôles du membre après les modifications
+                # On simule l'état final en tenant compte des ajouts/retraits
+                final_category_roles = set()
                 for role in category_roles_by_id.values():
-                    if role in member.roles or role in to_add:
-                        if role not in to_remove:
-                            has_category_role = True
-                            break
+                    if role in member.roles:
+                        final_category_roles.add(role)
+                
+                # Appliquer les changements simulés
+                for role in to_add:
+                    final_category_roles.add(role)
+                for role in to_remove:
+                    final_category_roles.discard(role)
+                
+                has_category_role = len(final_category_roles) > 0
                 
                 if has_category_role:
                     # Ajouter le rôle parent si l'utilisateur a au moins un rôle de cette catégorie
@@ -249,15 +258,18 @@ class RoleSelect(Select):
                         await member.remove_roles(parent_role)
                         print(f"✅ Rôle parent retiré: {parent_role.name}")
             
-            # Message de confirmation
-            added = [r.name for r in to_add]
-            removed = [r.name for r in to_remove]
+            # Message de confirmation avec emojis
+            # Créer un mapping ID -> emoji pour cette catégorie
+            role_emojis = {str(r["id"]): r["emoji"] for r in self.category_data["roles"]}
+            
+            added_with_emoji = [f"{role_emojis.get(str(r.id), '')} {r.name}" for r in to_add]
+            removed_with_emoji = [f"{role_emojis.get(str(r.id), '')} {r.name}" for r in to_remove]
             
             msg_parts = []
-            if added:
-                msg_parts.append(f"**Ajoutés:** {', '.join(added)}")
-            if removed:
-                msg_parts.append(f"**Retirés:** {', '.join(removed)}")
+            if added_with_emoji:
+                msg_parts.append(f"**Ajoutés:** {', '.join(added_with_emoji)}")
+            if removed_with_emoji:
+                msg_parts.append(f"**Retirés:** {', '.join(removed_with_emoji)}")
             
             if msg_parts:
                 await interaction.followup.send(
