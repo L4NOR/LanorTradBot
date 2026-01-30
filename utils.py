@@ -1,18 +1,36 @@
 # utils.py
+# ═══════════════════════════════════════════════════════════════════════════════
+# FONCTIONS UTILITAIRES CENTRALISÉES
+# ═══════════════════════════════════════════════════════════════════════════════
+
 import discord
 import datetime
 import logging
 import json
 import os
 from discord.ext import commands
-from config import COLORS, CHANNELS, ROLES, MANGA_EMOJIS, TASK_EMOJIS, MANGA_ROLES
+from config import (
+    COLORS, CHANNELS, ROLES, MANGA_EMOJIS, TASK_EMOJIS, 
+    MANGA_ROLES, DATA_DIR
+)
+
+# Créer le dossier data au démarrage
+os.makedirs(DATA_DIR, exist_ok=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # FONCTIONS JSON GÉNÉRIQUES
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def load_json(filepath, default=None):
-    """Charge un fichier JSON de manière sécurisée."""
+    """Charge un fichier JSON de manière sécurisée.
+    
+    Args:
+        filepath: Chemin vers le fichier JSON
+        default: Valeur par défaut si le fichier n'existe pas ou est invalide
+        
+    Returns:
+        Les données chargées ou la valeur par défaut
+    """
     if default is None:
         default = {}
     if not os.path.exists(filepath):
@@ -32,7 +50,16 @@ def load_json(filepath, default=None):
 
 
 def save_json(filepath, data, create_dir=True):
-    """Sauvegarde des données dans un fichier JSON."""
+    """Sauvegarde des données dans un fichier JSON.
+    
+    Args:
+        filepath: Chemin vers le fichier JSON
+        data: Données à sauvegarder
+        create_dir: Si True, crée le dossier parent si nécessaire
+        
+    Returns:
+        True si succès, False sinon
+    """
     try:
         if create_dir:
             dir_path = os.path.dirname(filepath)
@@ -46,17 +73,51 @@ def save_json(filepath, data, create_dir=True):
         return False
 
 
+def save_with_meta(filepath, data, meta_filepath=None):
+    """Sauvegarde les données avec un fichier meta associé.
+    
+    Args:
+        filepath: Chemin vers le fichier principal
+        data: Données à sauvegarder
+        meta_filepath: Chemin vers le fichier meta (optionnel)
+    """
+    success = save_json(filepath, data)
+    
+    if success and meta_filepath:
+        meta = {
+            "last_saved": datetime.datetime.utcnow().isoformat() + "Z",
+            "item_count": len(data) if isinstance(data, (dict, list)) else 0,
+        }
+        save_json(meta_filepath, meta)
+    
+    return success
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # FONCTIONS EMOJIS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def get_manga_emoji(manga_name):
-    """Récupère l'emoji associé à un manga."""
+    """Récupère l'emoji associé à un manga.
+    
+    Args:
+        manga_name: Nom du manga
+        
+    Returns:
+        L'emoji correspondant ou 📚 par défaut
+    """
     return MANGA_EMOJIS.get(manga_name, "📚")
 
 
 def get_task_emoji(task_name):
-    """Récupère l'emoji associé à une tâche."""
+    """Récupère l'emoji associé à une tâche.
+    
+    Args:
+        task_name: Nom de la tâche (clean, trad, check, edit)
+        
+    Returns:
+        L'emoji correspondant ou 📝 par défaut
+    """
     return TASK_EMOJIS.get(task_name.lower(), "📝")
 
 
@@ -65,17 +126,34 @@ def get_task_emoji(task_name):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def generate_progress_bar(progress, total, size=10):
-    """Génère une barre de progression visuelle."""
+    """Génère une barre de progression visuelle.
+    
+    Args:
+        progress: Valeur actuelle
+        total: Valeur totale
+        size: Nombre de blocs dans la barre
+        
+    Returns:
+        Une chaîne représentant la barre de progression
+    """
     pct = progress / total if total > 0 else 0
     filled = int(size * pct)
     return '🟩' * filled + '⬜' * (size - filled)
 
 
 def format_duration(seconds):
-    """Convertit des secondes en format lisible."""
-    minutes, seconds = divmod(seconds, 60)
+    """Convertit des secondes en format lisible.
+    
+    Args:
+        seconds: Nombre de secondes
+        
+    Returns:
+        Une chaîne formatée (ex: "2 jours, 3 heures, 15 minutes")
+    """
+    minutes, seconds = divmod(int(seconds), 60)
     hours, minutes = divmod(minutes, 60)
     days, hours = divmod(hours, 24)
+    
     parts = []
     if days > 0:
         parts.append(f"{days} jour{'s' if days > 1 else ''}")
@@ -85,7 +163,45 @@ def format_duration(seconds):
         parts.append(f"{minutes} minute{'s' if minutes > 1 else ''}")
     if seconds > 0 or not parts:
         parts.append(f"{seconds} seconde{'s' if seconds > 1 else ''}")
+    
     return ", ".join(parts)
+
+
+def format_duration_short(seconds):
+    """Format court pour les durées (ex: "2j 3h 15m").
+    
+    Args:
+        seconds: Nombre de secondes
+        
+    Returns:
+        Une chaîne formatée courte
+    """
+    total_seconds = int(seconds)
+    days = total_seconds // 86400
+    hours = (total_seconds % 86400) // 3600
+    minutes = (total_seconds % 3600) // 60
+    
+    parts = []
+    if days > 0:
+        parts.append(f"{days}j")
+    if hours > 0:
+        parts.append(f"{hours}h")
+    if minutes > 0:
+        parts.append(f"{minutes}m")
+    
+    return " ".join(parts) if parts else "0m"
+
+
+def format_timestamp(dt):
+    """Formate un datetime en timestamp Discord.
+    
+    Args:
+        dt: Objet datetime
+        
+    Returns:
+        Un timestamp Discord formaté
+    """
+    return f"<t:{int(dt.timestamp())}:R>"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -93,11 +209,32 @@ def format_duration(seconds):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def get_manga_role(guild, manga_name):
-    """Récupère le rôle associé à un manga spécifique."""
+    """Récupère le rôle Discord associé à un manga.
+    
+    Args:
+        guild: Le serveur Discord
+        manga_name: Nom du manga
+        
+    Returns:
+        L'objet Role ou None
+    """
     role_id = MANGA_ROLES.get(manga_name)
     if role_id:
         return guild.get_role(role_id)
     return None
+
+
+def get_role_by_id(guild, role_id):
+    """Récupère un rôle par son ID.
+    
+    Args:
+        guild: Le serveur Discord
+        role_id: ID du rôle
+        
+    Returns:
+        L'objet Role ou None
+    """
+    return guild.get_role(role_id)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -105,7 +242,14 @@ def get_manga_role(guild, manga_name):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def format_help(command):
-    """Formate l'aide d'une commande en embed"""
+    """Formate l'aide d'une commande en embed.
+    
+    Args:
+        command: L'objet commande Discord
+        
+    Returns:
+        Un embed Discord formaté
+    """
     embed = discord.Embed(
         title=f"Commande: {command.name}",
         description=command.help or "Aucune description disponible.",
@@ -123,7 +267,14 @@ def format_help(command):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def get_user_info(user):
-    """Génère un embed avec les informations utilisateur"""
+    """Génère un embed avec les informations utilisateur.
+    
+    Args:
+        user: L'objet Member Discord
+        
+    Returns:
+        Un embed Discord avec les infos utilisateur
+    """
     embed = discord.Embed(
         title=f"Informations sur {user.name}",
         color=discord.Color(COLORS["info"]),
@@ -147,7 +298,11 @@ def get_user_info(user):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 async def create_rules_embed():
-    """Crée un embed pour les règles du serveur"""
+    """Crée un embed pour les règles du serveur.
+    
+    Returns:
+        Un embed Discord avec les règles
+    """
     embed = discord.Embed(
         title="📜 Règlement du Serveur",
         description=(
@@ -235,7 +390,14 @@ async def create_rules_embed():
 
 
 async def create_welcome_embed(member):
-    """Crée un embed de bienvenue pour un nouveau membre"""
+    """Crée un embed de bienvenue pour un nouveau membre.
+    
+    Args:
+        member: L'objet Member Discord
+        
+    Returns:
+        Un embed Discord de bienvenue
+    """
     embed = discord.Embed(
         title=f"🌟 Bienvenue sur {member.guild.name} !",
         description=(
@@ -243,7 +405,7 @@ async def create_welcome_embed(member):
             "🎉 **Nous sommes ravis de t'accueillir parmi nous !**\n\n"
             "Pour bien commencer :\n"
             f"📜 Lis le règlement dans <#{CHANNELS['rules']}>\n"
-            "🎯 Choisis tes rôles dans <#1326212401036529665>\n"
+            f"🎯 Choisis tes rôles dans <#{CHANNELS['roles']}>\n"
             f"💬 Présente-toi dans <#{CHANNELS['general']}>\n"
             "🎮 Amuse-toi et fais de belles rencontres !"
         ),
@@ -266,7 +428,17 @@ async def create_welcome_embed(member):
 
 
 async def create_chapter_announcement_embed(manga_name, chapter_number, chapter_link, description=None):
-    """Crée un embed pour annoncer un nouveau chapitre de manga"""
+    """Crée un embed pour annoncer un nouveau chapitre de manga.
+    
+    Args:
+        manga_name: Nom du manga
+        chapter_number: Numéro(s) du chapitre
+        chapter_link: Lien vers le chapitre
+        description: Description optionnelle
+        
+    Returns:
+        Un embed Discord d'annonce
+    """
     embed = discord.Embed(
         title=f"🔥 NOUVEAU CHAPITRE DE {manga_name.upper()} 🔥",
         description=(
@@ -293,7 +465,14 @@ async def create_chapter_announcement_embed(manga_name, chapter_number, chapter_
 
 
 async def create_boost_embed(member):
-    """Crée un embed pour annoncer un nouveau boost"""
+    """Crée un embed pour annoncer un nouveau boost.
+    
+    Args:
+        member: L'objet Member Discord qui a boosté
+        
+    Returns:
+        Un embed Discord de boost
+    """
     embed = discord.Embed(
         title="💎 Nouveau Boost !",
         description=f"Merci {member.mention} d'avoir boosté le serveur !",
@@ -309,7 +488,15 @@ async def create_boost_embed(member):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 async def handle_command_error(ctx, error):
-    """Gère les erreurs de commandes et renvoie un embed approprié"""
+    """Gère les erreurs de commandes et renvoie un embed approprié.
+    
+    Args:
+        ctx: Le contexte de la commande
+        error: L'erreur survenue
+        
+    Returns:
+        Un embed Discord d'erreur
+    """
     if isinstance(error, commands.CommandNotFound):
         return discord.Embed(
             title="❌ Commande inconnue",
@@ -341,3 +528,49 @@ async def handle_command_error(ctx, error):
             description="Une erreur s'est produite lors de l'exécution de cette commande.",
             color=discord.Color.red()
         )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PARSEURS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def parse_duration(duration_str):
+    """Parse une durée string en timedelta.
+    
+    Formats acceptés: 1d, 2h, 30m, 1d12h, 1h30m
+    
+    Args:
+        duration_str: La chaîne de durée à parser
+        
+    Returns:
+        Un objet timedelta ou None si invalide
+    """
+    from datetime import timedelta
+    
+    if not duration_str:
+        return None
+    
+    duration_str = duration_str.lower().strip()
+    
+    total_seconds = 0
+    current_num = ""
+    
+    for char in duration_str:
+        if char.isdigit():
+            current_num += char
+        elif char in ['d', 'h', 'm', 's']:
+            if current_num:
+                num = int(current_num)
+                if char == 'd':
+                    total_seconds += num * 86400
+                elif char == 'h':
+                    total_seconds += num * 3600
+                elif char == 'm':
+                    total_seconds += num * 60
+                elif char == 's':
+                    total_seconds += num
+                current_num = ""
+    
+    if total_seconds > 0:
+        return timedelta(seconds=total_seconds)
+    return None

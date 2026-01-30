@@ -6,12 +6,14 @@ import json
 import os
 import random
 from datetime import datetime, timedelta
-from config import COLORS, ADMIN_ROLES
+from config import COLORS, ADMIN_ROLES, DATA_FILES, SHOP_ROLES
+from utils import load_json, save_json
 
-SHOP_FILE = "data/shop_inventory.json"
-SHOP_ITEMS_FILE = "data/shop_items.json"
-PURCHASES_FILE = "data/purchases.json"
-LOTTERY_FILE = "data/lottery.json"
+# Fichiers de données (depuis config.py)
+SHOP_FILE = DATA_FILES["shop_inventory"]
+SHOP_ITEMS_FILE = DATA_FILES["shop_items"]
+PURCHASES_FILE = DATA_FILES["purchases"]
+LOTTERY_FILE = DATA_FILES["lottery"]
 os.makedirs("data", exist_ok=True)
 
 # Inventaires des utilisateurs
@@ -29,13 +31,6 @@ lottery_data = {
     "participants": [],
     "last_draw": None,
     "winner_history": []
-}
-
-# === CONFIGURATION DES RÔLES (À MODIFIER AVEC VOS IDS) ===
-SHOP_ROLES = {
-    "vip_role": None,  # ID du rôle VIP - À configurer
-    "expert_manga_role": None,  # ID du rôle Expert Manga - À configurer
-    "theorist_elite_role": None,  # ID du rôle Théoricien d'Élite - À configurer
 }
 
 # Loot tables pour mystery boxes

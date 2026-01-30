@@ -6,13 +6,14 @@ import json
 import os
 import asyncio
 from datetime import datetime, timedelta
-from config import COLORS, ADMIN_ROLES
+from config import COLORS, ADMIN_ROLES, DATA_FILES, POINTS, RATING_EMOJIS, REACTION_EMOJIS
+from utils import load_json, save_json, get_manga_emoji
 
-# Fichiers de données
-REVIEWS_FILE = "data/reviews.json"
-THEORIES_FILE = "data/theories.json"
-CHAPTERS_FILE = "data/chapters_community.json"
-USER_STATS_FILE = "data/user_stats.json"
+# Fichiers de données (depuis config.py)
+REVIEWS_FILE = DATA_FILES["reviews"]
+THEORIES_FILE = DATA_FILES["theories"]
+CHAPTERS_FILE = DATA_FILES["chapters"]
+USER_STATS_FILE = DATA_FILES["user_stats"]
 os.makedirs("data", exist_ok=True)
 
 # Données en mémoire
@@ -20,21 +21,6 @@ reviews_data = {}
 theories_data = {}
 chapters_data = {}
 user_stats = {}
-
-# Emojis pour les notes
-RATING_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
-REACTION_EMOJIS = ["🔥", "😭", "😱", "🤯", "❤️", "😂", "💀"]
-
-# Points gagnés par action (BASE - avant multiplicateurs)
-POINTS = {
-    "review": 10,
-    "theory": 15,
-    "theory_vote": 2,
-    "first_review": 25,
-    "first_theory": 30,
-    "daily_bonus": 5,
-    "streak_bonus": 10,  # Par jour de streak
-}
 
 def charger_donnees():
     """Charge toutes les données communautaires"""

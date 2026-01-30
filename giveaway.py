@@ -1,6 +1,9 @@
 import discord
 from discord.ext import commands, tasks
-from config import ADMIN_ROLES
+from config import (
+    ADMIN_ROLES, DATA_FILES, GIVEAWAY_ROLES, GIVEAWAY_EMOJI, GIVEAWAY_COLOR
+)
+from utils import load_json, save_json
 import json
 import os
 import random
@@ -9,28 +12,11 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Any
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# FICHIERS DE DONNÉES
+# FICHIERS DE DONNÉES (depuis config.py)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-GIVEAWAYS_FILE = "data/giveaways.json"
-INVITES_FILE = "data/invites_tracker.json"
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# CONFIGURATION
-# ═══════════════════════════════════════════════════════════════════════════════
-
-# Rôles pour gérer les giveaways (à configurer avec les IDs)
-GIVEAWAY_ROLES = {
-    "manager_role": None,  # Rôle qui peut créer des giveaways
-    "bonus_role": None,    # Rôle avec entrées bonus (+1 entrée)
-    "vip_role": None,      # Rôle VIP avec double entrées
-}
-
-# Emoji pour participer
-GIVEAWAY_EMOJI = "🎉"
-
-# Couleur des embeds
-GIVEAWAY_COLOR = 0xff6b6b
+GIVEAWAYS_FILE = DATA_FILES["giveaways"]
+INVITES_FILE = DATA_FILES["invites"]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # FONCTIONS UTILITAIRES

@@ -1,41 +1,26 @@
 # dm_reminder.py
-# Système de rappel DM pour les membres n'ayant pas réagi au message des rôles
+# ═══════════════════════════════════════════════════════════════════════════════
+# SYSTÈME DE RAPPEL DM POUR LES MEMBRES SANS RÉACTION AU MESSAGE DES RÔLES
+# ═══════════════════════════════════════════════════════════════════════════════
+
 import discord
 from discord.ext import commands, tasks
-from config import ADMIN_ROLES
-from utils import load_json, save_json
+from config import ADMIN_ROLES, DM_REMINDER_CONFIG, DATA_FILES, MESSAGES
+from utils import load_json, save_json, save_with_meta
 import datetime
 import asyncio
 import pytz
 import logging
-import os
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# CONFIGURATION
-# ═══════════════════════════════════════════════════════════════════════════════
+# Configuration depuis config.py
+ROLE_MESSAGE_ID = DM_REMINDER_CONFIG["role_message_id"]
+ROLE_CHANNEL_ID = DM_REMINDER_CONFIG["role_channel_id"]
+SEND_HOUR = DM_REMINDER_CONFIG["send_hour"]
+TIMEZONE = pytz.timezone(DM_REMINDER_CONFIG["timezone"])
 
-# Message auquel les membres doivent réagir
-ROLE_MESSAGE_ID = 1465801132390482145
-
-# Canal où se trouve le message (à définir - nécessaire pour fetch le message)
-ROLE_CHANNEL_ID = None  # Sera auto-détecté ou peut être défini manuellement
-
-# Fichier de stockage des utilisateurs déjà notifiés
-DM_REMINDER_FILE = "data/dm_reminder_notified.json"
-DM_REMINDER_META_FILE = "data/dm_reminder_meta.json"
-
-# Fuseau horaire
-TIMEZONE = pytz.timezone('Europe/Paris')
-
-# Heure d'envoi des DMs (12h = midi)
-SEND_HOUR = 12
-
-os.makedirs("data", exist_ok=True)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# DONNÉES
-# ═══════════════════════════════════════════════════════════════════════════════
+# Fichiers de données
+DM_REMINDER_FILE = DATA_FILES["dm_reminder"]
+DM_REMINDER_META_FILE = DATA_FILES["dm_reminder_meta"]
 
 # Structure: {"user_id": {"notified_at": "ISO_DATE", "dm_count": int}}
 notified_users = {}
@@ -53,23 +38,10 @@ def charger_notified():
 
 def sauvegarder_notified():
     """Sauvegarde la liste des utilisateurs notifiés."""
-    try:
-        save_json(DM_REMINDER_FILE, notified_users)
-        
-        meta = {
-            "last_saved": datetime.datetime.now(TIMEZONE).isoformat(),
-            "notified_count": len(notified_users),
-        }
-        save_json(DM_REMINDER_META_FILE, meta)
-        
+    success = save_with_meta(DM_REMINDER_FILE, notified_users, DM_REMINDER_META_FILE)
+    if success:
         logging.info(f"✅ DM Reminder sauvegardé ({len(notified_users)} utilisateurs)")
-    except Exception as e:
-        logging.error(f"❌ Erreur sauvegarde DM Reminder: {e}")
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# COG PRINCIPAL
-# ═══════════════════════════════════════════════════════════════════════════════
 
 class DMReminder(commands.Cog):
     """Système de rappel DM pour les membres sans réaction au message des rôles."""
@@ -201,13 +173,13 @@ class DMReminder(commands.Cog):
     
     @tasks.loop(minutes=5)
     async def dm_reminder_task(self):
-        """Tâche planifiée pour envoyer les rappels DM à midi."""
+        """Tâche planifiée pour envoyer les rappels DM à l'heure configurée."""
         global last_dm_date
         
         now = datetime.datetime.now(TIMEZONE)
         current_date = now.date()
         
-        # Vérifier si c'est l'heure (12h) et qu'on n'a pas déjà envoyé aujourd'hui
+        # Vérifier si c'est l'heure et qu'on n'a pas déjà envoyé aujourd'hui
         if now.hour != SEND_HOUR or last_dm_date == current_date:
             return
         
@@ -224,43 +196,39 @@ class DMReminder(commands.Cog):
         # Récupérer le message des rôles
         message = await self.get_role_message(guild)
         if not message:
-            logging.error("❌ Message des rôles introuvable - rappels DM annulés")
+            logging.error("❌ Impossible de trouver le message des rôles")
             return
         
         # Récupérer les utilisateurs ayant réagi
         reacted_users = await self.get_users_who_reacted(message)
-        logging.info(f"✅ {len(reacted_users)} utilisateur(s) ont réagi au message")
         
-        # Statistiques
-        dm_sent = 0
-        dm_failed = 0
-        dm_skipped_reacted = 0
-        dm_skipped_bot = 0
+        sent = 0
+        failed = 0
+        skipped = 0
+        limit = 20  # Limite quotidienne
         
-        # Parcourir tous les membres du serveur
         for member in guild.members:
-            # Ignorer les bots
+            if sent >= limit:
+                break
+            
             if member.bot:
-                dm_skipped_bot += 1
                 continue
             
-            # Ignorer ceux qui ont déjà réagi
             if member.id in reacted_users:
-                # S'ils étaient dans notified_users, on les retire
-                if str(member.id) in notified_users:
-                    del notified_users[str(member.id)]
-                dm_skipped_reacted += 1
                 continue
             
-            # Ignorer ceux déjà notifiés aujourd'hui
+            # Vérifier si déjà notifié récemment
             user_data = notified_users.get(str(member.id), {})
             last_notified = user_data.get("last_notified")
             
             if last_notified:
                 try:
                     last_date = datetime.datetime.fromisoformat(last_notified).date()
-                    if last_date == current_date:
-                        continue  # Déjà notifié aujourd'hui
+                    days_since = (current_date - last_date).days
+                    
+                    if days_since < 7:  # Ne pas re-notifier avant 7 jours
+                        skipped += 1
+                        continue
                 except:
                     pass
             
@@ -268,247 +236,86 @@ class DMReminder(commands.Cog):
             success = await self.send_dm_reminder(member)
             
             if success:
-                dm_sent += 1
+                sent += 1
                 notified_users[str(member.id)] = {
                     "last_notified": now.isoformat(),
                     "dm_count": user_data.get("dm_count", 0) + 1,
                     "username": member.name
                 }
             else:
-                dm_failed += 1
+                failed += 1
             
-            # Petit délai pour éviter le rate limit
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(1.5)  # Rate limiting
         
-        # Sauvegarder
         sauvegarder_notified()
-        
-        # Log résumé
-        logging.info(
-            f"📊 Résumé DM Reminder:\n"
-            f"   • DMs envoyés: {dm_sent}\n"
-            f"   • DMs échoués: {dm_failed}\n"
-            f"   • Ignorés (ont réagi): {dm_skipped_reacted}\n"
-            f"   • Ignorés (bots): {dm_skipped_bot}"
-        )
+        logging.info(f"📊 Résumé DM: {sent} envoyé(s), {failed} échoué(s), {skipped} ignoré(s)")
     
     @dm_reminder_task.before_loop
-    async def before_dm_reminder_task(self):
-        """Attend que le bot soit prêt."""
+    async def before_dm_task(self):
         await self.bot.wait_until_ready()
-        logging.info("📬 Tâche DM Reminder prête")
-    
-    # ═══════════════════════════════════════════════════════════════════════════════
-    # ÉVÉNEMENT: Réaction ajoutée
-    # ═══════════════════════════════════════════════════════════════════════════════
-    
-    @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload):
-        """Retire l'utilisateur de la liste quand il réagit au message."""
-        if payload.message_id != ROLE_MESSAGE_ID:
-            return
-        
-        if payload.user_id == self.bot.user.id:
-            return
-        
-        user_id_str = str(payload.user_id)
-        
-        if user_id_str in notified_users:
-            del notified_users[user_id_str]
-            sauvegarder_notified()
-            logging.info(f"✅ {payload.user_id} a réagi - retiré de la liste des rappels DM")
-    
-    # ═══════════════════════════════════════════════════════════════════════════════
-    # COMMANDES ADMIN
-    # ═══════════════════════════════════════════════════════════════════════════════
     
     @commands.command(name="dm_reminder_status")
     @commands.has_any_role(*ADMIN_ROLES)
     async def dm_reminder_status(self, ctx):
         """Affiche le statut du système de rappel DM."""
-        global last_dm_date
-        
-        now = datetime.datetime.now(TIMEZONE)
-        
         embed = discord.Embed(
-            title="📬 Statut DM Reminder",
+            title="📊 Statut DM Reminder",
             color=discord.Color.blue(),
-            timestamp=now
+            timestamp=datetime.datetime.now(TIMEZONE)
         )
-        
-        # Statut de la tâche
-        task_status = "✅ Active" if self.dm_reminder_task.is_running() else "❌ Inactive"
-        embed.add_field(name="🔄 Tâche", value=task_status, inline=True)
-        
-        # Prochain envoi
-        if last_dm_date == now.date():
-            next_send = "Demain à 12h00"
-        elif now.hour < SEND_HOUR:
-            next_send = f"Aujourd'hui à {SEND_HOUR}h00"
-        else:
-            next_send = "Demain à 12h00"
-        embed.add_field(name="⏰ Prochain envoi", value=next_send, inline=True)
-        
-        # Dernier envoi
-        last_send = last_dm_date.strftime("%d/%m/%Y") if last_dm_date else "Jamais"
-        embed.add_field(name="📅 Dernier envoi", value=last_send, inline=True)
-        
-        # Message cible
-        embed.add_field(
-            name="📨 Message cible",
-            value=f"`{ROLE_MESSAGE_ID}`",
-            inline=True
-        )
-        
-        # Utilisateurs notifiés
-        embed.add_field(
-            name="👥 Utilisateurs notifiés",
-            value=f"{len(notified_users)} utilisateur(s)",
-            inline=True
-        )
-        
-        # Message trouvé ?
-        message_status = "✅ Trouvé" if self.role_message else "❓ Non vérifié"
-        embed.add_field(name="📄 Message", value=message_status, inline=True)
-        
-        embed.set_footer(text=f"Demandé par {ctx.author.name}")
-        await ctx.send(embed=embed)
-    
-    @commands.command(name="dm_reminder_test")
-    @commands.has_any_role(*ADMIN_ROLES)
-    async def dm_reminder_test(self, ctx):
-        """Teste l'envoi d'un rappel DM à l'utilisateur cible (608234789564186644)."""
-        TEST_USER_ID = 608234789564186644
-        
-        embed = discord.Embed(
-            title="🧪 Test DM Reminder",
-            description=f"Envoi d'un DM test à <@{TEST_USER_ID}> en cours...",
-            color=discord.Color.orange()
-        )
-        msg = await ctx.send(embed=embed)
-        
-        # Récupérer l'utilisateur cible
-        member = ctx.guild.get_member(TEST_USER_ID)
-        
-        if not member:
-            embed.description = f"❌ Utilisateur `{TEST_USER_ID}` introuvable sur ce serveur."
-            embed.color = discord.Color.red()
-            await msg.edit(embed=embed)
-            return
-        
-        success = await self.send_dm_reminder(member)
-        
-        if success:
-            embed.description = f"✅ DM de test envoyé à **{member.name}** avec succès !"
-            embed.color = discord.Color.green()
-        else:
-            embed.description = f"❌ Échec de l'envoi du DM à **{member.name}** (DMs fermés ?)"
-            embed.color = discord.Color.red()
-        
-        await msg.edit(embed=embed)
-    
-    @commands.command(name="dm_reminder_test_me")
-    @commands.has_any_role(*ADMIN_ROLES)
-    async def dm_reminder_test_me(self, ctx):
-        """Teste l'envoi d'un rappel DM à soi-même."""
-        embed = discord.Embed(
-            title="🧪 Test DM Reminder (moi)",
-            description="Envoi d'un DM test en cours...",
-            color=discord.Color.orange()
-        )
-        msg = await ctx.send(embed=embed)
-        
-        success = await self.send_dm_reminder(ctx.author)
-        
-        if success:
-            embed.description = "✅ DM de test envoyé avec succès !"
-            embed.color = discord.Color.green()
-        else:
-            embed.description = "❌ Échec de l'envoi du DM (DMs fermés ?)"
-            embed.color = discord.Color.red()
-        
-        await msg.edit(embed=embed)
-    
-    @commands.command(name="dm_reminder_check")
-    @commands.has_any_role(*ADMIN_ROLES)
-    async def dm_reminder_check(self, ctx):
-        """Vérifie le message et compte les membres sans réaction."""
-        embed = discord.Embed(
-            title="🔍 Vérification DM Reminder",
-            description="Analyse en cours...",
-            color=discord.Color.orange()
-        )
-        msg = await ctx.send(embed=embed)
         
         # Récupérer le message
         message = await self.get_role_message(ctx.guild)
         
         if not message:
-            embed.description = f"❌ Message `{ROLE_MESSAGE_ID}` introuvable sur ce serveur."
-            embed.color = discord.Color.red()
-            await msg.edit(embed=embed)
+            embed.description = f"❌ Message `{ROLE_MESSAGE_ID}` introuvable."
+            await ctx.send(embed=embed)
             return
         
         # Compter les réactions
         reacted_users = await self.get_users_who_reacted(message)
         
         # Compter les membres sans réaction
-        members_without_reaction = 0
-        for member in ctx.guild.members:
-            if not member.bot and member.id not in reacted_users:
-                members_without_reaction += 1
-        
-        embed.title = "📊 Rapport DM Reminder"
-        embed.description = ""
-        embed.color = discord.Color.green()
+        members_without_reaction = sum(
+            1 for member in ctx.guild.members 
+            if not member.bot and member.id not in reacted_users
+        )
         
         embed.add_field(
             name="📄 Message trouvé",
             value=f"Dans #{self.role_channel.name}" if self.role_channel else "Oui",
             inline=True
         )
-        
         embed.add_field(
             name="✅ Ont réagi",
             value=f"{len(reacted_users)} membre(s)",
             inline=True
         )
-        
         embed.add_field(
             name="❌ N'ont pas réagi",
             value=f"{members_without_reaction} membre(s)",
             inline=True
         )
-        
         embed.add_field(
             name="📬 Déjà notifiés",
             value=f"{len(notified_users)} utilisateur(s)",
             inline=True
         )
         
-        # Lien vers le message
         if self.role_channel:
             link = f"https://discord.com/channels/{ctx.guild.id}/{self.role_channel.id}/{ROLE_MESSAGE_ID}"
-            embed.add_field(
-                name="🔗 Lien",
-                value=f"[Voir le message]({link})",
-                inline=True
-            )
+            embed.add_field(name="🔗 Lien", value=f"[Voir le message]({link})", inline=True)
         
-        await msg.edit(embed=embed)
+        await ctx.send(embed=embed)
     
     @commands.command(name="dm_reminder_force")
     @commands.has_any_role(*ADMIN_ROLES)
     async def dm_reminder_force(self, ctx, limit: int = 10):
-        """Force l'envoi des rappels DM maintenant (avec limite).
-        
-        Usage: !dm_reminder_force [limite]
-        Exemple: !dm_reminder_force 5  (envoie à max 5 personnes)
-        """
+        """Force l'envoi des rappels DM maintenant (avec limite)."""
         if limit < 1:
             limit = 1
         if limit > 50:
-            limit = 50  # Limite de sécurité
+            limit = 50
         
         embed = discord.Embed(
             title="⚡ Envoi forcé des DM",
@@ -517,7 +324,6 @@ class DMReminder(commands.Cog):
         )
         msg = await ctx.send(embed=embed)
         
-        # Récupérer le message
         message = await self.get_role_message(ctx.guild)
         
         if not message:
@@ -526,7 +332,6 @@ class DMReminder(commands.Cog):
             await msg.edit(embed=embed)
             return
         
-        # Récupérer les utilisateurs ayant réagi
         reacted_users = await self.get_users_who_reacted(message)
         
         sent = 0
@@ -536,10 +341,7 @@ class DMReminder(commands.Cog):
             if sent >= limit:
                 break
             
-            if member.bot:
-                continue
-            
-            if member.id in reacted_users:
+            if member.bot or member.id in reacted_users:
                 continue
             
             success = await self.send_dm_reminder(member)
@@ -582,90 +384,9 @@ class DMReminder(commands.Cog):
             color=discord.Color.orange()
         )
         await ctx.send(embed=embed)
-    
-    @commands.command(name="dm_reminder_list")
-    @commands.has_any_role(*ADMIN_ROLES)
-    async def dm_reminder_list(self, ctx):
-        """Affiche la liste des utilisateurs notifiés."""
-        if not notified_users:
-            embed = discord.Embed(
-                title="📋 Liste des notifiés",
-                description="Aucun utilisateur n'a encore été notifié.",
-                color=discord.Color.blue()
-            )
-            await ctx.send(embed=embed)
-            return
-        
-        # Pagination
-        items_per_page = 10
-        users_list = list(notified_users.items())
-        pages = []
-        
-        for i in range(0, len(users_list), items_per_page):
-            page_users = users_list[i:i + items_per_page]
-            
-            embed = discord.Embed(
-                title="📋 Utilisateurs notifiés",
-                color=discord.Color.blue()
-            )
-            
-            for user_id, data in page_users:
-                username = data.get("username", "Inconnu")
-                dm_count = data.get("dm_count", 1)
-                last = data.get("last_notified", "N/A")
-                
-                try:
-                    last_dt = datetime.datetime.fromisoformat(last)
-                    last_str = last_dt.strftime("%d/%m/%Y %H:%M")
-                except:
-                    last_str = last
-                
-                embed.add_field(
-                    name=f"👤 {username}",
-                    value=f"ID: `{user_id}`\nDMs: {dm_count}\nDernier: {last_str}",
-                    inline=True
-                )
-            
-            embed.set_footer(
-                text=f"Page {len(pages) + 1}/{(len(users_list) + items_per_page - 1) // items_per_page} • Total: {len(notified_users)}"
-            )
-            pages.append(embed)
-        
-        # Afficher la première page
-        if len(pages) == 1:
-            await ctx.send(embed=pages[0])
-        else:
-            current_page = 0
-            message = await ctx.send(embed=pages[current_page])
-            
-            await message.add_reaction('⬅️')
-            await message.add_reaction('➡️')
-            
-            def check(reaction, user):
-                return user == ctx.author and str(reaction.emoji) in ['⬅️', '➡️'] and reaction.message.id == message.id
-            
-            while True:
-                try:
-                    reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-                    
-                    if str(reaction.emoji) == '⬅️' and current_page > 0:
-                        current_page -= 1
-                        await message.edit(embed=pages[current_page])
-                    elif str(reaction.emoji) == '➡️' and current_page < len(pages) - 1:
-                        current_page += 1
-                        await message.edit(embed=pages[current_page])
-                    
-                    await message.remove_reaction(reaction, user)
-                except asyncio.TimeoutError:
-                    await message.clear_reactions()
-                    break
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# SETUP
-# ═══════════════════════════════════════════════════════════════════════════════
 
 async def setup(bot):
-    """Setup pour discord.py 2.0+"""
+    """Setup pour discord.py 2.0+."""
     await bot.add_cog(DMReminder(bot))
     logging.info("✅ Cog DMReminder chargé avec succès")

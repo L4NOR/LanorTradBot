@@ -1,17 +1,18 @@
 import discord
-from config import ADMIN_ROLES
+from config import ADMIN_ROLES, DATA_FILES, RARITY_COLORS
 from discord.ext import commands
 import json
 import os
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Any
+from utils import load_json, save_json
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# FICHIERS DE DONNÉES
+# FICHIERS DE DONNÉES (depuis config.py)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-BADGES_FILE = "data/user_badges.json"
-BADGES_CONFIG_FILE = "data/badges_config.json"
+BADGES_FILE = DATA_FILES["badges"]
+BADGES_CONFIG_FILE = DATA_FILES["badges_config"]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # DÉFINITION DES BADGES

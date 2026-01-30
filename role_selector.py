@@ -1,69 +1,18 @@
 # role_selector.py
-# Système de sélection de rôles MODERNE pour remplacer DraftBot
+# ═══════════════════════════════════════════════════════════════════════════════
+# SYSTÈME DE SÉLECTION DE RÔLES AVEC UI MODERNE
+# ═══════════════════════════════════════════════════════════════════════════════
+
 import discord
-from config import ADMIN_ROLES
 from discord.ext import commands
 from discord.ui import Button, View, Select
 import asyncio
 from typing import Optional
+from config import ADMIN_ROLES, ROLE_CATEGORIES
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# CONFIGURATION DES RÔLES PAR CATÉGORIE
-# ═══════════════════════════════════════════════════════════════════════════════
-
-ROLE_CATEGORIES = {
-    "manga": {
-        "title": "📚 MANGAS",
-        "description": "Recevez des notifications pour vos mangas préférés !",
-        "color": 0x3498DB,  # Bleu
-        "emoji": "📚",
-        "parent_role_id": 1465027922833440833,  # Rôle parent "manga"
-        "roles": [
-            {"name": "Ao No Exorcist", "emoji": "🔥", "id": 1465027919951958220},
-            {"name": "Satsudou", "emoji": "⚔️", "id": 1465027916999032976},
-            {"name": "Tokyo Underworld", "emoji": "🏙️", "id": 1465027914050437184},
-            {"name": "Tougen Anki", "emoji": "👹", "id": 1465027911235928155},
-            {"name": "Catenaccio", "emoji": "⚽", "id": 1465027907968831541},
-        ]
-    },
-    "notifications": {
-        "title": "🔔 NOTIFICATIONS",
-        "description": "Choisissez les notifications que vous souhaitez recevoir",
-        "color": 0xE67E22,  # Orange
-        "emoji": "🔔",
-        "parent_role_id": 1465027873751433520,  # Rôle parent "notifications"
-        "roles": [
-            {"name": "Annonces", "emoji": "📢", "id": 1465027871339708439},
-            {"name": "Événements", "emoji": "🎉", "id": 1465027869196423239},
-            {"name": "Giveaway", "emoji": "🎁", "id": 1465027866826772785},
-            {"name": "Partenaires", "emoji": "💛", "id": 1465027864318447658},
-            {"name": "Twittos", "emoji": "🐦", "id": 1465027861365919756},
-            {"name": "Tiktok", "emoji": "🎵", "id": 1465027858853527644},
-            {"name": "Spoilers", "emoji": "👀", "id": 1465027856508649543},
-        ]
-    },
-    "community": {
-        "title": "🎨 COMMUNAUTÉ",
-        "description": "Partagez vos passions avec la communauté !",
-        "color": 0x2ECC71,  # Vert
-        "emoji": "🎨",
-        "parent_role_id": 1465027902419636296,  # Rôle parent "communauté"
-        "roles": [
-            {"name": "Artiste", "emoji": "🎨", "id": 1465027899466846260},
-            {"name": "Collectionneurs", "emoji": "📚", "id": 1465027897336004638},
-            {"name": "Musique", "emoji": "🎧", "id": 1465027894668689642},
-            {"name": "Photographie", "emoji": "📷", "id": 1465027891942129714},
-            {"name": "Jeux vidéo", "emoji": "🎮", "id": 1465027882253287607},
-        ]
-    }
-}
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# COMPOSANTS UI
-# ═══════════════════════════════════════════════════════════════════════════════
 
 class RoleButton(Button):
-    """Bouton pour toggle un rôle individuel"""
+    """Bouton pour toggle un rôle individuel."""
     
     def __init__(self, role_name: str, emoji: str, role_id: int, category_key: str, parent_role_id: int):
         super().__init__(
@@ -78,11 +27,9 @@ class RoleButton(Button):
         self.parent_role_id = parent_role_id
     
     async def callback(self, interaction: discord.Interaction):
-        """Toggle le rôle quand le bouton est cliqué"""
-        # Defer pour éviter le timeout
+        """Toggle le rôle quand le bouton est cliqué."""
         await interaction.response.defer(ephemeral=True)
         
-        # CORRECTION: Utiliser l'ID au lieu du nom
         role = interaction.guild.get_role(self.role_id)
         
         if not role:
@@ -135,18 +82,14 @@ class RoleButton(Button):
                 ephemeral=True
             )
         except Exception as e:
-            print(f"❌ Erreur dans RoleButton callback: {e}")
-            try:
-                await interaction.followup.send(
-                    f"❌ Une erreur s'est produite: {str(e)}",
-                    ephemeral=True
-                )
-            except:
-                pass
+            await interaction.followup.send(
+                f"❌ Une erreur s'est produite: {str(e)}",
+                ephemeral=True
+            )
 
 
 class RoleSelect(Select):
-    """Menu déroulant pour sélectionner plusieurs rôles"""
+    """Menu déroulant pour sélectionner plusieurs rôles."""
     
     def __init__(self, category_key: str, category_data: dict):
         options = []
@@ -155,7 +98,7 @@ class RoleSelect(Select):
             options.append(
                 discord.SelectOption(
                     label=role_info["name"],
-                    value=str(role_info["id"]),  # CORRECTION: Utiliser l'ID comme value
+                    value=str(role_info["id"]),
                     emoji=role_info["emoji"],
                     description=f"Toggle le rôle {role_info['name']}"
                 )
@@ -173,292 +116,200 @@ class RoleSelect(Select):
         self.category_data = category_data
     
     async def callback(self, interaction: discord.Interaction):
-        """Gère la sélection multiple de rôles avec attribution automatique du rôle parent"""
-        # IMPORTANT: Defer immédiatement pour éviter le timeout de 3 secondes
+        """Gère la sélection multiple de rôles."""
         await interaction.response.defer(ephemeral=True)
         
         member = interaction.user
         
-        # CORRECTION: Utiliser les IDs au lieu des noms
         # Créer un dict ID -> role object pour tous les rôles de cette catégorie
         category_roles_by_id = {}
         for role_info in self.category_data["roles"]:
             role = interaction.guild.get_role(role_info["id"])
             if role:
                 category_roles_by_id[str(role_info["id"])] = role
-            else:
-                print(f"⚠️ Rôle introuvable: {role_info['name']} (ID: {role_info['id']})")
         
-        # Debug: afficher les rôles trouvés
-        print(f"🔍 Rôles trouvés pour {self.category_key}: {[r.name for r in category_roles_by_id.values()]}")
-        print(f"🔍 IDs sélectionnés: {self.values}")
-        print(f"🔍 Rôles actuels du membre: {[r.name for r in member.roles]}")
-        
-        # Récupérer le rôle parent
-        parent_role_id = self.category_data.get("parent_role_id")
-        parent_role = interaction.guild.get_role(parent_role_id) if parent_role_id else None
-        
-        # Rôles à ajouter/retirer
-        to_add = []
-        to_remove = []
-        
-        # Convertir self.values en set pour recherche rapide
+        # Rôles sélectionnés (IDs)
         selected_ids = set(self.values)
         
-        # MODE TOGGLE: On toggle uniquement les rôles sélectionnés
-        # Les rôles non sélectionnés ne sont PAS touchés
-        for role_id_str in selected_ids:
-            role = category_roles_by_id.get(role_id_str)
-            if role:
-                if role in member.roles:
-                    # Le membre a déjà ce rôle → le retirer
-                    to_remove.append(role)
-                    print(f"➖ À retirer (toggle): {role.name}")
-                else:
-                    # Le membre n'a pas ce rôle → l'ajouter
-                    to_add.append(role)
-                    print(f"➕ À ajouter (toggle): {role.name}")
+        # Rôles actuels de l'utilisateur dans cette catégorie
+        current_roles = set()
+        for role_id, role in category_roles_by_id.items():
+            if role in member.roles:
+                current_roles.add(role_id)
+        
+        # Calculer les différences
+        roles_to_add = selected_ids - current_roles
+        roles_to_remove = current_roles - selected_ids
+        
+        added = []
+        removed = []
         
         try:
-            # Ajouter les rôles
-            if to_add:
-                await member.add_roles(*to_add)
-                print(f"✅ Rôles ajoutés: {[r.name for r in to_add]}")
+            # Ajouter les nouveaux rôles
+            for role_id in roles_to_add:
+                role = category_roles_by_id.get(role_id)
+                if role:
+                    await member.add_roles(role)
+                    added.append(role.name)
             
-            # Retirer les rôles
-            if to_remove:
-                await member.remove_roles(*to_remove)
-                print(f"✅ Rôles retirés: {[r.name for r in to_remove]}")
+            # Retirer les rôles non sélectionnés
+            for role_id in roles_to_remove:
+                role = category_roles_by_id.get(role_id)
+                if role:
+                    await member.remove_roles(role)
+                    removed.append(role.name)
             
-            # Gestion du rôle parent
+            # Gérer le rôle parent
+            parent_role = interaction.guild.get_role(self.category_data["parent_role_id"])
             if parent_role:
-                # Recalculer les rôles du membre après les modifications
-                # On simule l'état final en tenant compte des ajouts/retraits
-                final_category_roles = set()
-                for role in category_roles_by_id.values():
-                    if role in member.roles:
-                        final_category_roles.add(role)
+                has_roles_in_category = len(selected_ids) > 0
                 
-                # Appliquer les changements simulés
-                for role in to_add:
-                    final_category_roles.add(role)
-                for role in to_remove:
-                    final_category_roles.discard(role)
-                
-                has_category_role = len(final_category_roles) > 0
-                
-                if has_category_role:
-                    # Ajouter le rôle parent si l'utilisateur a au moins un rôle de cette catégorie
-                    if parent_role not in member.roles:
-                        await member.add_roles(parent_role)
-                        print(f"✅ Rôle parent ajouté: {parent_role.name}")
-                else:
-                    # Retirer le rôle parent si l'utilisateur n'a plus aucun rôle de cette catégorie
-                    if parent_role in member.roles:
-                        await member.remove_roles(parent_role)
-                        print(f"✅ Rôle parent retiré: {parent_role.name}")
+                if has_roles_in_category and parent_role not in member.roles:
+                    await member.add_roles(parent_role)
+                elif not has_roles_in_category and parent_role in member.roles:
+                    await member.remove_roles(parent_role)
             
-            # Message de confirmation avec emojis
-            # Créer un mapping ID -> emoji pour cette catégorie
-            role_emojis = {str(r["id"]): r["emoji"] for r in self.category_data["roles"]}
+            # Construire le message de confirmation
+            messages = []
+            if added:
+                messages.append(f"✅ Ajoutés: **{', '.join(added)}**")
+            if removed:
+                messages.append(f"❌ Retirés: **{', '.join(removed)}**")
             
-            added_with_emoji = [f"{role_emojis.get(str(r.id), '')} {r.name}" for r in to_add]
-            removed_with_emoji = [f"{role_emojis.get(str(r.id), '')} {r.name}" for r in to_remove]
-            
-            msg_parts = []
-            if added_with_emoji:
-                msg_parts.append(f"**Ajoutés:** {', '.join(added_with_emoji)}")
-            if removed_with_emoji:
-                msg_parts.append(f"**Retirés:** {', '.join(removed_with_emoji)}")
-            
-            if msg_parts:
-                await interaction.followup.send(
-                    "✅ Rôles mis à jour !\n" + "\n".join(msg_parts),
-                    ephemeral=True
-                )
+            if messages:
+                await interaction.followup.send("\n".join(messages), ephemeral=True)
             else:
-                await interaction.followup.send(
-                    "ℹ️ Aucun changement détecté.",
-                    ephemeral=True
-                )
+                await interaction.followup.send("ℹ️ Aucun changement effectué.", ephemeral=True)
         
-        except discord.Forbidden as e:
-            print(f"❌ Erreur Forbidden: {e}")
+        except discord.Forbidden:
             await interaction.followup.send(
-                "❌ Je n'ai pas la permission de gérer ces rôles. Vérifiez que mon rôle est bien au-dessus des rôles à attribuer dans la hiérarchie du serveur.",
+                "❌ Je n'ai pas la permission de gérer ces rôles.",
                 ephemeral=True
             )
         except Exception as e:
-            # Gestion d'erreur générique pour éviter les crashs silencieux
-            print(f"❌ Erreur dans RoleSelect callback: {e}")
-            import traceback
-            traceback.print_exc()
-            try:
-                await interaction.followup.send(
-                    f"❌ Une erreur s'est produite: {str(e)}",
-                    ephemeral=True
-                )
-            except:
-                pass
-
-
-class MyRolesButton(Button):
-    """Bouton pour voir ses rôles actuels"""
-    
-    def __init__(self):
-        super().__init__(
-            style=discord.ButtonStyle.primary,
-            label="Mes Rôles",
-            emoji="📋",
-            custom_id="my_roles_btn"
-        )
-    
-    async def callback(self, interaction: discord.Interaction):
-        """Affiche les rôles auto-assignables de l'utilisateur"""
-        # Defer pour éviter tout timeout potentiel
-        await interaction.response.defer(ephemeral=True)
-        
-        member = interaction.user
-        
-        # Trouver les rôles de l'utilisateur qui sont auto-assignables
-        user_auto_roles = {}
-        for category_key, category_data in ROLE_CATEGORIES.items():
-            category_roles = []
-            for role_info in category_data["roles"]:
-                # CORRECTION: Utiliser l'ID au lieu du nom
-                role = interaction.guild.get_role(role_info["id"])
-                if role and role in member.roles:
-                    category_roles.append(f"{role_info['emoji']} {role.name}")
-            
-            if category_roles:
-                user_auto_roles[category_key] = category_roles
-        
-        # Créer l'embed
-        embed = discord.Embed(
-            title="📋 Vos Rôles",
-            color=discord.Color.blue()
-        )
-        
-        if user_auto_roles:
-            for category_key, roles in user_auto_roles.items():
-                category_data = ROLE_CATEGORIES[category_key]
-                embed.add_field(
-                    name=f"{category_data['emoji']} {category_data['title']}",
-                    value="\n".join(roles),
-                    inline=False
-                )
-        else:
-            embed.description = "Vous n'avez aucun rôle auto-assignable pour le moment."
-        
-        await interaction.followup.send(embed=embed, ephemeral=True)
+            await interaction.followup.send(
+                f"❌ Une erreur s'est produite: {str(e)}",
+                ephemeral=True
+            )
 
 
 class RoleSelectView(View):
-    """Vue contenant un menu déroulant"""
+    """Vue contenant le menu déroulant de sélection de rôles."""
     
     def __init__(self, category_key: str, category_data: dict):
         super().__init__(timeout=None)
         self.add_item(RoleSelect(category_key, category_data))
 
 
+class MyRolesButton(Button):
+    """Bouton pour afficher ses rôles actuels."""
+    
+    def __init__(self):
+        super().__init__(
+            style=discord.ButtonStyle.primary,
+            label="Mes Rôles",
+            emoji="📋",
+            custom_id="my_roles_button"
+        )
+    
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        
+        member = interaction.user
+        
+        embed = discord.Embed(
+            title=f"📋 Rôles de {member.display_name}",
+            color=member.color if member.color != discord.Color.default() else discord.Color.blue()
+        )
+        
+        for category_key, category_data in ROLE_CATEGORIES.items():
+            user_roles_in_category = []
+            
+            for role_info in category_data["roles"]:
+                role = interaction.guild.get_role(role_info["id"])
+                if role and role in member.roles:
+                    user_roles_in_category.append(f"{role_info['emoji']} {role.name}")
+            
+            if user_roles_in_category:
+                embed.add_field(
+                    name=f"{category_data['emoji']} {category_data['title']}",
+                    value="\n".join(user_roles_in_category),
+                    inline=False
+                )
+        
+        if not embed.fields:
+            embed.description = "Vous n'avez sélectionné aucun rôle pour le moment."
+        
+        embed.set_thumbnail(url=member.avatar.url if member.avatar else None)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+
 class MyRolesView(View):
-    """Vue contenant le bouton Mes Rôles"""
+    """Vue avec le bouton Mes Rôles."""
     
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(MyRolesButton())
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# COG PRINCIPAL
-# ═══════════════════════════════════════════════════════════════════════════════
-
 class RoleSelector(commands.Cog):
-    """Système de sélection de rôles moderne"""
+    """Système de sélection de rôles avec interface moderne."""
     
     def __init__(self, bot):
         self.bot = bot
-    
-    async def cog_load(self):
-        """Charge les vues persistantes"""
-        for category_key in ROLE_CATEGORIES.keys():
-            self.bot.add_view(RoleSelectView(category_key, ROLE_CATEGORIES[category_key]))
         
-        self.bot.add_view(MyRolesView())
-        print("✅ Vues persistantes chargées")
+        # Enregistrer les vues persistantes
+        for category_key, category_data in ROLE_CATEGORIES.items():
+            bot.add_view(RoleSelectView(category_key, category_data))
+        bot.add_view(MyRolesView())
     
     @commands.command(name="setup_roles")
     @commands.has_permissions(administrator=True)
     async def setup_roles(self, ctx, channel: Optional[discord.TextChannel] = None):
-        """
-        Configure le système de rôles dans un salon
-        
-        Usage: !setup_roles [#channel]
-        Si aucun channel n'est spécifié, utilise le channel actuel
-        """
+        """Configure le système de sélection de rôles dans un canal."""
         target_channel = channel or ctx.channel
         
         # Confirmation
         confirm_embed = discord.Embed(
-            title="⚠️ CONFIRMATION",
-            description=(
-                f"Cette commande va poster le système de rôles dans {target_channel.mention}.\n\n"
-                "Voulez-vous continuer ?"
-            ),
-            color=discord.Color.orange()
+            title="⚙️ Configuration du Système de Rôles",
+            description=f"Cela va poster le système de sélection de rôles dans {target_channel.mention}.\n\n"
+                       "Réagissez avec ✅ pour confirmer ou ❌ pour annuler.",
+            color=discord.Color.gold()
         )
-        
         confirm_msg = await ctx.send(embed=confirm_embed)
-        await confirm_msg.add_reaction("✅")
-        await confirm_msg.add_reaction("❌")
+        await confirm_msg.add_reaction('✅')
+        await confirm_msg.add_reaction('❌')
         
         def check(reaction, user):
-            return (user == ctx.author and 
-                   str(reaction.emoji) in ["✅", "❌"] and 
-                   reaction.message.id == confirm_msg.id)
+            return user == ctx.author and str(reaction.emoji) in ['✅', '❌'] and reaction.message.id == confirm_msg.id
         
         try:
-            reaction, _ = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
+            reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+            
             await confirm_msg.delete()
             
-            if str(reaction.emoji) == "❌":
+            if str(reaction.emoji) == '❌':
                 await ctx.send("❌ Opération annulée.")
                 return
             
-            # Message d'introduction
-            intro_embed = discord.Embed(
-                title="🎭 SÉLECTION DE RÔLES",
-                description=(
-                    "Bienvenue dans le système de sélection de rôles !\n\n"
-                    "Utilisez les menus déroulants ci-dessous pour choisir vos rôles.\n"
-                    "Vous pouvez sélectionner plusieurs rôles à la fois dans chaque catégorie.\n\n"
-                    "**Comment ça marche ?**\n"
-                    "• Cliquez sur un menu déroulant\n"
-                    "• Sélectionnez les rôles que vous voulez\n"
-                    "• Les rôles non sélectionnés seront automatiquement retirés\n\n"
-                    "Utilisez le bouton **Mes Rôles** pour voir vos rôles actuels !"
-                ),
-                color=discord.Color.purple()
-            )
-            intro_embed.set_footer(text="✨ Système de rôles by LanorTrad")
-            
-            await target_channel.send(embed=intro_embed)
-            
-            # Créer un embed et menu pour chaque catégorie
             message_links = []
             
+            # Poster chaque catégorie
             for category_key, category_data in ROLE_CATEGORIES.items():
-                # Créer l'embed
                 embed = discord.Embed(
-                    title=category_data["title"],
-                    description=category_data["description"],
-                    color=category_data["color"]
+                    title=f"{category_data['emoji']} {category_data['title']}",
+                    description=category_data['description'],
+                    color=category_data['color']
                 )
                 
                 # Lister les rôles disponibles
                 roles_text = []
                 for role_info in category_data["roles"]:
-                    roles_text.append(f"{role_info['emoji']} **{role_info['name']}**")
+                    role = ctx.guild.get_role(role_info["id"])
+                    if role:
+                        roles_text.append(f"{role_info['emoji']} **{role.name}**")
+                    else:
+                        roles_text.append(f"{role_info['emoji']} ~~{role_info['name']}~~ (Non trouvé)")
                 
                 embed.add_field(
                     name="Rôles disponibles",
@@ -473,12 +324,10 @@ class RoleSelector(commands.Cog):
                 msg = await target_channel.send(embed=embed, view=view)
                 message_links.append(msg.jump_url)
                 
-                # Petit délai pour éviter le rate limit
                 await asyncio.sleep(0.5)
             
             # Footer avec le bouton Mes Rôles
             footer_embed = discord.Embed(
-                title="",
                 description="Cliquez sur le bouton ci-dessous pour voir vos rôles actuels",
                 color=discord.Color.blue()
             )
@@ -509,16 +358,10 @@ class RoleSelector(commands.Cog):
     @commands.command(name="sync_roles")
     @commands.has_permissions(administrator=True)
     async def sync_roles(self, ctx):
-        """
-        Vérifie et crée les rôles manquants
-        
-        Cette commande vérifie si tous les rôles définis dans la configuration
-        existent sur le serveur et propose de créer ceux qui manquent.
-        """
+        """Vérifie et liste les rôles manquants."""
         missing_roles = []
         existing_roles = []
         
-        # Vérifier tous les rôles PAR ID
         for category_data in ROLE_CATEGORIES.values():
             for role_info in category_data["roles"]:
                 role = ctx.guild.get_role(role_info["id"])
@@ -527,7 +370,6 @@ class RoleSelector(commands.Cog):
                 else:
                     missing_roles.append(role_info)
         
-        # Créer l'embed de rapport
         report_embed = discord.Embed(
             title="📊 Rapport de Synchronisation",
             color=discord.Color.blue()
@@ -546,22 +388,16 @@ class RoleSelector(commands.Cog):
                 value=missing_text,
                 inline=False
             )
-            
-            report_embed.description = (
-                "⚠️ **ATTENTION**: Les IDs sont définis dans la configuration.\n"
-                "Si vous créez ces rôles, ils auront de NOUVEAUX IDs.\n"
-                "Vous devrez mettre à jour la configuration avec les nouveaux IDs."
-            )
-            report_embed.set_footer(text="Réagissez avec ✅ pour créer les rôles manquants")
+            report_embed.description = "⚠️ Les IDs sont définis dans config.py. Mettez à jour la configuration si nécessaire."
         else:
-            report_embed.description = "🎉 Tous les rôles existent déjà !"
+            report_embed.description = "🎉 Tous les rôles existent !"
         
         await ctx.send(embed=report_embed)
     
     @commands.command(name="roles_stats")
     @commands.has_permissions(administrator=True)
     async def roles_stats(self, ctx):
-        """Affiche les statistiques d'attribution des rôles"""
+        """Affiche les statistiques d'attribution des rôles."""
         embed = discord.Embed(
             title="📊 Statistiques des Rôles",
             description="Nombre de membres par rôle",
@@ -574,7 +410,6 @@ class RoleSelector(commands.Cog):
             stats_text = []
             
             for role_info in category_data["roles"]:
-                # CORRECTION: Utiliser l'ID au lieu du nom
                 role = ctx.guild.get_role(role_info["id"])
                 if role:
                     count = len(role.members)
@@ -583,7 +418,7 @@ class RoleSelector(commands.Cog):
                         f"{role_info['emoji']} **{role.name}**: {count} ({percentage:.1f}%)"
                     )
                 else:
-                    stats_text.append(f"{role_info['emoji']} **{role_info['name']}**: ❌ N'existe pas (ID: {role_info['id']})")
+                    stats_text.append(f"{role_info['emoji']} **{role_info['name']}**: ❌ N'existe pas")
             
             embed.add_field(
                 name=f"{category_data['emoji']} {category_data['title']}",
@@ -592,65 +427,9 @@ class RoleSelector(commands.Cog):
             )
         
         embed.set_footer(text=f"Total: {total_members} membres")
-        
-        await ctx.send(embed=embed)
-    
-    @commands.command(name="debug_role")
-    @commands.has_permissions(administrator=True)
-    async def debug_role(self, ctx, role_id: int):
-        """Affiche les infos de debug d'un rôle par son ID"""
-        role = ctx.guild.get_role(role_id)
-        
-        if not role:
-            await ctx.send(f"❌ Aucun rôle trouvé avec l'ID `{role_id}`")
-            return
-        
-        bot_member = ctx.guild.get_member(self.bot.user.id)
-        bot_top_role = bot_member.top_role
-        
-        embed = discord.Embed(
-            title=f"🔍 Debug: {role.name}",
-            color=role.color
-        )
-        
-        embed.add_field(name="ID", value=f"`{role.id}`", inline=True)
-        embed.add_field(name="Nom", value=role.name, inline=True)
-        embed.add_field(name="Position", value=str(role.position), inline=True)
-        embed.add_field(name="Membres", value=str(len(role.members)), inline=True)
-        embed.add_field(name="Mentionnable", value="✅" if role.mentionable else "❌", inline=True)
-        embed.add_field(name="Géré par", value="Bot" if role.managed else "Manuel", inline=True)
-        
-        embed.add_field(
-            name="🤖 Position du bot",
-            value=f"{bot_top_role.name} (pos: {bot_top_role.position})",
-            inline=False
-        )
-        
-        can_manage = bot_top_role.position > role.position and not role.managed
-        embed.add_field(
-            name="Peut gérer ce rôle?",
-            value="✅ Oui" if can_manage else "❌ Non",
-            inline=False
-        )
-        
-        if not can_manage:
-            if role.managed:
-                embed.add_field(
-                    name="⚠️ Problème",
-                    value="Ce rôle est géré par une intégration (bot, boost, etc.) et ne peut pas être attribué manuellement.",
-                    inline=False
-                )
-            elif bot_top_role.position <= role.position:
-                embed.add_field(
-                    name="⚠️ Problème",
-                    value=f"Le rôle du bot ({bot_top_role.position}) doit être au-dessus de ce rôle ({role.position}) dans la hiérarchie.",
-                    inline=False
-                )
-        
         await ctx.send(embed=embed)
 
 
 async def setup(bot):
-    """Setup pour discord.py 2.0+"""
+    """Setup pour discord.py 2.0+."""
     await bot.add_cog(RoleSelector(bot))
-    print("✅ Cog RoleSelector chargé avec succès")

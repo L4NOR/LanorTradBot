@@ -1,4 +1,8 @@
 # config.py
+# ═══════════════════════════════════════════════════════════════════════════════
+# FICHIER DE CONFIGURATION CENTRALISÉ - TOUS LES IDS ET CONSTANTES
+# ═══════════════════════════════════════════════════════════════════════════════
+
 import os
 import discord
 from dotenv import load_dotenv
@@ -28,10 +32,10 @@ INTENTS.invites = True
 # UTILISATEURS SPÉCIAUX
 # ═══════════════════════════════════════════════════════════════════════════════
 
-TARGET_USER_ID = 608234789564186644
+TARGET_USER_ID = 608234789564186644  # ID pour recevoir les exports de données
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# RÔLES ADMIN (centralisés - utilisés dans tout le bot)
+# RÔLES ADMIN (utilisés pour les permissions des commandes)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 ADMIN_ROLES = [
@@ -41,30 +45,102 @@ ADMIN_ROLES = [
 ]
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# IDS DES RÔLES
+# IDS DES RÔLES GÉNÉRAUX
 # ═══════════════════════════════════════════════════════════════════════════════
 
 ROLES = {
+    # Rôles de base
     "member": 1465027926054535324,
     "access": 1465027850120986967,
     "booster": 1335403910113923162,
+    
+    # Rôles manga (séparés pour clarté)
     "catenaccio": 1465027907968831541,
     "satsudou": 1465027916999032976,
     "ao_no_exorcist": 1465027919951958220,
     "tokyo_underworld": 1465027914050437184,
     "tougen_anki": 1465027911235928155,
+    
+    # Rôles de notification
     "partenaires_ping": 1465027864318447658,
+    "annonces": 1465027871339708439,
+    "evenements": 1465027869196423239,
+    "giveaway": 1465027866826772785,
+    "twittos": 1465027861365919756,
+    "tiktok": 1465027858853527644,
+    "spoilers": 1465027856508649543,
+    
+    # Rôles communautaires
+    "artiste": 1465027899466846260,
+    "collectionneurs": 1465027897336004638,
+    "musique": 1465027894668689642,
+    "photographie": 1465027891942129714,
+    "jeux_video": 1465027882253287607,
+    
+    # Rôles parents (catégories)
     "manga_parent": 1465027922833440833,
     "notifications_parent": 1465027873751433520,
     "community_parent": 1465027902419636296,
 }
 
+# Mapping nom manga -> ID rôle (pour faciliter l'utilisation)
 MANGA_ROLES = {
     "Catenaccio": 1465027907968831541,
     "Satsudou": 1465027916999032976,
     "Ao No Exorcist": 1465027919951958220,
     "Tokyo Underworld": 1465027914050437184,
     "Tougen Anki": 1465027911235928155,
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONFIGURATION DES RÔLES PAR CATÉGORIE (pour role_selector)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ROLE_CATEGORIES = {
+    "manga": {
+        "title": "📚 MANGAS",
+        "description": "Recevez des notifications pour vos mangas préférés !",
+        "color": 0x3498DB,
+        "emoji": "📚",
+        "parent_role_id": ROLES["manga_parent"],
+        "roles": [
+            {"name": "Ao No Exorcist", "emoji": "🔥", "id": ROLES["ao_no_exorcist"]},
+            {"name": "Satsudou", "emoji": "⚔️", "id": ROLES["satsudou"]},
+            {"name": "Tokyo Underworld", "emoji": "🏙️", "id": ROLES["tokyo_underworld"]},
+            {"name": "Tougen Anki", "emoji": "👹", "id": ROLES["tougen_anki"]},
+            {"name": "Catenaccio", "emoji": "⚽", "id": ROLES["catenaccio"]},
+        ]
+    },
+    "notifications": {
+        "title": "🔔 NOTIFICATIONS",
+        "description": "Choisissez les notifications que vous souhaitez recevoir",
+        "color": 0xE67E22,
+        "emoji": "🔔",
+        "parent_role_id": ROLES["notifications_parent"],
+        "roles": [
+            {"name": "Annonces", "emoji": "📢", "id": ROLES["annonces"]},
+            {"name": "Événements", "emoji": "🎉", "id": ROLES["evenements"]},
+            {"name": "Giveaway", "emoji": "🎁", "id": ROLES["giveaway"]},
+            {"name": "Partenaires", "emoji": "💛", "id": ROLES["partenaires_ping"]},
+            {"name": "Twittos", "emoji": "🐦", "id": ROLES["twittos"]},
+            {"name": "Tiktok", "emoji": "🎵", "id": ROLES["tiktok"]},
+            {"name": "Spoilers", "emoji": "👀", "id": ROLES["spoilers"]},
+        ]
+    },
+    "community": {
+        "title": "🎨 COMMUNAUTÉ",
+        "description": "Partagez vos passions avec la communauté !",
+        "color": 0x2ECC71,
+        "emoji": "🎨",
+        "parent_role_id": ROLES["community_parent"],
+        "roles": [
+            {"name": "Artiste", "emoji": "🎨", "id": ROLES["artiste"]},
+            {"name": "Collectionneurs", "emoji": "📚", "id": ROLES["collectionneurs"]},
+            {"name": "Musique", "emoji": "🎧", "id": ROLES["musique"]},
+            {"name": "Photographie", "emoji": "📷", "id": ROLES["photographie"]},
+            {"name": "Jeux vidéo", "emoji": "🎮", "id": ROLES["jeux_video"]},
+        ]
+    }
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -81,6 +157,7 @@ CHANNELS = {
     "mod_contact": 1332088539076104192,
     "sorties": 1326213946188890142,
     "test": 1330221808753840159,
+    "roles": 1326212401036529665,
 }
 
 MANGA_CHANNELS = {
@@ -96,7 +173,8 @@ MANGA_CHANNELS = {
 # ═══════════════════════════════════════════════════════════════════════════════
 
 MESSAGES = {
-    "rules": 1333072612527439915
+    "rules": 1333072612527439915,
+    "roles": 1465801132390482145,  # Message de sélection de rôles (dm_reminder)
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -141,10 +219,98 @@ TASK_EMOJIS = {
     "edit": "✏️",
 }
 
+RATING_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
+REACTION_EMOJIS = ["🔥", "😭", "😱", "🤯", "❤️", "😂", "💀"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONFIGURATION GIVEAWAY
+# ═══════════════════════════════════════════════════════════════════════════════
+
+GIVEAWAY_EMOJI = "🎉"
+GIVEAWAY_COLOR = 0xff6b6b
+
+GIVEAWAY_ROLES = {
+    "manager_role": None,  # Rôle qui peut créer des giveaways
+    "bonus_role": None,    # Rôle avec entrées bonus (+1 entrée)
+    "vip_role": None,      # Rôle VIP avec double entrées
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONFIGURATION SHOP
+# ═══════════════════════════════════════════════════════════════════════════════
+
+SHOP_ROLES = {
+    "vip_role": None,           # ID du rôle VIP
+    "expert_manga_role": None,  # ID du rôle Expert Manga
+    "theorist_elite_role": None,# ID du rôle Théoricien d'Élite
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONFIGURATION COMMUNAUTAIRE (POINTS)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+POINTS = {
+    "review": 10,
+    "theory": 15,
+    "theory_vote": 2,
+    "first_review": 25,
+    "first_theory": 30,
+    "daily_bonus": 5,
+    "streak_bonus": 10,
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONFIGURATION DM REMINDER
+# ═══════════════════════════════════════════════════════════════════════════════
+
+DM_REMINDER_CONFIG = {
+    "role_message_id": MESSAGES["roles"],
+    "role_channel_id": None,  # Sera auto-détecté
+    "send_hour": 12,          # Heure d'envoi des DMs (midi)
+    "timezone": "Europe/Paris",
+}
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # AUTRES
 # ═══════════════════════════════════════════════════════════════════════════════
 
 EMBED_FOOTER = "Bot Discord LanorTrad"
 PING_COOLDOWN_SECONDS = 300
-GIVEAWAY_EMOJI = "🎉"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CHEMINS DES FICHIERS DE DONNÉES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+DATA_DIR = "data"
+
+DATA_FILES = {
+    # Workflow
+    "tasks": f"{DATA_DIR}/etat_taches.json",
+    "tasks_meta": f"{DATA_DIR}/etat_taches_meta.json",
+    "rappels": f"{DATA_DIR}/rappels_tasks.json",
+    "rappels_meta": f"{DATA_DIR}/rappels_tasks_meta.json",
+    
+    # Giveaway
+    "giveaways": f"{DATA_DIR}/giveaways.json",
+    "invites": f"{DATA_DIR}/invites_tracker.json",
+    
+    # Community
+    "reviews": f"{DATA_DIR}/reviews.json",
+    "theories": f"{DATA_DIR}/theories.json",
+    "chapters": f"{DATA_DIR}/chapters_community.json",
+    "user_stats": f"{DATA_DIR}/user_stats.json",
+    
+    # Achievements
+    "badges": f"{DATA_DIR}/user_badges.json",
+    "badges_config": f"{DATA_DIR}/badges_config.json",
+    
+    # Shop
+    "shop_inventory": f"{DATA_DIR}/shop_inventory.json",
+    "shop_items": f"{DATA_DIR}/shop_items.json",
+    "purchases": f"{DATA_DIR}/purchases.json",
+    "lottery": f"{DATA_DIR}/lottery.json",
+    
+    # DM Reminder
+    "dm_reminder": f"{DATA_DIR}/dm_reminder_notified.json",
+    "dm_reminder_meta": f"{DATA_DIR}/dm_reminder_meta.json",
+}

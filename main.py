@@ -1,29 +1,42 @@
 # main.py
+# ═══════════════════════════════════════════════════════════════════════════════
+# POINT D'ENTRÉE PRINCIPAL DU BOT DISCORD LANORTRAD
+# ═══════════════════════════════════════════════════════════════════════════════
+
 import discord
 from discord.ext import commands
 import os
 import logging
 import asyncio
 from aiohttp import web
-from config import TOKEN, PREFIX, INTENTS, PORT
-import events
-import commands as cmd
-import announcements
+from config import TOKEN, PREFIX, INTENTS, PORT, DATA_DIR
 
-logging.basicConfig(level=logging.INFO)
+# Configuration du logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
-# Créer le dossier data au démarrage (une seule fois)
-os.makedirs("data", exist_ok=True)
+# Créer le dossier data au démarrage
+os.makedirs(DATA_DIR, exist_ok=True)
 
 
 async def main():
+    """Fonction principale pour démarrer le bot."""
+    
     bot = commands.Bot(command_prefix=PREFIX, intents=INTENTS)
     
-    # Serveur web interne
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SERVEUR WEB INTERNE (pour les health checks)
+    # ═══════════════════════════════════════════════════════════════════════════
+    
     async def setup_webserver():
+        """Configure et démarre le serveur web pour les health checks."""
         app = web.Application()
+        
         async def health_check(request):
             return web.Response(text="OK", status=200)
+        
         app.router.add_get('/', health_check)
         runner = web.AppRunner(app)
         await runner.setup()
@@ -33,24 +46,38 @@ async def main():
     
     bot.setup_webserver = setup_webserver
 
-    # Charger les événements
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CHARGEMENT DES MODULES
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    # Charger les événements (synchrone)
+    import events
     events.setup(bot)
+    logging.info("✅ Module Events chargé")
 
-    # Charger les commandes (synchrone)
+    # Charger les commandes principales (synchrone)
+    import commands as cmd
     cmd.setup(bot)
+    logging.info("✅ Module Commands chargé")
 
-    # Charger le module d'annonces
+    # Charger le module d'annonces (synchrone)
+    import announcements
     announcements.setup(bot)
+    logging.info("✅ Module Announcements chargé")
 
-    # Charger les rappels (asynchrone)
+    # ═══════════════════════════════════════════════════════════════════════════
+    # MODULES ASYNCHRONES (COGS)
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    # Charger les rappels
     import rappels
     await rappels.setup(bot)
+    logging.info("✅ Module Rappels chargé")
 
-    # Charger le système de giveaway (asynchrone)
+    # Charger le système de giveaway
     import giveaway
     await giveaway.setup(bot)
-    
-    # ========== MODULES COMMUNAUTAIRES ==========
+    logging.info("✅ Module Giveaway chargé")
     
     # Charger le système communautaire
     import community
@@ -82,11 +109,15 @@ async def main():
     await dm_reminder.setup(bot)
     logging.info("✅ Module DM Reminder chargé")
     
-    # ==============================================
+    # ═══════════════════════════════════════════════════════════════════════════
+    # DÉMARRAGE DU BOT
+    # ═══════════════════════════════════════════════════════════════════════════
 
-    # Lancer le bot
     try:
+        logging.info("Démarrage du bot...")
         await bot.start(TOKEN)
+    except discord.LoginFailure:
+        logging.error("Token Discord invalide. Vérifiez votre fichier .env")
     except Exception as e:
         logging.error(f"Erreur lors du démarrage du bot: {e}")
 

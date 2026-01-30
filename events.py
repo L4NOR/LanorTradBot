@@ -1,29 +1,39 @@
 # events.py
+# ═══════════════════════════════════════════════════════════════════════════════
+# GESTIONNAIRES D'ÉVÉNEMENTS DISCORD
+# ═══════════════════════════════════════════════════════════════════════════════
+
 import discord
 from discord.ext import commands
 import datetime
-from config import CHANNELS, MESSAGES, ROLES, COLORS, PING_COOLDOWN_SECONDS
 import logging
+from config import CHANNELS, MESSAGES, ROLES, COLORS, PING_COOLDOWN_SECONDS
 
 # Dictionnaire pour stocker le dernier ping par canal (cooldown)
 last_ping_time = {}
 
 
 def setup(bot):
+    """Configure les événements du bot."""
+    
     @bot.event
     async def on_ready():
-        """Événement déclenché lorsque le bot est prêt"""
+        """Événement déclenché lorsque le bot est prêt."""
         logging.info(f'Bot connecté en tant que {bot.user.name}')
         await bot.change_presence(activity=discord.Game(name="!help pour les commandes"))
         await bot.setup_webserver()
     
     @bot.event
     async def on_raw_reaction_add(payload):
-        """Événement déclenché lorsqu'une réaction est ajoutée à un message"""
+        """Événement déclenché lorsqu'une réaction est ajoutée à un message."""
+        # Vérifier si c'est le message des règles
         if payload.message_id == MESSAGES["rules"]:
             if str(payload.emoji) == "✅":
                 guild = bot.get_guild(payload.guild_id)
                 member = guild.get_member(payload.user_id)
+                
+                if member is None or member.bot:
+                    return
                 
                 # Rôles à ajouter
                 first_role = guild.get_role(ROLES["member"])
@@ -35,20 +45,21 @@ def setup(bot):
                         await member.add_roles(first_role, second_role)
                         
                         general_channel = bot.get_channel(CHANNELS["general"])
-                        embed = discord.Embed(
-                            title="🎉 Nouveau membre respectueux !",
-                            description=f"{member.mention} a accepté le règlement et rejoint notre communauté. Bienvenue à toi ! ✨",
-                            color=discord.Color.green()
-                        )
-                        if member.avatar:
-                            embed.set_thumbnail(url=member.avatar.url)
-                        await general_channel.send(embed=embed)
+                        if general_channel:
+                            embed = discord.Embed(
+                                title="🎉 Nouveau membre respectueux !",
+                                description=f"{member.mention} a accepté le règlement et rejoint notre communauté. Bienvenue à toi ! ✨",
+                                color=discord.Color.green()
+                            )
+                            if member.avatar:
+                                embed.set_thumbnail(url=member.avatar.url)
+                            await general_channel.send(embed=embed)
                     except Exception as e:
                         logging.error(f"Erreur lors de l'ajout des rôles : {e}")
     
     @bot.event
     async def on_member_join(member):
-        """Événement déclenché quand un membre rejoint le serveur"""
+        """Événement déclenché quand un membre rejoint le serveur."""
         welcome_channel = bot.get_channel(CHANNELS["welcome"])
         if welcome_channel:
             # Message de mention avant l'embed
@@ -62,7 +73,7 @@ def setup(bot):
                     "🎉 **Nous sommes ravis de t'accueillir parmi nous !**\n\n"
                     "Pour bien commencer :\n"
                     f"📜 Lis le règlement dans <#{CHANNELS['rules']}>\n"
-                    "🎯 Choisis tes rôles dans <#1326212401036529665>\n"
+                    f"🎯 Choisis tes rôles dans <#{CHANNELS.get('roles', 1326212401036529665)}>\n"
                     f"💬 Présente-toi dans <#{CHANNELS['general']}>\n"
                     "🎮 Amuse-toi et fais de belles rencontres !"
                 ),
@@ -85,7 +96,7 @@ def setup(bot):
     
     @bot.event
     async def on_message(message):
-        """Événement déclenché à chaque message"""
+        """Événement déclenché à chaque message."""
         global last_ping_time
         
         # Ignorer les messages du bot lui-même
@@ -123,32 +134,6 @@ def setup(bot):
                 except Exception as e:
                     logging.error(f"Erreur lors de l'envoi du ping pour les partenaires : {e}")
         
-        # Vérifier aussi le canal LanorTrad pour la rétrocompatibilité
-        elif message.channel.id == CHANNELS.get("lanortrad_channel"):
-            # Ne pas pinger pour les messages du bot lui-même ou de LanorTrad
-            if message.author.name != "LanorTrad":
-                try:
-                    # Vérifier le cooldown
-                    current_time = datetime.datetime.now()
-                    channel_id = message.channel.id
-                    
-                    if channel_id in last_ping_time:
-                        time_since_last_ping = (current_time - last_ping_time[channel_id]).total_seconds()
-                        
-                        if time_since_last_ping < PING_COOLDOWN_SECONDS:
-                            logging.info(f"Cooldown actif pour le canal {message.channel.name}. "
-                                       f"Temps restant: {PING_COOLDOWN_SECONDS - time_since_last_ping:.0f}s")
-                            await bot.process_commands(message)
-                            return
-                    
-                    role = message.guild.get_role(ROLES.get("lanortrad_ping"))
-                    if role:
-                        logging.info(f"Envoi d'un ping pour le rôle {role.name} dans le canal {message.channel.name}")
-                        await message.channel.send(f"{role.mention}")
-                        last_ping_time[channel_id] = current_time
-                except Exception as e:
-                    logging.error(f"Erreur lors de l'envoi du ping pour LanorTrad : {e}")
-        
         # Vérifier si c'est une des commandes autorisées pour LanorTrad
         allowed_commands = ["!help", "!info", "!userinfo", "!avatar", "!ping", "!poll"]
         is_allowed_command = any(message.content.startswith(cmd) for cmd in allowed_commands)
@@ -162,7 +147,7 @@ def setup(bot):
     
     @bot.event
     async def on_command_error(ctx, error):
-        """Gestion globale des erreurs de commandes"""
+        """Gestion globale des erreurs de commandes."""
         if isinstance(error, commands.CommandNotFound):
             await ctx.send(f"Commande inconnue. Utilisez `{bot.command_prefix}help` pour voir la liste des commandes.")
         elif isinstance(error, commands.MissingRequiredArgument):
@@ -173,6 +158,13 @@ def setup(bot):
             embed = discord.Embed(
                 title="❌ Erreur",
                 description="Vous n'avez pas les permissions nécessaires pour exécuter cette commande.",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
+        elif isinstance(error, commands.MissingAnyRole):
+            embed = discord.Embed(
+                title="❌ Erreur",
+                description="Vous n'avez pas le rôle requis pour exécuter cette commande.",
                 color=discord.Color.red()
             )
             await ctx.send(embed=embed)
