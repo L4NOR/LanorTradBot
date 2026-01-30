@@ -240,9 +240,9 @@ GIVEAWAY_ROLES = {
 # ═══════════════════════════════════════════════════════════════════════════════
 
 SHOP_ROLES = {
-    "vip_role": None,           # ID du rôle VIP
-    "expert_manga_role": None,  # ID du rôle Expert Manga
-    "theorist_elite_role": None,# ID du rôle Théoricien d'Élite
+    "lecteurs_reguliers": 1465027929170776200,   # Lecteurs Réguliers
+    "lecteurs_vip": 1465027932350054522,          # Lecteurs VIP
+    "lecteurs_supreme": 1465027934807916695,      # Lecteurs Suprême
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════

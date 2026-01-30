@@ -1,320 +1,415 @@
 {
-  "items": [
-    {
-      "id": "vip_role_30d",
-      "name": "Rôle VIP (30 jours)",
-      "description": "Accès au salon VIP et avantages exclusifs pendant 30 jours",
-      "emoji": "👑",
-      "category": "roles",
-      "price": 2000,
-      "stock": -1,
-      "type": "temporary_role",
-      "duration_days": 30,
-      "role_id": null,
-      "active": true
+  "role_lecteurs_reguliers": {
+    "name": "🌟 Lecteurs Réguliers",
+    "description": "Accédez à des canaux exclusifs et profitez d'avantages réservés aux lecteurs réguliers !\n\n**Avantages :**\n• 📖 Accès au salon exclusif #lecteurs-réguliers\n• 🎨 Rôle coloré visible dans la liste des membres\n• 💬 Priorité dans les discussions manga\n• 🎁 +10% de points sur toutes vos activités\n• ⏰ Durée : 30 jours renouvelables",
+    "emoji": "🌟",
+    "category": "roles",
+    "price": 1000,
+    "type": "role",
+    "role_id": 1465027929170776200,
+    "duration_days": 30,
+    "stock": -1,
+    "requirements": {
+      "badges": [],
+      "level": 0,
+      "total_spent": 0
     },
-    {
-      "id": "expert_manga_role",
-      "name": "Rôle Expert Manga",
-      "description": "Rôle permanent d'expert manga reconnu",
-      "emoji": "📚",
-      "category": "roles",
-      "price": 5000,
-      "stock": -1,
-      "type": "permanent_role",
-      "role_id": null,
-      "requirements": {"badge": "task_master"},
-      "active": true
+    "benefits": {
+      "point_multiplier": 1.1,
+      "exclusive_channels": true,
+      "priority_support": false
     },
-    {
-      "id": "theorist_elite_role",
-      "name": "Rôle Théoricien d'Élite",
-      "description": "Pour les grands analystes de manga",
-      "emoji": "🧠",
-      "category": "roles",
-      "price": 3500,
-      "stock": -1,
-      "type": "permanent_role",
-      "role_id": null,
-      "active": true
-    },
-    {
-      "id": "double_points_24h",
-      "name": "Double Points (24h)",
-      "description": "Tous tes points gagnés sont doublés pendant 24 heures",
-      "emoji": "⚡",
-      "category": "boosts",
-      "price": 500,
-      "stock": -1,
-      "type": "boost",
-      "boost_type": "points_multiplier",
-      "boost_value": 2,
-      "duration_hours": 24,
-      "active": true
-    },
-    {
-      "id": "triple_points_12h",
-      "name": "Triple Points (12h)",
-      "description": "Tous tes points gagnés sont triplés pendant 12 heures",
-      "emoji": "🔥",
-      "category": "boosts",
-      "price": 750,
-      "stock": -1,
-      "type": "boost",
-      "boost_type": "points_multiplier",
-      "boost_value": 3,
-      "duration_hours": 12,
-      "active": true
-    },
-    {
-      "id": "weekly_boost_pack",
-      "name": "Pack Boost Hebdo",
-      "description": "Double points pendant 7 jours complets",
-      "emoji": "📦",
-      "category": "boosts",
-      "price": 2500,
-      "stock": -1,
-      "type": "boost",
-      "boost_type": "points_multiplier",
-      "boost_value": 2,
-      "duration_hours": 168,
-      "active": true
-    },
-    {
-      "id": "custom_color",
-      "name": "Couleur Personnalisée",
-      "description": "Choisis ta propre couleur de pseudo avec !setcolor",
-      "emoji": "🎨",
-      "category": "cosmetics",
-      "price": 1500,
-      "stock": -1,
-      "type": "cosmetic",
-      "one_time": true,
-      "active": true
-    },
-    {
-      "id": "highlight_review",
-      "name": "Review Mise en Avant",
-      "description": "Ta prochaine review/théorie sera mise en avant dans le salon dédié",
-      "emoji": "⭐",
-      "category": "privileges",
-      "price": 300,
-      "stock": -1,
-      "type": "consumable",
-      "active": true
-    },
-    {
-      "id": "theory_boost",
-      "name": "Boost Théorie",
-      "description": "Ta prochaine théorie reçoit +50 points bonus si validée",
-      "emoji": "💡",
-      "category": "privileges",
-      "price": 200,
-      "stock": -1,
-      "type": "consumable",
-      "active": true
-    },
-    {
-      "id": "lottery_ticket_1x",
-      "name": "Ticket Loterie",
-      "description": "Un ticket pour la loterie hebdomadaire",
-      "emoji": "🎟️",
-      "category": "lottery",
-      "price": 100,
-      "stock": -1,
-      "type": "lottery_ticket",
-      "tickets": 1,
-      "active": true
-    },
-    {
-      "id": "lottery_ticket_5x",
-      "name": "Pack 5 Tickets",
-      "description": "5 tickets pour la loterie (économise 100 points!)",
-      "emoji": "🎫",
-      "category": "lottery",
-      "price": 400,
-      "stock": -1,
-      "type": "lottery_ticket",
-      "tickets": 5,
-      "active": true
-    },
-    {
-      "id": "lottery_ticket_10x",
-      "name": "Pack 10 Tickets",
-      "description": "10 tickets pour la loterie (économise 300 points!)",
-      "emoji": "🎰",
-      "category": "lottery",
-      "price": 700,
-      "stock": -1,
-      "type": "lottery_ticket",
-      "tickets": 10,
-      "active": true
-    },
-    {
-      "id": "mystery_box_common",
-      "name": "Mystery Box Commune",
-      "description": "Une boîte mystère avec des récompenses aléatoires",
-      "emoji": "📦",
-      "category": "mystery",
-      "price": 150,
-      "stock": -1,
-      "type": "mystery_box",
-      "box_tier": "common",
-      "active": true
-    },
-    {
-      "id": "mystery_box_rare",
-      "name": "Mystery Box Rare",
-      "description": "Une boîte mystère avec de meilleures récompenses",
-      "emoji": "🎁",
-      "category": "mystery",
-      "price": 400,
-      "stock": -1,
-      "type": "mystery_box",
-      "box_tier": "rare",
-      "active": true
-    },
-    {
-      "id": "mystery_box_epic",
-      "name": "Mystery Box Épique",
-      "description": "Une boîte mystère avec des récompenses exceptionnelles",
-      "emoji": "💎",
-      "category": "mystery",
-      "price": 1000,
-      "stock": -1,
-      "type": "mystery_box",
-      "box_tier": "epic",
-      "active": true
-    },
-    {
-      "id": "tougen_pack",
-      "name": "Pack Tougen Anki",
-      "description": "Badge exclusif + rôle fan de Tougen Anki",
-      "emoji": "👹",
-      "category": "manga_packs",
-      "price": 800,
-      "stock": 50,
-      "type": "bundle",
-      "includes": ["tougen_fan_badge", "tougen_role"],
-      "active": true
-    },
-    {
-      "id": "ao_pack",
-      "name": "Pack Ao no Exorcist",
-      "description": "Badge exclusif + rôle fan d'Ao no Exorcist",
-      "emoji": "🔵",
-      "category": "manga_packs",
-      "price": 800,
-      "stock": 50,
-      "type": "bundle",
-      "includes": ["ao_fan_badge", "ao_role"],
-      "active": true
-    },
-    {
-      "id": "nickname_change",
-      "name": "Changement de Pseudo",
-      "description": "Change ton pseudo sur le serveur (dans les limites du règlement)",
-      "emoji": "✏️",
-      "category": "utility",
-      "price": 250,
-      "stock": -1,
-      "type": "consumable",
-      "active": true
-    },
-    {
-      "id": "shoutout",
-      "name": "Shoutout",
-      "description": "Un message personnalisé publié par le bot dans #général",
-      "emoji": "📢",
-      "category": "social",
-      "price": 500,
-      "stock": -1,
-      "type": "consumable",
-      "max_purchases": 3,
-      "active": true
-    },
-    {
-      "id": "exclusive_preview",
-      "name": "Accès Preview",
-      "description": "Accès aux chapitres en avant-première pendant 7 jours",
-      "emoji": "🔮",
-      "category": "privileges",
-      "price": 1000,
-      "stock": 20,
-      "type": "temporary_role",
-      "duration_days": 7,
-      "role_id": null,
-      "active": true
-    },
-    {
-      "id": "limited_founder_badge",
-      "name": "Badge Fondateur",
-      "description": "Badge exclusif réservé aux membres de la première heure",
-      "emoji": "🏛️",
-      "category": "limited",
-      "price": 10000,
-      "stock": 10,
-      "type": "badge",
-      "badge_id": "founder",
-      "active": true
-    }
-  ],
-  "categories": {
-    "roles": {
-      "name": "Rôles",
-      "emoji": "👑",
-      "description": "Rôles exclusifs temporaires ou permanents"
-    },
-    "boosts": {
-      "name": "Boosts",
-      "emoji": "⚡",
-      "description": "Multiplicateurs de points"
-    },
-    "cosmetics": {
-      "name": "Cosmétiques",
-      "emoji": "🎨",
-      "description": "Personnalisation visuelle"
-    },
-    "privileges": {
-      "name": "Privilèges",
-      "emoji": "⭐",
-      "description": "Avantages spéciaux"
-    },
-    "lottery": {
-      "name": "Loterie",
-      "emoji": "🎰",
-      "description": "Tickets pour la loterie hebdomadaire"
-    },
-    "mystery": {
-      "name": "Mystery Boxes",
-      "emoji": "🎁",
-      "description": "Boîtes avec récompenses aléatoires"
-    },
-    "manga_packs": {
-      "name": "Packs Manga",
-      "emoji": "📚",
-      "description": "Bundles thématiques par série"
-    },
-    "social": {
-      "name": "Social",
-      "emoji": "💬",
-      "description": "Items sociaux et interactions"
-    },
-    "utility": {
-      "name": "Utilitaires",
-      "emoji": "🔧",
-      "description": "Outils pratiques"
-    },
-    "limited": {
-      "name": "Édition Limitée",
-      "emoji": "💎",
-      "description": "Items rares en quantité limitée"
-    }
+    "active": true
   },
-  "settings": {
-    "lottery_base_jackpot": 1000,
-    "lottery_ticket_contribution": 10,
-    "currency_name": "points",
-    "currency_emoji": "💰"
+  "role_lecteurs_vip": {
+    "name": "👑 Lecteurs VIP",
+    "description": "Devenez un membre VIP et profitez d'avantages premium exclusifs !\n\n**Avantages :**\n• ✨ Tous les avantages Lecteurs Réguliers\n• 🔐 Accès au salon ultra-exclusif #vip-lounge\n• 🎯 Accès anticipé aux nouveaux chapitres (early access)\n• 💎 Rôle VIP avec couleur distinctive\n• 🎁 +25% de points sur toutes vos activités\n• 🎟️ 2 tickets de loterie gratuits par mois\n• 🗳️ Droit de vote sur les prochains projets\n• ⏰ Durée : 30 jours renouvelables",
+    "emoji": "👑",
+    "category": "roles",
+    "price": 2500,
+    "type": "role",
+    "role_id": 1465027932350054522,
+    "duration_days": 30,
+    "stock": -1,
+    "requirements": {
+      "badges": [],
+      "level": 5,
+      "total_spent": 0
+    },
+    "benefits": {
+      "point_multiplier": 1.25,
+      "exclusive_channels": true,
+      "early_access": true,
+      "monthly_lottery_tickets": 2,
+      "voting_rights": true,
+      "priority_support": true
+    },
+    "active": true
+  },
+  "role_lecteurs_supreme": {
+    "name": "⭐ Lecteurs Suprême",
+    "description": "Le rang ultime ! Rejoignez l'élite de LanorTrad avec des privilèges exceptionnels !\n\n**Avantages :**\n• 🌟 Tous les avantages VIP\n• 🏆 Accès au salon des légendes #suprême-lounge\n• 📚 Accès ULTRA-anticipé aux chapitres (48h d'avance)\n• 💫 Rôle Suprême avec animation et couleur unique\n• 🎁 +50% de points sur toutes vos activités\n• 🎟️ 5 tickets de loterie gratuits par mois\n• 🎨 Demandes personnalisées d'œuvres à traduire\n• 🎯 Badge exclusif visible sur votre profil\n• 💬 Mention spéciale dans les crédits des sorties\n• 🎪 Invitations aux événements privés\n• ⏰ Durée : 30 jours renouvelables",
+    "emoji": "⭐",
+    "category": "roles",
+    "price": 5000,
+    "type": "role",
+    "role_id": 1465027934807916695,
+    "duration_days": 30,
+    "stock": -1,
+    "requirements": {
+      "badges": [],
+      "level": 10,
+      "total_spent": 2500
+    },
+    "benefits": {
+      "point_multiplier": 1.5,
+      "exclusive_channels": true,
+      "early_access": true,
+      "ultra_early_access": true,
+      "monthly_lottery_tickets": 5,
+      "custom_requests": true,
+      "exclusive_badge": true,
+      "credits_mention": true,
+      "private_events": true,
+      "voting_rights": true,
+      "priority_support": true
+    },
+    "active": true
+  },
+  "double_points_24h": {
+    "name": "🔥 Double Points (24h)",
+    "description": "Tous tes points gagnés sont doublés pendant 24 heures ! Parfait pour maximiser tes gains lors d'une session active.",
+    "emoji": "⚡",
+    "category": "boosts",
+    "price": 500,
+    "stock": -1,
+    "type": "consumable",
+    "boost_type": "points_multiplier",
+    "boost_value": 2,
+    "duration_hours": 24,
+    "requirements": {
+      "badges": [],
+      "level": 0
+    },
+    "active": true
+  },
+  "triple_points_12h": {
+    "name": "💥 Triple Points (12h)",
+    "description": "Tous tes points gagnés sont triplés pendant 12 heures ! Le boost ultime pour les power users !",
+    "emoji": "🔥",
+    "category": "boosts",
+    "price": 750,
+    "stock": -1,
+    "type": "consumable",
+    "boost_type": "points_multiplier",
+    "boost_value": 3,
+    "duration_hours": 12,
+    "requirements": {
+      "badges": [],
+      "level": 3
+    },
+    "active": true
+  },
+  "weekly_boost_pack": {
+    "name": "📦 Pack Boost Hebdo",
+    "description": "Double points pendant 7 jours complets ! L'investissement idéal pour les membres très actifs.",
+    "emoji": "📦",
+    "category": "boosts",
+    "price": 2500,
+    "stock": -1,
+    "type": "consumable",
+    "boost_type": "points_multiplier",
+    "boost_value": 2,
+    "duration_hours": 168,
+    "requirements": {
+      "badges": [],
+      "level": 5
+    },
+    "active": true
+  },
+  "custom_color": {
+    "name": "🎨 Couleur Personnalisée",
+    "description": "Crée ton propre rôle avec la couleur hex de ton choix ! Un rôle unique juste pour toi. (Durée : 30 jours)",
+    "emoji": "🎨",
+    "category": "cosmetics",
+    "price": 1500,
+    "stock": -1,
+    "type": "role",
+    "duration_days": 30,
+    "requirements": {
+      "badges": [],
+      "level": 8,
+      "total_spent": 1000
+    },
+    "active": true
+  },
+  "highlight_review": {
+    "name": "⭐ Review Mise en Avant",
+    "description": "Ta prochaine review sera mise en avant et épinglée pendant 48h ! Gagne 50% de points en plus pour cette review.",
+    "emoji": "⭐",
+    "category": "privileges",
+    "price": 300,
+    "stock": -1,
+    "type": "consumable",
+    "requirements": {
+      "badges": [],
+      "level": 0
+    },
+    "active": true
+  },
+  "theory_boost": {
+    "name": "🧠 Boost Théorie",
+    "description": "Ta prochaine théorie rapporte +100% de points bonus ! De plus, elle sera automatiquement épinglée.",
+    "emoji": "💡",
+    "category": "privileges",
+    "price": 400,
+    "stock": -1,
+    "type": "consumable",
+    "requirements": {
+      "badges": [],
+      "level": 2
+    },
+    "active": true
+  },
+  "lottery_ticket": {
+    "name": "🎟️ Ticket Loterie",
+    "description": "Un ticket pour participer au tirage hebdomadaire ! Le gagnant remporte le jackpot qui augmente chaque semaine.",
+    "emoji": "🎟️",
+    "category": "lottery",
+    "price": 100,
+    "stock": -1,
+    "type": "lottery",
+    "tickets": 1,
+    "requirements": {
+      "badges": [],
+      "level": 0
+    },
+    "active": true
+  },
+  "lottery_ticket_5x": {
+    "name": "🎫 Pack 5 Tickets",
+    "description": "5 tickets pour la loterie hebdomadaire ! Économise 100 points par rapport à l'achat individuel.",
+    "emoji": "🎫",
+    "category": "lottery",
+    "price": 400,
+    "stock": -1,
+    "type": "lottery",
+    "tickets": 5,
+    "requirements": {
+      "badges": [],
+      "level": 0
+    },
+    "active": true
+  },
+  "lottery_ticket_10x": {
+    "name": "🎰 Pack 10 Tickets",
+    "description": "10 tickets pour la loterie hebdomadaire ! Économise 300 points et maximise tes chances de gagner !",
+    "emoji": "🎰",
+    "category": "lottery",
+    "price": 700,
+    "stock": -1,
+    "type": "lottery",
+    "tickets": 10,
+    "requirements": {
+      "badges": [],
+      "level": 0
+    },
+    "active": true
+  },
+  "mystery_box_common": {
+    "name": "📦 Mystery Box Commune",
+    "description": "Une boîte mystère avec des récompenses aléatoires de rareté commune. Tu pourrais gagner des points bonus, des tickets de loterie ou d'autres surprises !",
+    "emoji": "📦",
+    "category": "mystery",
+    "price": 200,
+    "stock": -1,
+    "type": "lootbox",
+    "rarity": "common",
+    "requirements": {
+      "badges": [],
+      "level": 0
+    },
+    "active": true
+  },
+  "mystery_box_rare": {
+    "name": "🎁 Mystery Box Rare",
+    "description": "Une boîte mystère avec de meilleures récompenses ! Contient des items rares comme des boosts de points ou des tickets de loterie multiples.",
+    "emoji": "🎁",
+    "category": "mystery",
+    "price": 500,
+    "stock": -1,
+    "type": "lootbox",
+    "rarity": "uncommon",
+    "requirements": {
+      "badges": [],
+      "level": 3
+    },
+    "active": true
+  },
+  "mystery_box_epic": {
+    "name": "💎 Mystery Box Épique",
+    "description": "La meilleure boîte mystère ! Garantit des récompenses exceptionnelles comme des boosts puissants, de gros bonus de points ou plusieurs tickets de loterie !",
+    "emoji": "💎",
+    "category": "mystery",
+    "price": 1200,
+    "stock": -1,
+    "type": "lootbox",
+    "rarity": "rare",
+    "requirements": {
+      "badges": [],
+      "level": 5
+    },
+    "active": true
+  },
+  "exclusive_preview": {
+    "name": "🔮 Accès Preview (7 jours)",
+    "description": "Accès aux chapitres en avant-première pendant 7 jours ! Lis les nouveaux chapitres avant tout le monde.",
+    "emoji": "🔮",
+    "category": "privileges",
+    "price": 1000,
+    "stock": -1,
+    "type": "role",
+    "duration_days": 7,
+    "role_id": null,
+    "requirements": {
+      "badges": [],
+      "level": 3
+    },
+    "active": true
+  },
+  "tougen_pack": {
+    "name": "👹 Pack Tougen Anki",
+    "description": "Pack exclusif pour les fans de Tougen Anki ! Comprend un badge spécial et des avantages thématiques.",
+    "emoji": "👹",
+    "category": "manga_packs",
+    "price": 800,
+    "stock": -1,
+    "type": "bundle",
+    "includes": ["tougen_fan_badge"],
+    "requirements": {
+      "badges": [],
+      "level": 2
+    },
+    "active": true
+  },
+  "ao_pack": {
+    "name": "🔥 Pack Ao no Exorcist",
+    "description": "Pack exclusif pour les fans d'Ao no Exorcist ! Comprend un badge spécial et des avantages thématiques.",
+    "emoji": "🔵",
+    "category": "manga_packs",
+    "price": 800,
+    "stock": -1,
+    "type": "bundle",
+    "includes": ["ao_fan_badge"],
+    "requirements": {
+      "badges": [],
+      "level": 2
+    },
+    "active": true
+  },
+  "satsudou_pack": {
+    "name": "⚔️ Pack Satsudou",
+    "description": "Pack exclusif pour les fans de Satsudou ! Comprend un badge spécial et des avantages thématiques.",
+    "emoji": "⚔️",
+    "category": "manga_packs",
+    "price": 800,
+    "stock": -1,
+    "type": "bundle",
+    "includes": ["satsudou_fan_badge"],
+    "requirements": {
+      "badges": [],
+      "level": 2
+    },
+    "active": true
+  },
+  "tokyo_pack": {
+    "name": "🏙️ Pack Tokyo Underworld",
+    "description": "Pack exclusif pour les fans de Tokyo Underworld ! Comprend un badge spécial et des avantages thématiques.",
+    "emoji": "🏙️",
+    "category": "manga_packs",
+    "price": 800,
+    "stock": -1,
+    "type": "bundle",
+    "includes": ["tokyo_fan_badge"],
+    "requirements": {
+      "badges": [],
+      "level": 2
+    },
+    "active": true
+  },
+  "catenaccio_pack": {
+    "name": "⚽ Pack Catenaccio",
+    "description": "Pack exclusif pour les fans de Catenaccio ! Comprend un badge spécial et des avantages thématiques.",
+    "emoji": "⚽",
+    "category": "manga_packs",
+    "price": 800,
+    "stock": -1,
+    "type": "bundle",
+    "includes": ["catenaccio_fan_badge"],
+    "requirements": {
+      "badges": [],
+      "level": 2
+    },
+    "active": true
+  },
+  "nickname_change": {
+    "name": "✏️ Changement de Pseudo",
+    "description": "Change ton pseudo sur le serveur (dans les limites du règlement). Un admin effectuera le changement après validation.",
+    "emoji": "✏️",
+    "category": "utility",
+    "price": 250,
+    "stock": -1,
+    "type": "consumable",
+    "requirements": {
+      "badges": [],
+      "level": 0
+    },
+    "active": true
+  },
+  "shoutout": {
+    "name": "📢 Shoutout",
+    "description": "Un message personnalisé publié par le bot dans le salon général ! Partage une annonce, un message ou célèbre quelque chose. (Max 3 achats)",
+    "emoji": "📢",
+    "category": "social",
+    "price": 500,
+    "stock": -1,
+    "type": "consumable",
+    "max_purchases": 3,
+    "requirements": {
+      "badges": [],
+      "level": 3
+    },
+    "active": true
+  },
+  "server_banner": {
+    "name": "🖼️ Bannière Serveur Temporaire",
+    "description": "Ta création sera la bannière officielle du serveur pendant 7 jours ! (Sous réserve d'approbation par l'équipe)",
+    "emoji": "🖼️",
+    "category": "cosmetics",
+    "price": 10000,
+    "stock": -1,
+    "type": "one_time",
+    "requirements": {
+      "badges": ["artiste"],
+      "level": 15,
+      "total_spent": 5000
+    },
+    "active": true
+  },
+  "limited_founder_badge": {
+    "name": "🛡️ Badge Fondateur",
+    "description": "Badge exclusif réservé aux membres de la première heure ! Édition ultra-limitée à 10 exemplaires.",
+    "emoji": "🛡️",
+    "category": "limited",
+    "price": 10000,
+    "stock": 10,
+    "type": "badge",
+    "badge_id": "founder",
+    "requirements": {
+      "badges": [],
+      "level": 10,
+      "total_spent": 5000
+    },
+    "active": true
   }
 }
