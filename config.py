@@ -281,12 +281,11 @@ POINTS = {
 # Salons autorisés pour gagner des points par message
 POINTS_ALLOWED_CHANNELS = [
     CHANNELS["general"],
-    CHANNELS["tougen_anki"],
-    CHANNELS["ao_no_exorcist"],
-    CHANNELS["satsudou"],
-    CHANNELS["tokyo_underworld"],
-    CHANNELS["catenaccio"],
-    CHANNELS["off_topic"],
+    MANGA_CHANNELS["Tougen Anki"],
+    MANGA_CHANNELS["Ao No Exorcist"],
+    MANGA_CHANNELS["Satsudou"],
+    MANGA_CHANNELS["Tokyo Underworld"],
+    MANGA_CHANNELS["Catenaccio"],
 ]
 
 # ═══════════════════════════════════════════════════════════════════════════════
