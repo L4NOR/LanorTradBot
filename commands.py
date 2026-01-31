@@ -2557,13 +2557,13 @@ def setup(bot):
             await processing_msg.edit(embed=embed)
             return
         
-        # Trier par nom pour faciliter la lecture
-        members_list.sort(key=lambda m: m.name.lower())
+        # Trier par nom d'affichage pour faciliter la lecture
+        members_list.sort(key=lambda m: m.display_name.lower())
         
         # Créer la liste des IDs
         ids_list = [str(m.id) for m in members_list]
         
-        # Créer l'embed de résultat
+        # Créer l'embed de résultat avec un style amélioré
         result_embed = discord.Embed(
             color=THEME_COLORS["success"],
             timestamp=datetime.now()
@@ -2577,6 +2577,10 @@ def setup(bot):
             "```"
         )
         
+        # Ajouter la photo de profil du premier membre comme thumbnail
+        if members_list:
+            result_embed.set_thumbnail(url=members_list[0].display_avatar.url)
+        
         result_embed.add_field(
             name=f"📺 {target_type}",
             value=f"**{target_name}** (`{target_id}`)",
@@ -2589,12 +2593,27 @@ def setup(bot):
             inline=False
         )
         
-        # Afficher les premiers membres avec leurs IDs (max 10)
+        # Afficher les premiers membres avec leurs pseudos Discord et IDs (max 15)
         if members_list:
-            preview_text = "\n".join([f"• {m.name} → `{m.id}`" for m in members_list[:10]])
-            if len(members_list) > 10:
-                preview_text += f"\n*... et {len(members_list) - 10} autre(s)*"
-            result_embed.add_field(name="👥 Aperçu", value=preview_text, inline=False)
+            preview_lines = []
+            for member in members_list[:15]:
+                # Utiliser display_name (le pseudo Discord affiché)
+                display = member.display_name
+                # Si le pseudo est différent du nom d'utilisateur, montrer les deux
+                if display != member.name:
+                    preview_lines.append(f"• **{display}** (@{member.name}) → `{member.id}`")
+                else:
+                    preview_lines.append(f"• **{display}** → `{member.id}`")
+            
+            preview_text = "\n".join(preview_lines)
+            if len(members_list) > 15:
+                preview_text += f"\n\n*... et {len(members_list) - 15} autre(s)*"
+            
+            result_embed.add_field(
+                name="👥 Aperçu des membres", 
+                value=preview_text, 
+                inline=False
+            )
         
         # Format copier-coller pour les commandes
         ids_formatted = " ".join(ids_list)
@@ -2608,9 +2627,13 @@ def setup(bot):
             file_content += f"# Total: {len(members_list)} membre(s)\n"
             file_content += f"# Généré le: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
             
-            file_content += "# Format liste (un par ligne)\n"
+            file_content += "# Format liste détaillée (un par ligne avec pseudos)\n"
             for member in members_list:
-                file_content += f"{member.id}  # {member.name}\n"
+                display = member.display_name
+                if display != member.name:
+                    file_content += f"{member.id}  # {display} (@{member.name})\n"
+                else:
+                    file_content += f"{member.id}  # {display}\n"
             
             file_content += f"\n# Format commande (tous sur une ligne)\n"
             file_content += ids_formatted + "\n"
@@ -2630,7 +2653,21 @@ def setup(bot):
             result_embed.add_field(
                 name="📄 Fichier généré",
                 value=f"La liste complète est disponible dans le fichier ci-dessous.\n"
-                      f"Le fichier contient les IDs et des exemples de commandes prêtes à l'emploi.",
+                      f"✅ Contient les pseudos Discord complets\n"
+                      f"✅ Inclut les exemples de commandes",
+                inline=False
+            )
+            
+            # Ajouter une petite galerie de photos de profil (max 5 membres)
+            gallery_text = "**Aperçu des membres :**\n"
+            for member in members_list[:5]:
+                gallery_text += f"[{member.display_name}]({member.display_avatar.url}) "
+            if len(members_list) > 5:
+                gallery_text += f"\n*... et {len(members_list) - 5} autre(s)*"
+            
+            result_embed.add_field(
+                name="🖼️ Photos de profil",
+                value=gallery_text,
                 inline=False
             )
             
@@ -2650,7 +2687,7 @@ def setup(bot):
                 inline=False
             )
             
-            # Exemples de commandes
+            # Exemples de commandes avec aperçu visuel
             examples_text = (
                 f"**Exemples d'utilisation :**\n"
                 f"```\n"
@@ -2660,8 +2697,20 @@ def setup(bot):
             )
             result_embed.add_field(name="💡 Utilisation", value=examples_text, inline=False)
             
+            # Ajouter une petite galerie de photos de profil
+            if len(members_list) <= 10:
+                gallery_text = "**Aperçu des membres :**\n"
+                for member in members_list:
+                    gallery_text += f"[{member.display_name}]({member.display_avatar.url}) "
+                
+                result_embed.add_field(
+                    name="🖼️ Photos de profil",
+                    value=gallery_text,
+                    inline=False
+                )
+            
             result_embed.set_footer(
-                text=f"Exécuté par {ctx.author.name} • Copiez les IDs ci-dessus",
+                text=f"Exécuté par {ctx.author.name} • {len(members_list)} membre(s) trouvé(s)",
                 icon_url=ctx.author.avatar.url if ctx.author.avatar else None
             )
             
