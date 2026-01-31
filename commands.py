@@ -244,6 +244,7 @@ HELP_CATEGORIES = {
             {"name": "multi_bulk_remove_role", "usage": "!multi_bulk_remove_role @role1 @role2 - @user1 ID2...", "desc": "Retirer plusieurs rôles à plusieurs personnes"},
             {"name": "bulk_role_channel", "usage": "!bulk_role_channel @role ID_CANAL", "desc": "Assigner un rôle à tous les membres d'un canal"},
             {"name": "multi_bulk_role_channel", "usage": "!multi_bulk_role_channel @role1 @role2 - ID_CANAL", "desc": "Assigner plusieurs rôles aux membres d'un canal"},
+            {"name": "list_member_ids", "usage": "!list_member_ids ID_CIBLE", "desc": "Lister tous les IDs des membres d'un canal/fil/catégorie"},
         ]
     },
     "admin_data": {
@@ -2420,6 +2421,521 @@ def setup(bot):
         
         # Log l'action
         logging.info(f"Bulk role channel: {role.name} to {len(success_list)} members of #{channel.name} by {ctx.author.name}")
+
+    @bot.command(name="list_member_ids", aliases=["get_ids", "list_ids"])
+    @commands.has_any_role(*ADMIN_ROLES)
+    async def list_member_ids(ctx, target_id: str, output_format: str = "compact"):
+        """
+        Liste tous les IDs des membres d'un canal, fil, ou catégorie.
+        
+        Usage: !list_member_ids ID_CIBLE [format]
+        
+        Formats disponibles:
+        - compact (défaut) : IDs séparés par des espaces
+        - list : Liste formatée avec noms
+        - mention : Liste avec mentions
+        
+        Exemples:
+        - !list_member_ids 1234567890123456789
+        - !list_member_ids 1234567890123456789 list
+        - !list_member_ids 1234567890123456789 mention
+        """
+        # Convertir l'ID en entier
+        try:
+            target_id_int = int(target_id)
+        except ValueError:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = (
+                "```ansi\n"
+                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
+                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ ID invalide\u001b[0m                 \u001b[1;31m║\u001b[0m\n"
+                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
+                "```\n"
+                f"**L'ID `{target_id}` n'est pas valide !**\n\n"
+                "L'ID doit être une série de chiffres.\n"
+                "**Exemple:** `!list_member_ids 1234567890123456789`"
+            )
+            embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+            await ctx.send(embed=embed)
+            return
+        
+        # Valider le format
+        valid_formats = ["compact", "list", "mention"]
+        output_format = output_format.lower()
+        if output_format not in valid_formats:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = (
+                f"❌ **Format invalide `{output_format}` !**\n\n"
+                f"**Formats valides:** {', '.join([f'`{f}`' for f in valid_formats])}"
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        # Message de traitement
+        processing_embed = discord.Embed(
+            color=THEME_COLORS["info"],
+            timestamp=datetime.now()
+        )
+        processing_embed.description = (
+            "```ansi\n"
+            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;34m║\u001b[0m       \u001b[1;37m⏳ Analyse en cours\u001b[0m            \u001b[1;34m║\u001b[0m\n"
+            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```\n"
+            f"Recherche de l'ID `{target_id}`..."
+        )
+        processing_msg = await ctx.send(embed=processing_embed)
+        
+        # Essayer de trouver la cible (canal, fil, catégorie)
+        target = None
+        target_type = None
+        members_list = []
+        
+        # Essayer comme canal
+        target = ctx.guild.get_channel(target_id_int)
+        if target:
+            if isinstance(target, discord.CategoryChannel):
+                target_type = "Catégorie"
+                # Pour une catégorie, récupérer tous les membres qui ont accès à au moins un canal de la catégorie
+                members_set = set()
+                for channel in target.channels:
+                    for member in ctx.guild.members:
+                        if not member.bot and channel.permissions_for(member).view_channel:
+                            members_set.add(member)
+                members_list = list(members_set)
+            else:
+                target_type = "Canal"
+                # Pour un canal normal
+                for member in ctx.guild.members:
+                    if not member.bot and target.permissions_for(member).view_channel:
+                        members_list.append(member)
+        
+        # Si pas trouvé, essayer comme fil/thread
+        if not target:
+            target = ctx.guild.get_thread(target_id_int)
+            if target:
+                target_type = "Fil"
+                # Pour un thread, récupérer via le canal parent
+                parent_channel = target.parent
+                if parent_channel:
+                    for member in ctx.guild.members:
+                        if not member.bot and parent_channel.permissions_for(member).view_channel:
+                            members_list.append(member)
+                else:
+                    members_list = [m for m in ctx.guild.members if not m.bot]
+        
+        # Si toujours pas trouvé
+        if not target:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = (
+                "```ansi\n"
+                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
+                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Cible introuvable\u001b[0m           \u001b[1;31m║\u001b[0m\n"
+                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
+                "```\n"
+                f"**Aucun canal, fil ou catégorie avec l'ID `{target_id}` !**\n\n"
+                "Vérifiez que :\n"
+                "• L'ID est correct\n"
+                "• Le canal/fil/catégorie existe sur ce serveur\n"
+                "• Le bot a accès"
+            )
+            await processing_msg.edit(embed=embed)
+            return
+        
+        # Si aucun membre trouvé
+        if not members_list:
+            embed = discord.Embed(
+                color=THEME_COLORS["warning"],
+                timestamp=datetime.now()
+            )
+            embed.description = (
+                "```ansi\n"
+                "\u001b[1;33m╔═══════════════════════════════════════╗\u001b[0m\n"
+                "\u001b[1;33m║\u001b[0m       \u001b[1;37m⚠️ Aucun membre trouvé\u001b[0m         \u001b[1;33m║\u001b[0m\n"
+                "\u001b[1;33m╚═══════════════════════════════════════╝\u001b[0m\n"
+                "```\n"
+                f"**{target_type}: {target.name}**\n"
+                f"Aucun membre (non-bot) n'a accès à cette cible."
+            )
+            await processing_msg.edit(embed=embed)
+            return
+        
+        # Créer l'embed de résultat
+        result_embed = discord.Embed(
+            color=THEME_COLORS["success"],
+            timestamp=datetime.now()
+        )
+        
+        result_embed.description = (
+            "```ansi\n"
+            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Liste des Membres\u001b[0m           \u001b[1;32m║\u001b[0m\n"
+            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```"
+        )
+        
+        result_embed.add_field(
+            name=f"📺 {target_type}",
+            value=f"**{target.name}** (`{target_id}`)",
+            inline=False
+        )
+        
+        result_embed.add_field(
+            name="📊 Total",
+            value=f"`{len(members_list)}` membre(s)",
+            inline=False
+        )
+        
+        # Formater selon le format demandé
+        if output_format == "compact":
+            # Format compact : IDs séparés par des espaces
+            ids_text = " ".join([str(m.id) for m in members_list])
+            
+            # Découper en plusieurs messages si trop long
+            if len(ids_text) > 1024:
+                chunks = []
+                current_chunk = []
+                current_length = 0
+                
+                for member in members_list:
+                    id_str = str(member.id) + " "
+                    if current_length + len(id_str) > 1000:
+                        chunks.append(" ".join(current_chunk))
+                        current_chunk = [str(member.id)]
+                        current_length = len(id_str)
+                    else:
+                        current_chunk.append(str(member.id))
+                        current_length += len(id_str)
+                
+                if current_chunk:
+                    chunks.append(" ".join(current_chunk))
+                
+                for i, chunk in enumerate(chunks):
+                    result_embed.add_field(
+                        name=f"📋 IDs (partie {i+1}/{len(chunks)})",
+                        value=f"```\n{chunk}\n```",
+                        inline=False
+                    )
+            else:
+                result_embed.add_field(
+                    name="📋 IDs (format compact)",
+                    value=f"```\n{ids_text}\n```",
+                    inline=False
+                )
+        
+        elif output_format == "list":
+            # Format liste : ID - Nom
+            lines = [f"`{m.id}` - {m.name}" for m in members_list]
+            
+            # Découper si trop de membres
+            if len(members_list) > 25:
+                displayed_lines = lines[:25]
+                list_text = "\n".join(displayed_lines)
+                list_text += f"\n*... et {len(members_list) - 25} autre(s)*"
+            else:
+                list_text = "\n".join(lines)
+            
+            result_embed.add_field(
+                name="📋 Liste des membres",
+                value=list_text,
+                inline=False
+            )
+        
+        elif output_format == "mention":
+            # Format mention : @mention (ID)
+            lines = [f"{m.mention} (`{m.id}`)" for m in members_list]
+            
+            # Découper si trop de membres
+            if len(members_list) > 25:
+                displayed_lines = lines[:25]
+                list_text = "\n".join(displayed_lines)
+                list_text += f"\n*... et {len(members_list) - 25} autre(s)*"
+            else:
+                list_text = "\n".join(lines)
+            
+            result_embed.add_field(
+                name="📋 Liste avec mentions",
+                value=list_text,
+                inline=False
+            )
+        
+        result_embed.add_field(
+            name="💡 Astuce",
+            value=(
+                "**Copier les IDs pour les utiliser :**\n"
+                "• Format `compact` : Copier-coller directement dans les commandes\n"
+                "• Format `list` : Voir IDs et noms ensemble\n"
+                "• Format `mention` : Voir qui est concerné"
+            ),
+            inline=False
+        )
+        
+        result_embed.set_footer(
+            text=f"Demandé par {ctx.author.name} • Format: {output_format}",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        )
+        
+        await processing_msg.edit(embed=result_embed)
+        
+        # Log l'action
+        logging.info(f"List member IDs: {target_type} '{target.name}' - {len(members_list)} members by {ctx.author.name}")
+
+    @bot.command(name="list_member_ids", aliases=["get_ids", "member_ids"])
+    @commands.has_any_role(*ADMIN_ROLES)
+    async def list_member_ids(ctx, target_id: str):
+        """
+        Liste tous les IDs des membres d'un canal, fil ou catégorie.
+        
+        Usage: !list_member_ids ID_CIBLE
+        
+        Exemples:
+        - !list_member_ids 1234567890123456789  (canal)
+        - !list_member_ids 9876543210987654321  (fil/thread)
+        - !list_member_ids 5555555555555555555  (catégorie)
+        """
+        # Convertir l'ID en entier
+        try:
+            target_id_int = int(target_id)
+        except ValueError:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = (
+                "```ansi\n"
+                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
+                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ ID invalide\u001b[0m                 \u001b[1;31m║\u001b[0m\n"
+                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
+                "```\n"
+                f"**L'ID `{target_id}` n'est pas valide !**\n\n"
+                "L'ID doit être une série de chiffres.\n"
+                "**Exemple:** `!list_member_ids 1234567890123456789`"
+            )
+            embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+            await ctx.send(embed=embed)
+            return
+        
+        # Message de traitement
+        processing_embed = discord.Embed(
+            color=THEME_COLORS["info"],
+            timestamp=datetime.now()
+        )
+        processing_embed.description = (
+            "```ansi\n"
+            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;34m║\u001b[0m       \u001b[1;37m⏳ Analyse en cours\u001b[0m            \u001b[1;34m║\u001b[0m\n"
+            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```\n"
+            f"Recherche des membres pour l'ID `{target_id}`..."
+        )
+        processing_msg = await ctx.send(embed=processing_embed)
+        
+        # Essayer de récupérer comme canal, thread ou catégorie
+        target = None
+        target_type = None
+        target_name = None
+        
+        # Essayer canal
+        target = ctx.guild.get_channel(target_id_int)
+        if target:
+            if isinstance(target, discord.CategoryChannel):
+                target_type = "Catégorie"
+            else:
+                target_type = "Canal"
+            target_name = target.name
+        
+        # Essayer thread si pas trouvé
+        if not target:
+            target = ctx.guild.get_thread(target_id_int)
+            if target:
+                target_type = "Fil"
+                target_name = target.name
+        
+        if not target:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = (
+                "```ansi\n"
+                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
+                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Cible introuvable\u001b[0m           \u001b[1;31m║\u001b[0m\n"
+                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
+                "```\n"
+                f"**Le canal, fil ou catégorie avec l'ID `{target_id}` est introuvable !**\n\n"
+                "Vérifiez que :\n"
+                "• L'ID est correct\n"
+                "• L'élément existe sur ce serveur\n"
+                "• Le bot a accès à l'élément"
+            )
+            await processing_msg.edit(embed=embed)
+            return
+        
+        # Récupérer les membres selon le type
+        members_list = []
+        
+        if isinstance(target, discord.CategoryChannel):
+            # Pour une catégorie, récupérer tous les membres qui peuvent voir au moins un canal de la catégorie
+            member_set = set()
+            for channel in target.channels:
+                for member in ctx.guild.members:
+                    if not member.bot and channel.permissions_for(member).view_channel:
+                        member_set.add(member)
+            members_list = list(member_set)
+        
+        elif isinstance(target, discord.Thread):
+            # Pour un thread, récupérer les membres qui peuvent voir le canal parent
+            parent_channel = target.parent
+            if parent_channel:
+                for member in ctx.guild.members:
+                    if not member.bot and parent_channel.permissions_for(member).view_channel:
+                        members_list.append(member)
+            else:
+                members_list = [m for m in ctx.guild.members if not m.bot]
+        
+        else:
+            # Pour un canal normal
+            for member in ctx.guild.members:
+                if not member.bot and target.permissions_for(member).view_channel:
+                    members_list.append(member)
+        
+        if not members_list:
+            embed = discord.Embed(
+                color=THEME_COLORS["warning"],
+                timestamp=datetime.now()
+            )
+            embed.description = (
+                "```ansi\n"
+                "\u001b[1;33m╔═══════════════════════════════════════╗\u001b[0m\n"
+                "\u001b[1;33m║\u001b[0m       \u001b[1;37m⚠️ Aucun membre trouvé\u001b[0m         \u001b[1;33m║\u001b[0m\n"
+                "\u001b[1;33m╚═══════════════════════════════════════╝\u001b[0m\n"
+                "```\n"
+                f"**Aucun membre (hors bots) trouvé pour {target_type.lower()} `{target_name}` !**"
+            )
+            await processing_msg.edit(embed=embed)
+            return
+        
+        # Trier par nom pour faciliter la lecture
+        members_list.sort(key=lambda m: m.name.lower())
+        
+        # Créer la liste des IDs
+        ids_list = [str(m.id) for m in members_list]
+        
+        # Créer l'embed de résultat
+        result_embed = discord.Embed(
+            color=THEME_COLORS["success"],
+            timestamp=datetime.now()
+        )
+        
+        result_embed.description = (
+            "```ansi\n"
+            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Liste des membres\u001b[0m           \u001b[1;32m║\u001b[0m\n"
+            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```"
+        )
+        
+        result_embed.add_field(
+            name=f"📺 {target_type}",
+            value=f"**{target_name}** (`{target_id}`)",
+            inline=False
+        )
+        
+        result_embed.add_field(
+            name="📊 Total",
+            value=f"`{len(members_list)}` membre(s) (hors bots)",
+            inline=False
+        )
+        
+        # Afficher les premiers membres avec leurs IDs (max 10)
+        if members_list:
+            preview_text = "\n".join([f"• {m.name} → `{m.id}`" for m in members_list[:10]])
+            if len(members_list) > 10:
+                preview_text += f"\n*... et {len(members_list) - 10} autre(s)*"
+            result_embed.add_field(name="👥 Aperçu", value=preview_text, inline=False)
+        
+        # Format copier-coller pour les commandes
+        ids_formatted = " ".join(ids_list)
+        
+        # Si la liste est trop longue, créer un fichier
+        if len(ids_formatted) > 1000:
+            # Créer un fichier texte
+            file_content = f"# Liste des IDs des membres de {target_name}\n"
+            file_content += f"# Type: {target_type}\n"
+            file_content += f"# ID: {target_id}\n"
+            file_content += f"# Total: {len(members_list)} membre(s)\n"
+            file_content += f"# Généré le: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            
+            file_content += "# Format liste (un par ligne)\n"
+            for member in members_list:
+                file_content += f"{member.id}  # {member.name}\n"
+            
+            file_content += f"\n# Format commande (tous sur une ligne)\n"
+            file_content += ids_formatted + "\n"
+            
+            file_content += f"\n# Format pour bulk_role\n"
+            file_content += f"!bulk_role @ROLE {ids_formatted}\n"
+            
+            file_content += f"\n# Format pour multi_bulk_role\n"
+            file_content += f"!multi_bulk_role @ROLE1 @ROLE2 - {ids_formatted}\n"
+            
+            # Sauvegarder le fichier
+            filename = f"member_ids_{target_id}.txt"
+            filepath = f"/home/claude/{filename}"
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(file_content)
+            
+            result_embed.add_field(
+                name="📄 Fichier généré",
+                value=f"La liste complète est disponible dans le fichier ci-dessous.\n"
+                      f"Le fichier contient les IDs et des exemples de commandes prêtes à l'emploi.",
+                inline=False
+            )
+            
+            result_embed.set_footer(
+                text=f"Exécuté par {ctx.author.name}",
+                icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+            )
+            
+            await processing_msg.edit(embed=result_embed)
+            await ctx.send(file=discord.File(filepath, filename=filename))
+        
+        else:
+            # Afficher directement dans l'embed
+            result_embed.add_field(
+                name="📋 Format copier-coller",
+                value=f"```\n{ids_formatted}\n```",
+                inline=False
+            )
+            
+            # Exemples de commandes
+            examples_text = (
+                f"**Exemples d'utilisation :**\n"
+                f"```\n"
+                f"!bulk_role @ROLE {ids_formatted[:50]}...\n"
+                f"!multi_bulk_role @ROLE1 @ROLE2 - {ids_formatted[:50]}...\n"
+                f"```"
+            )
+            result_embed.add_field(name="💡 Utilisation", value=examples_text, inline=False)
+            
+            result_embed.set_footer(
+                text=f"Exécuté par {ctx.author.name} • Copiez les IDs ci-dessus",
+                icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+            )
+            
+            await processing_msg.edit(embed=result_embed)
+        
+        # Log l'action
+        logging.info(f"List member IDs: {target_type} {target_name} ({len(members_list)} members) by {ctx.author.name}")
 
     @bot.command(name="multi_bulk_remove_role", aliases=["remove_multi_roles"])
     @commands.has_any_role(*ADMIN_ROLES)
