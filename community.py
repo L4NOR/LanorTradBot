@@ -1,68 +1,92 @@
 # community.py
-# Système communautaire AMÉLIORÉ : Reviews, Théories, Points avec Boosts, Leaderboards
+# ═══════════════════════════════════════════════════════════════════════════════
+# SYSTÈME COMMUNAUTAIRE MODERNISÉ - POINTS AUTOMATIQUES PAR ACTIVITÉ
+# ═══════════════════════════════════════════════════════════════════════════════
+
 import discord
 from discord.ext import commands, tasks
 import json
 import os
+import random
 import asyncio
 from datetime import datetime, timedelta
-from config import COLORS, ADMIN_ROLES, DATA_FILES, POINTS, RATING_EMOJIS, REACTION_EMOJIS
-from utils import load_json, save_json, get_manga_emoji
+from config import (
+    COLORS, ADMIN_ROLES, DATA_FILES, POINTS, CHANNELS, 
+    POINTS_ALLOWED_CHANNELS, MANGA_EMOJIS
+)
+from utils import load_json, save_json
+import logging
 
-# Fichiers de données (depuis config.py)
-REVIEWS_FILE = DATA_FILES["reviews"]
-THEORIES_FILE = DATA_FILES["theories"]
-CHAPTERS_FILE = DATA_FILES["chapters"]
+# Fichiers de données
 USER_STATS_FILE = DATA_FILES["user_stats"]
 os.makedirs("data", exist_ok=True)
 
 # Données en mémoire
-reviews_data = {}
-theories_data = {}
-chapters_data = {}
 user_stats = {}
 
+# Cooldowns pour les gains de points par message
+message_cooldowns = {}
+
+# Tracking temps vocal
+voice_tracking = {}
+
+# Questions trivia
+TRIVIA_QUESTIONS = {
+    "easy": [
+        {
+            "question": "Quel manga parle d'exorcistes qui combattent des démons ?",
+            "answer": "ao no exorcist",
+            "hints": ["Rin Okumura", "Flammes bleues", "Satan"]
+        },
+        {
+            "question": "Dans quel manga le héros utilise des maldictions ?",
+            "answer": "tougen anki",
+            "hints": ["Shiki", "Oni", "Maldictions"]
+        },
+        {
+            "question": "Quel manga se déroule dans les bas-fonds de Tokyo ?",
+            "answer": "tokyo underworld",
+            "hints": ["Yakuza", "Gangs", "Survie"]
+        },
+    ],
+    "medium": [
+        {
+            "question": "Quel est le prénom du protagoniste de Ao No Exorcist ?",
+            "answer": "rin",
+            "hints": ["Frère de Yukio", "Fils de Satan", "Flammes bleues"]
+        },
+        {
+            "question": "Comment s'appelle l'équipe de foot dans Catenaccio ?",
+            "answer": "inter",
+            "hints": ["Milan", "Italie", "Football"]
+        },
+    ],
+    "hard": [
+        {
+            "question": "Quel est le nom de la technique de combat principale dans Tougen Anki ?",
+            "answer": "jingi",
+            "hints": ["Maldictions", "Transformation", "Pouvoir oni"]
+        },
+    ]
+}
+
+
 def charger_donnees():
-    """Charge toutes les données communautaires"""
-    global reviews_data, theories_data, chapters_data, user_stats
-    
-    for file_path, data_dict, name in [
-        (REVIEWS_FILE, reviews_data, "reviews"),
-        (THEORIES_FILE, theories_data, "théories"),
-        (CHAPTERS_FILE, chapters_data, "chapitres"),
-        (USER_STATS_FILE, user_stats, "stats utilisateurs")
-    ]:
-        if os.path.exists(file_path):
-            try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    contenu = f.read().strip()
-                    if contenu:
-                        loaded = json.loads(contenu)
-                        if name == "reviews":
-                            reviews_data.update(loaded)
-                        elif name == "théories":
-                            theories_data.update(loaded)
-                        elif name == "chapitres":
-                            chapters_data.update(loaded)
-                        elif name == "stats utilisateurs":
-                            user_stats.update(loaded)
-                print(f"✅ {name} chargé(s)")
-            except Exception as e:
-                print(f"❌ Erreur chargement {name}: {e}")
+    """Charge les données utilisateurs"""
+    global user_stats
+    user_stats = load_json(USER_STATS_FILE, {})
+    logging.info(f"✅ Stats de {len(user_stats)} utilisateur(s) chargées")
+
 
 def sauvegarder_donnees():
-    """Sauvegarde toutes les données"""
+    """Sauvegarde les données"""
     try:
-        with open(REVIEWS_FILE, "w", encoding="utf-8") as f:
-            json.dump(reviews_data, f, ensure_ascii=False, indent=4)
-        with open(THEORIES_FILE, "w", encoding="utf-8") as f:
-            json.dump(theories_data, f, ensure_ascii=False, indent=4)
-        with open(CHAPTERS_FILE, "w", encoding="utf-8") as f:
-            json.dump(chapters_data, f, ensure_ascii=False, indent=4)
         with open(USER_STATS_FILE, "w", encoding="utf-8") as f:
             json.dump(user_stats, f, ensure_ascii=False, indent=4)
+        logging.info(f"✅ Stats sauvegardées ({len(user_stats)} utilisateurs)")
     except Exception as e:
-        print(f"❌ Erreur sauvegarde: {e}")
+        logging.error(f"❌ Erreur sauvegarde: {e}")
+
 
 def get_user_stats(user_id):
     """Récupère ou crée les stats d'un utilisateur"""
@@ -71,20 +95,21 @@ def get_user_stats(user_id):
         user_stats[user_id_str] = {
             "points": 0,
             "total_points_earned": 0,
-            "reviews_count": 0,
-            "theories_count": 0,
-            "theories_votes_given": 0,
-            "theories_votes_received": 0,
+            "messages_count": 0,
+            "voice_minutes": 0,
+            "chapter_reactions": 0,
+            "trivia_correct": 0,
             "badges": [],
             "joined_at": datetime.now().isoformat(),
             "last_activity": datetime.now().isoformat(),
             "daily_streak": 0,
             "last_daily": None,
+            "last_seniority_bonus": None,
             "weekly_points": 0,
-            "weekly_reviews": 0,
             "week_start": datetime.now().isocalendar()[1]
         }
     return user_stats[user_id_str]
+
 
 def get_active_multiplier(user_id):
     """
@@ -100,20 +125,17 @@ def get_active_multiplier(user_id):
         expired_boosts = []
         
         for boost_id, boost_data in active_boosts.items():
-            # Vérifier si le boost a une date d'expiration
             if "expires" in boost_data:
                 expires = datetime.fromisoformat(boost_data["expires"])
                 if datetime.now() >= expires:
                     expired_boosts.append(boost_id)
                     continue
             
-            # Appliquer le multiplicateur
             if boost_id == "double_points":
                 multiplier *= boost_data.get("multiplier", 2)
             elif boost_id == "triple_points":
                 multiplier *= boost_data.get("multiplier", 3)
         
-        # Nettoyer les boosts expirés
         if expired_boosts:
             for boost_id in expired_boosts:
                 del active_boosts[boost_id]
@@ -122,8 +144,9 @@ def get_active_multiplier(user_id):
         
         return multiplier
     except Exception as e:
-        print(f"Erreur get_active_multiplier: {e}")
+        logging.error(f"Erreur get_active_multiplier: {e}")
         return 1.0
+
 
 def add_points(user_id, amount, reason=""):
     """
@@ -132,7 +155,6 @@ def add_points(user_id, amount, reason=""):
     """
     stats = get_user_stats(user_id)
     
-    # Appliquer le multiplicateur seulement pour les gains positifs
     if amount > 0:
         multiplier = get_active_multiplier(user_id)
         final_amount = int(amount * multiplier)
@@ -144,19 +166,18 @@ def add_points(user_id, amount, reason=""):
     stats["points"] += final_amount
     stats["last_activity"] = datetime.now().isoformat()
     
-    # Mise à jour des stats hebdomadaires
+    # Mise à jour stats hebdomadaires
     current_week = datetime.now().isocalendar()[1]
     if stats.get("week_start") != current_week:
         stats["week_start"] = current_week
         stats["weekly_points"] = 0
-        stats["weekly_reviews"] = 0
     
     if final_amount > 0:
         stats["weekly_points"] += final_amount
     
     sauvegarder_donnees()
     
-    # Vérifier les badges après gain de points
+    # Vérifier les badges
     if final_amount > 0:
         try:
             from achievements import check_badges
@@ -166,26 +187,251 @@ def add_points(user_id, amount, reason=""):
     
     return final_amount, multiplier
 
-def update_daily_streak(user_id):
-    """Met à jour le streak quotidien et donne le bonus"""
-    stats = get_user_stats(user_id)
-    today = datetime.now().date().isoformat()
+
+class CommunitySystem(commands.Cog):
+    """Système communautaire avec gains de points automatiques"""
     
-    bonus_points = 0
+    def __init__(self, bot):
+        self.bot = bot
+        charger_donnees()
+        self.voice_check_loop.start()
+        self.seniority_bonus_loop.start()
     
-    if stats.get("last_daily") != today:
-        last_daily = stats.get("last_daily")
+    def cog_unload(self):
+        self.voice_check_loop.cancel()
+        self.seniority_bonus_loop.cancel()
+        sauvegarder_donnees()
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SYSTÈME DE GAIN PAR MESSAGE
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        """Gain de points passif par message"""
+        if message.author.bot:
+            return
         
+        if message.channel.id not in POINTS_ALLOWED_CHANNELS:
+            return
+        
+        user_id = message.author.id
+        now = datetime.now()
+        
+        # Vérifier cooldown
+        if user_id in message_cooldowns:
+            last_time = message_cooldowns[user_id]
+            if (now - last_time).total_seconds() < POINTS["message_cooldown"]:
+                return
+        
+        # Gagner des points
+        points_earned = random.randint(POINTS["message_min"], POINTS["message_max"])
+        final_points, multiplier = add_points(user_id, points_earned, "message")
+        
+        # Mettre à jour stats
+        stats = get_user_stats(user_id)
+        stats["messages_count"] += 1
+        
+        message_cooldowns[user_id] = now
+        sauvegarder_donnees()
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SYSTÈME DE RÉACTIONS AUX ANNONCES
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload):
+        """Gain de points pour réactions sur annonces de chapitres"""
+        if payload.user_id == self.bot.user.id:
+            return
+        
+        # Vérifier si c'est dans le canal des annonces
+        if payload.channel_id != CHANNELS.get("chapter_announcements"):
+            return
+        
+        # Réactions comptées
+        valid_emojis = ['🔥', '👀', '❤', '❤️']
+        if str(payload.emoji) not in valid_emojis:
+            return
+        
+        # Vérifier que l'utilisateur n'a pas déjà réagi à ce message
+        try:
+            channel = self.bot.get_channel(payload.channel_id)
+            message = await channel.fetch_message(payload.message_id)
+            
+            # Compter les réactions de cet utilisateur
+            user_reaction_count = 0
+            for reaction in message.reactions:
+                async for user in reaction.users():
+                    if user.id == payload.user_id:
+                        user_reaction_count += 1
+            
+            # Si c'est la première réaction de l'utilisateur sur ce message
+            if user_reaction_count == 1:
+                points_earned, multiplier = add_points(
+                    payload.user_id, 
+                    POINTS["chapter_reaction"],
+                    "chapter_reaction"
+                )
+                
+                stats = get_user_stats(payload.user_id)
+                stats["chapter_reactions"] += 1
+                sauvegarder_donnees()
+                
+                logging.info(f"✅ {payload.user_id} a gagné {points_earned} pts (réaction chapitre)")
+        
+        except Exception as e:
+            logging.error(f"Erreur réaction annonce: {e}")
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SYSTÈME DE TRACKING VOCAL
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member, before, after):
+        """Track le temps passé en vocal"""
+        if member.bot:
+            return
+        
+        user_id = member.id
+        
+        # Utilisateur rejoint un canal vocal
+        if before.channel is None and after.channel is not None:
+            voice_tracking[user_id] = datetime.now()
+            logging.info(f"🎤 {member.name} a rejoint un vocal")
+        
+        # Utilisateur quitte un canal vocal
+        elif before.channel is not None and after.channel is None:
+            if user_id in voice_tracking:
+                start_time = voice_tracking[user_id]
+                duration = (datetime.now() - start_time).total_seconds() / 60  # minutes
+                
+                # Calculer les points (5 pts par 15 min)
+                intervals = int(duration / 15)
+                if intervals > 0:
+                    points_earned = intervals * POINTS["voice_per_15min"]
+                    final_points, multiplier = add_points(user_id, points_earned, "vocal")
+                    
+                    stats = get_user_stats(user_id)
+                    stats["voice_minutes"] += int(duration)
+                    sauvegarder_donnees()
+                    
+                    logging.info(f"🎤 {member.name} a gagné {final_points} pts ({int(duration)} min en vocal)")
+                
+                del voice_tracking[user_id]
+    
+    @tasks.loop(minutes=15)
+    async def voice_check_loop(self):
+        """Donne des points toutes les 15 min aux users en vocal"""
+        for user_id, start_time in list(voice_tracking.items()):
+            duration = (datetime.now() - start_time).total_seconds() / 60
+            if duration >= 15:
+                points_earned, multiplier = add_points(user_id, POINTS["voice_per_15min"], "vocal_interval")
+                
+                stats = get_user_stats(user_id)
+                stats["voice_minutes"] += 15
+                
+                # Reset le compteur
+                voice_tracking[user_id] = datetime.now()
+                
+                logging.info(f"🎤 User {user_id} a gagné {points_earned} pts (15 min vocal)")
+        
+        sauvegarder_donnees()
+    
+    @voice_check_loop.before_loop
+    async def before_voice_check(self):
+        await self.bot.wait_until_ready()
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # BONUS D'ANCIENNETÉ (HEBDOMADAIRE)
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    @tasks.loop(hours=24)
+    async def seniority_bonus_loop(self):
+        """Donne le bonus d'ancienneté hebdomadaire"""
+        today = datetime.now().date()
+        
+        # Vérifier si c'est lundi (début de semaine)
+        if today.weekday() != 0:
+            return
+        
+        guild = self.bot.guilds[0] if self.bot.guilds else None
+        if not guild:
+            return
+        
+        for member in guild.members:
+            if member.bot:
+                continue
+            
+            stats = get_user_stats(member.id)
+            last_bonus = stats.get("last_seniority_bonus")
+            
+            # Vérifier si déjà reçu cette semaine
+            if last_bonus:
+                last_date = datetime.fromisoformat(last_bonus).date()
+                if (today - last_date).days < 7:
+                    continue
+            
+            # Calculer l'ancienneté en jours
+            joined_at = member.joined_at
+            if joined_at:
+                days_on_server = (datetime.now(joined_at.tzinfo) - joined_at).days
+                
+                # Calculer le bonus (50-200 pts selon ancienneté)
+                if days_on_server < 30:
+                    bonus = POINTS["seniority_base"]
+                elif days_on_server < 90:
+                    bonus = 100
+                elif days_on_server < 180:
+                    bonus = 150
+                else:
+                    bonus = POINTS["seniority_max"]
+                
+                final_bonus, multiplier = add_points(member.id, bonus, "seniority")
+                stats["last_seniority_bonus"] = datetime.now().isoformat()
+                
+                logging.info(f"🏅 {member.name} a reçu {final_bonus} pts (ancienneté: {days_on_server} jours)")
+        
+        sauvegarder_donnees()
+    
+    @seniority_bonus_loop.before_loop
+    async def before_seniority_check(self):
+        await self.bot.wait_until_ready()
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # COMMANDES - BONUS QUOTIDIEN
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    @commands.command(name="daily")
+    async def daily_bonus(self, ctx):
+        """Récupère le bonus quotidien avec streak"""
+        stats = get_user_stats(ctx.author.id)
+        today = datetime.now().date().isoformat()
+        
+        if stats.get("last_daily") == today:
+            next_daily = datetime.now() + timedelta(days=1)
+            next_daily = next_daily.replace(hour=0, minute=0, second=0)
+            timestamp = int(next_daily.timestamp())
+            
+            embed = discord.Embed(
+                title="⏱️ Bonus déjà réclamé",
+                description=f"Tu as déjà réclamé ton bonus aujourd'hui !\nReviens <t:{timestamp}:R>",
+                color=COLORS["warning"]
+            )
+            embed.add_field(name="🔥 Streak actuel", value=f"{stats.get('daily_streak', 0)} jours")
+            await ctx.send(embed=embed)
+            return
+        
+        # Calculer le streak
+        last_daily = stats.get("last_daily")
         if last_daily:
             last_date = datetime.fromisoformat(last_daily).date()
             today_date = datetime.now().date()
             diff = (today_date - last_date).days
             
             if diff == 1:
-                # Streak continue
                 stats["daily_streak"] += 1
             elif diff > 1:
-                # Streak cassé
                 stats["daily_streak"] = 1
         else:
             stats["daily_streak"] = 1
@@ -193,695 +439,284 @@ def update_daily_streak(user_id):
         stats["last_daily"] = today
         
         # Calculer le bonus
-        bonus_points = POINTS["daily_bonus"] + (stats["daily_streak"] * POINTS["streak_bonus"])
-        bonus_points = min(bonus_points, 100)  # Cap à 100 pts
+        base_bonus = random.randint(POINTS["daily_min"], POINTS["daily_max"])
+        streak_bonus = min(stats["daily_streak"] * POINTS["streak_bonus"], POINTS["streak_max_bonus"])
+        total_bonus = base_bonus + streak_bonus
         
-        sauvegarder_donnees()
-    
-    return bonus_points, stats["daily_streak"]
-
-def get_manga_emoji(manga_name):
-    """Récupère l'emoji d'un manga"""
-    emojis = {
-        "ao no exorcist": "👹",
-        "satsudou": "🩸",
-        "tougen anki": "😈",
-        "catenaccio": "⚽",
-        "tokyo underworld": "🗼"
-    }
-    return emojis.get(manga_name.lower(), "📚")
-
-
-class CommunitySystem(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        charger_donnees()
-    
-    async def cog_load(self):
-        """Démarrer les tâches de fond"""
-        self.weekly_rewards.start()
-        print("✅ Tâches communautaires démarrées")
-    
-    async def cog_unload(self):
-        """Arrêter les tâches"""
-        self.weekly_rewards.cancel()
-    
-    @tasks.loop(hours=168)  # Chaque semaine
-    async def weekly_rewards(self):
-        """Distribue les récompenses hebdomadaires"""
-        # Trouver le meilleur reviewer de la semaine
-        current_week = datetime.now().isocalendar()[1]
-        
-        best_reviewer = None
-        best_reviews = 0
-        best_points = 0
-        best_points_user = None
-        
-        for user_id, stats in user_stats.items():
-            if stats.get("week_start") == current_week:
-                if stats.get("weekly_reviews", 0) > best_reviews:
-                    best_reviews = stats["weekly_reviews"]
-                    best_reviewer = user_id
-                if stats.get("weekly_points", 0) > best_points:
-                    best_points = stats["weekly_points"]
-                    best_points_user = user_id
-        
-        # Reset des stats hebdomadaires
-        for user_id, stats in user_stats.items():
-            stats["weekly_points"] = 0
-            stats["weekly_reviews"] = 0
-            stats["week_start"] = datetime.now().isocalendar()[1]
-        
-        sauvegarder_donnees()
-    
-    @weekly_rewards.before_loop
-    async def before_weekly_rewards(self):
-        await self.bot.wait_until_ready()
-    
-    # ==================== COMMANDES ADMIN ====================
-    
-    @commands.command(name="newchapter")
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
-    async def newchapter(self, ctx, message_id: int, manga: str, chapitre: str):
-        """Lie une annonce de chapitre au système communautaire."""
-        try:
-            target_message = await ctx.channel.fetch_message(message_id)
-        except discord.NotFound:
-            await ctx.send("❌ Message introuvable dans ce salon.")
-            return
-        except discord.HTTPException as e:
-            await ctx.send(f"❌ Erreur lors de la récupération du message: {e}")
-            return
-        
-        chapter_key = f"{manga.lower()}_{chapitre}"
-        
-        chapters_data[chapter_key] = {
-            "manga": manga,
-            "chapter": chapitre,
-            "message_id": message_id,
-            "channel_id": ctx.channel.id,
-            "guild_id": ctx.guild.id,
-            "created_at": datetime.now().isoformat(),
-            "reviews": {},
-            "reactions": {},
-            "theories_linked": [],
-            "review_count": 0
-        }
-        
-        sauvegarder_donnees()
-        
-        manga_emoji = get_manga_emoji(manga)
+        final_bonus, multiplier = add_points(ctx.author.id, total_bonus, "daily")
         
         embed = discord.Embed(
-            title=f"{manga_emoji} {manga} - Chapitre {chapitre}",
-            description=(
-                "**📝 Partagez votre avis sur ce chapitre !**\n\n"
-                f"⭐ **Noter** : `!review {manga} {chapitre} <1-5> [commentaire]`\n"
-                f"💭 **Théorie** : `!theory {manga} <votre théorie>`\n"
-                f"📊 **Voir les avis** : `!chapter_reviews {manga} {chapitre}`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━━━━"
-            ),
-            color=discord.Color.gold(),
+            title="🎁 Bonus quotidien réclamé !",
+            description=f"Tu as reçu **{final_bonus} points** !",
+            color=COLORS["success"],
             timestamp=datetime.now()
         )
         
-        embed.add_field(
-            name="📊 Statistiques",
-            value="⭐ Note moyenne: --\n📝 Reviews: 0\n💭 Théories: 0",
-            inline=True
-        )
+        embed.add_field(name="💰 Bonus de base", value=f"{base_bonus} pts", inline=True)
+        embed.add_field(name="🔥 Bonus streak", value=f"+{streak_bonus} pts", inline=True)
+        embed.add_field(name="⚡ Total", value=f"**{final_bonus} pts**", inline=True)
         
         embed.add_field(
-            name="🏆 Points à gagner",
-            value=f"+{POINTS['review']} pts (review)\n+{POINTS['first_review']} pts (1er review)",
-            inline=True
+            name="📊 Progression",
+            value=f"🔥 Streak: **{stats['daily_streak']} jour(s)**\n💰 Points totaux: **{stats['points']:,} pts**",
+            inline=False
         )
         
-        embed.set_footer(text=f"ID: {chapter_key}")
+        if multiplier > 1:
+            embed.add_field(name="⚡ Multiplicateur actif", value=f"x{multiplier:.1f}", inline=True)
         
-        interaction_msg = await ctx.send(embed=embed)
-        
-        for emoji in REACTION_EMOJIS:
-            await interaction_msg.add_reaction(emoji)
-        
-        chapters_data[chapter_key]["interaction_message_id"] = interaction_msg.id
-        sauvegarder_donnees()
-        
-        confirm_embed = discord.Embed(
-            title="✅ Chapitre Lié !",
-            description=f"Le chapitre **{chapitre}** de **{manga}** est maintenant lié au système communautaire.",
-            color=discord.Color.green()
-        )
-        confirm_embed.add_field(name="🆔 Message d'annonce", value=f"`{message_id}`", inline=True)
-        confirm_embed.add_field(name="🆔 Clé", value=f"`{chapter_key}`", inline=True)
-        
-        await ctx.send(embed=confirm_embed, delete_after=10)
-    
-    # ==================== REVIEWS ====================
-    
-    @commands.command(name="review")
-    async def review(self, ctx, manga: str, chapitre: str, note: int, *, commentaire: str = None):
-        """Laisse une review sur un chapitre avec système de points amélioré."""
-        if note < 1 or note > 5:
-            await ctx.send("❌ La note doit être entre 1 et 5.")
-            return
-        
-        chapter_key = f"{manga.lower()}_{chapitre}"
-        
-        if chapter_key not in chapters_data:
-            await ctx.send(f"❌ Chapitre introuvable. Assurez-vous que le chapitre a été lié avec `!newchapter`.")
-            return
-        
-        user_id = str(ctx.author.id)
-        is_first_review = len(chapters_data[chapter_key]["reviews"]) == 0
-        already_reviewed = user_id in chapters_data[chapter_key]["reviews"]
-        
-        # Créer/mettre à jour la review
-        chapters_data[chapter_key]["reviews"][user_id] = {
-            "note": note,
-            "commentaire": commentaire,
-            "created_at": datetime.now().isoformat(),
-            "username": ctx.author.name
-        }
-        
-        if chapter_key not in reviews_data:
-            reviews_data[chapter_key] = {}
-        reviews_data[chapter_key][user_id] = chapters_data[chapter_key]["reviews"][user_id]
-        
-        # Mettre à jour les stats utilisateur
-        stats = get_user_stats(ctx.author.id)
-        
-        points_base = 0
-        multiplier = 1.0
-        
-        if not already_reviewed:
-            stats["reviews_count"] += 1
-            stats["weekly_reviews"] += 1
-            chapters_data[chapter_key]["review_count"] = len(chapters_data[chapter_key]["reviews"])
-            
-            # Points de base
-            points_base = POINTS["first_review"] if is_first_review else POINTS["review"]
-            
-            # Bonus de streak
-            daily_bonus, streak = update_daily_streak(ctx.author.id)
-            
-            # Ajouter les points avec multiplicateur
-            final_points, multiplier = add_points(ctx.author.id, points_base)
-            
-            # Ajouter bonus daily séparément
-            if daily_bonus > 0:
-                add_points(ctx.author.id, daily_bonus, "daily_streak")
-        
-        sauvegarder_donnees()
-        
-        # Vérifier les badges
-        try:
-            from achievements import check_badges, get_user_badges
-            user_badges = get_user_badges(ctx.author.id)
-            
-            # Mettre à jour les stats manga spécifiques
-            manga_lower = manga.lower()
-            if "manga_reviews" not in user_badges["stats"]:
-                user_badges["stats"]["manga_reviews"] = {}
-            if manga_lower not in user_badges["stats"]["manga_reviews"]:
-                user_badges["stats"]["manga_reviews"][manga_lower] = 0
-            user_badges["stats"]["manga_reviews"][manga_lower] += 1
-            
-            unlocked = check_badges(ctx.author.id, stats)
-        except Exception as e:
-            print(f"Erreur badges: {e}")
-            unlocked = []
-        
-        # Calculer la moyenne
-        reviews = chapters_data[chapter_key]["reviews"]
-        moyenne = sum(r["note"] for r in reviews.values()) / len(reviews)
-        
-        # Vérifier si highlight review est actif
-        highlight = False
-        try:
-            from shop import get_user_inventory
-            inv = get_user_inventory(ctx.author.id)
-            if "highlight_review" in inv.get("active_boosts", {}):
-                highlight = True
-                del inv["active_boosts"]["highlight_review"]
-                from shop import sauvegarder_shop
-                sauvegarder_shop()
-        except:
-            pass
-        
-        # Créer l'embed de confirmation
-        stars = "⭐" * note + "☆" * (5 - note)
-        manga_emoji = get_manga_emoji(manga)
-        
-        embed_color = discord.Color.gold() if highlight else discord.Color.green()
-        
-        embed = discord.Embed(
-            title=f"{'🌟 REVIEW EN VEDETTE 🌟' if highlight else ''}{manga_emoji} Review Enregistrée !",
-            description=f"**{manga}** - Chapitre {chapitre}",
-            color=embed_color,
-            timestamp=datetime.now()
-        )
-        
-        embed.add_field(name="📊 Votre Note", value=stars, inline=True)
-        embed.add_field(name="📈 Moyenne", value=f"⭐ {moyenne:.1f}/5 ({len(reviews)} avis)", inline=True)
-        
-        if commentaire:
-            embed.add_field(name="💬 Commentaire", value=commentaire[:500], inline=False)
-        
-        if not already_reviewed and points_base > 0:
-            bonus_text = ""
-            if is_first_review:
-                bonus_text = " 🎉 Premier review !"
-            if multiplier > 1:
-                bonus_text += f" ⚡ x{multiplier:.1f}"
-            
-            embed.add_field(
-                name="🏆 Points Gagnés",
-                value=f"+{final_points} pts{bonus_text}",
-                inline=False
-            )
-            
-            # Afficher le streak
-            streak = stats.get("daily_streak", 0)
-            if streak > 1:
-                embed.add_field(
-                    name="🔥 Streak",
-                    value=f"{streak} jours consécutifs !",
-                    inline=True
-                )
-        
-        # Badges débloqués
-        if unlocked:
-            badges_text = " ".join([f"{b['emoji']}" for b in unlocked])
-            embed.add_field(name="🏅 Nouveau(x) Badge(s) !", value=badges_text, inline=False)
-        
-        embed.set_footer(text=f"Total: {stats['points']} points | {stats['reviews_count']} reviews")
+        embed.set_footer(text="Reviens demain pour continuer ton streak !")
         embed.set_thumbnail(url=ctx.author.avatar.url if ctx.author.avatar else None)
         
+        sauvegarder_donnees()
         await ctx.send(embed=embed)
-        await self.update_chapter_embed(chapter_key)
     
-    @commands.command(name="chapter_reviews")
-    async def chapter_reviews(self, ctx, manga: str, chapitre: str):
-        """Affiche toutes les reviews d'un chapitre"""
-        chapter_key = f"{manga.lower()}_{chapitre}"
+    # ═══════════════════════════════════════════════════════════════════════════
+    # COMMANDES - MINI-JEUX
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    @commands.command(name="trivia")
+    async def trivia_game(self, ctx, difficulty: str = "easy"):
+        """Lance un quiz manga (easy/medium/hard)"""
+        difficulty = difficulty.lower()
         
-        if chapter_key not in chapters_data:
-            await ctx.send(f"❌ Chapitre introuvable.")
+        if difficulty not in ["easy", "medium", "hard"]:
+            await ctx.send("❌ Difficulté invalide ! Utilise: `easy`, `medium` ou `hard`")
             return
         
-        chapter = chapters_data[chapter_key]
-        reviews = chapter.get("reviews", {})
+        questions = TRIVIA_QUESTIONS.get(difficulty, [])
+        if not questions:
+            await ctx.send("❌ Aucune question disponible pour cette difficulté.")
+            return
         
-        manga_emoji = get_manga_emoji(manga)
+        question_data = random.choice(questions)
         
-        if not reviews:
+        # Points selon difficulté
+        points_reward = {
+            "easy": POINTS["trivia_easy"],
+            "medium": POINTS["trivia_medium"],
+            "hard": POINTS["trivia_hard"]
+        }[difficulty]
+        
+        embed = discord.Embed(
+            title=f"🎮 Quiz Manga - {difficulty.capitalize()}",
+            description=question_data["question"],
+            color=COLORS["info"]
+        )
+        embed.add_field(name="🏆 Récompense", value=f"{points_reward} points", inline=True)
+        embed.add_field(name="⏱️ Temps", value="30 secondes", inline=True)
+        embed.set_footer(text="Réponds directement dans le chat !")
+        
+        await ctx.send(embed=embed)
+        
+        def check(m):
+            return m.author == ctx.author and m.channel == ctx.channel
+        
+        try:
+            msg = await self.bot.wait_for('message', check=check, timeout=30)
+            
+            if msg.content.lower().strip() == question_data["answer"].lower():
+                final_points, multiplier = add_points(ctx.author.id, points_reward, "trivia")
+                
+                stats = get_user_stats(ctx.author.id)
+                stats["trivia_correct"] += 1
+                sauvegarder_donnees()
+                
+                embed = discord.Embed(
+                    title="✅ Bonne réponse !",
+                    description=f"Bravo ! Tu gagnes **{final_points} points** !",
+                    color=COLORS["success"]
+                )
+                embed.add_field(name="💰 Points totaux", value=f"{stats['points']:,} pts")
+                await ctx.send(embed=embed)
+            else:
+                embed = discord.Embed(
+                    title="❌ Mauvaise réponse",
+                    description=f"La bonne réponse était: **{question_data['answer']}**",
+                    color=COLORS["error"]
+                )
+                await ctx.send(embed=embed)
+        
+        except asyncio.TimeoutError:
             embed = discord.Embed(
-                title=f"{manga_emoji} {manga} - Chapitre {chapitre}",
-                description="Aucune review pour ce chapitre.\n\nSoyez le premier à donner votre avis !",
-                color=discord.Color.blue()
-            )
-            embed.add_field(
-                name="💡 Comment reviewer ?",
-                value=f"`!review {manga} {chapitre} <note 1-5> [commentaire]`",
-                inline=False
+                title="⏱️ Temps écoulé",
+                description=f"La bonne réponse était: **{question_data['answer']}**",
+                color=COLORS["warning"]
             )
             await ctx.send(embed=embed)
-            return
-        
-        moyenne = sum(r["note"] for r in reviews.values()) / len(reviews)
-        distribution = {i: 0 for i in range(1, 6)}
-        for r in reviews.values():
-            distribution[r["note"]] += 1
+    
+    @commands.command(name="guess")
+    async def guess_game(self, ctx):
+        """Devine le manga à partir d'un emoji"""
+        manga_list = list(MANGA_EMOJIS.items())
+        correct_manga, emoji = random.choice(manga_list)
         
         embed = discord.Embed(
-            title=f"{manga_emoji} {manga} - Chapitre {chapitre}",
-            description=f"**⭐ Note Moyenne: {moyenne:.1f}/5** ({len(reviews)} avis)",
-            color=discord.Color.gold(),
-            timestamp=datetime.now()
+            title="🎮 Devine le manga !",
+            description=f"Quel manga représente cet emoji ?\n\n# {emoji}",
+            color=COLORS["info"]
         )
+        embed.add_field(name="🏆 Récompense", value=f"{POINTS['guess_correct']} points")
+        embed.add_field(name="⏱️ Temps", value="20 secondes")
+        embed.set_footer(text="Écris le nom du manga dans le chat !")
         
-        dist_text = ""
-        for i in range(5, 0, -1):
-            bar_length = int((distribution[i] / len(reviews)) * 10) if reviews else 0
-            bar = "█" * bar_length + "░" * (10 - bar_length)
-            dist_text += f"{'⭐' * i}{'☆' * (5-i)} {bar} {distribution[i]}\n"
+        await ctx.send(embed=embed)
         
-        embed.add_field(name="📊 Distribution", value=f"```{dist_text}```", inline=False)
+        def check(m):
+            return m.author == ctx.author and m.channel == ctx.channel
         
-        recent_reviews = sorted(reviews.items(), key=lambda x: x[1]["created_at"], reverse=True)[:5]
-        
-        for user_id, review in recent_reviews:
-            member = ctx.guild.get_member(int(user_id))
-            name = member.display_name if member else review.get("username", "Inconnu")
-            stars = "⭐" * review["note"]
+        try:
+            msg = await self.bot.wait_for('message', check=check, timeout=20)
             
-            value = f"{stars}\n"
-            if review.get("commentaire"):
-                value += f"*\"{review['commentaire'][:100]}{'...' if len(review.get('commentaire', '')) > 100 else ''}\"*"
+            if msg.content.lower().replace(" ", "") in correct_manga.lower().replace(" ", ""):
+                final_points, multiplier = add_points(ctx.author.id, POINTS["guess_correct"], "guess")
+                
+                stats = get_user_stats(ctx.author.id)
+                sauvegarder_donnees()
+                
+                embed = discord.Embed(
+                    title="✅ Correct !",
+                    description=f"C'était bien **{correct_manga}** !\nTu gagnes **{final_points} points** !",
+                    color=COLORS["success"]
+                )
+                embed.add_field(name="💰 Points totaux", value=f"{stats['points']:,} pts")
+                await ctx.send(embed=embed)
             else:
-                value += "*Pas de commentaire*"
-            
-            embed.add_field(name=f"💬 {name}", value=value, inline=False)
+                embed = discord.Embed(
+                    title="❌ Raté !",
+                    description=f"C'était: **{correct_manga}**",
+                    color=COLORS["error"]
+                )
+                await ctx.send(embed=embed)
         
-        if len(reviews) > 5:
-            embed.set_footer(text=f"Affichage des 5 dernières reviews sur {len(reviews)}")
-        
-        await ctx.send(embed=embed)
-    
-    # ==================== THÉORIES ====================
-    
-    @commands.command(name="theory")
-    async def theory(self, ctx, manga: str, *, contenu: str):
-        """Poste une théorie sur un manga avec système de points amélioré."""
-        if len(contenu) < 20:
-            await ctx.send("❌ Votre théorie doit faire au moins 20 caractères.")
-            return
-        
-        if len(contenu) > 1500:
-            await ctx.send("❌ Votre théorie est trop longue (max 1500 caractères).")
-            return
-        
-        manga_lower = manga.lower()
-        user_id = str(ctx.author.id)
-        
-        theory_id = f"theory_{int(datetime.now().timestamp())}_{user_id[:8]}"
-        
-        manga_theories = [t for t in theories_data.values() if t.get("manga", "").lower() == manga_lower]
-        is_first = len(manga_theories) == 0
-        
-        # Vérifier si theory boost est actif
-        boosted = False
-        try:
-            from shop import get_user_inventory
-            inv = get_user_inventory(ctx.author.id)
-            if "theory_boost" in inv.get("active_boosts", {}):
-                boosted = True
-                del inv["active_boosts"]["theory_boost"]
-                from shop import sauvegarder_shop
-                sauvegarder_shop()
-        except:
-            pass
-        
-        theories_data[theory_id] = {
-            "id": theory_id,
-            "manga": manga,
-            "author_id": user_id,
-            "author_name": ctx.author.name,
-            "contenu": contenu,
-            "created_at": datetime.now().isoformat(),
-            "votes_up": [],
-            "votes_down": [],
-            "status": "active",
-            "channel_id": ctx.channel.id,
-            "message_id": None,
-            "boosted": boosted,
-            "boost_expires": (datetime.now() + timedelta(hours=48)).isoformat() if boosted else None
-        }
-        
-        stats = get_user_stats(ctx.author.id)
-        stats["theories_count"] += 1
-        
-        points_base = POINTS["first_theory"] if is_first else POINTS["theory"]
-        final_points, multiplier = add_points(ctx.author.id, points_base)
-        
-        # Bonus streak
-        daily_bonus, streak = update_daily_streak(ctx.author.id)
-        if daily_bonus > 0:
-            add_points(ctx.author.id, daily_bonus, "daily_streak")
-        
-        sauvegarder_donnees()
-        
-        # Vérifier les badges
-        try:
-            from achievements import check_badges
-            unlocked = check_badges(ctx.author.id, stats)
-        except:
-            unlocked = []
-        
-        manga_emoji = get_manga_emoji(manga)
-        
-        embed = discord.Embed(
-            title=f"{'🚀 THÉORIE BOOSTÉE 🚀 ' if boosted else ''}💭 Nouvelle Théorie - {manga_emoji} {manga}",
-            description=contenu,
-            color=discord.Color.purple() if not boosted else discord.Color.gold(),
-            timestamp=datetime.now()
-        )
-        
-        embed.add_field(name="👤 Auteur", value=ctx.author.mention, inline=True)
-        embed.add_field(name="📊 Votes", value="👍 0 | 👎 0", inline=True)
-        embed.add_field(name="🏷️ Statut", value="🔮 En attente", inline=True)
-        
-        bonus_text = ""
-        if is_first:
-            bonus_text = " 🎉 Première théorie !"
-        if multiplier > 1:
-            bonus_text += f" ⚡ x{multiplier:.1f}"
-        if boosted:
-            bonus_text += " 🚀 Boostée 48h"
-        
-        embed.add_field(name="🏆 Points", value=f"+{final_points} pts{bonus_text}", inline=False)
-        
-        if unlocked:
-            badges_text = " ".join([f"{b['emoji']}" for b in unlocked])
-            embed.add_field(name="🏅 Nouveau(x) Badge(s) !", value=badges_text, inline=False)
-        
-        embed.set_footer(text=f"ID: {theory_id} | Votez avec 👍 ou 👎")
-        embed.set_thumbnail(url=ctx.author.avatar.url if ctx.author.avatar else None)
-        
-        theory_msg = await ctx.send(embed=embed)
-        await theory_msg.add_reaction("👍")
-        await theory_msg.add_reaction("👎")
-        
-        theories_data[theory_id]["message_id"] = theory_msg.id
-        sauvegarder_donnees()
-    
-    @commands.command(name="theories")
-    async def list_theories(self, ctx, manga: str = None):
-        """Liste les théories (optionnel: filtrer par manga)"""
-        if manga:
-            filtered = {k: v for k, v in theories_data.items() 
-                       if v.get("manga", "").lower() == manga.lower() and v.get("status") == "active"}
-        else:
-            filtered = {k: v for k, v in theories_data.items() if v.get("status") == "active"}
-        
-        if not filtered:
-            msg = f"Aucune théorie trouvée" + (f" pour **{manga}**" if manga else "") + "."
-            await ctx.send(f"❌ {msg}")
-            return
-        
-        # Trier: boostées en premier, puis par score
-        def sort_key(item):
-            theory = item[1]
-            is_boosted = theory.get("boosted", False)
-            if is_boosted and theory.get("boost_expires"):
-                expires = datetime.fromisoformat(theory["boost_expires"])
-                if datetime.now() >= expires:
-                    is_boosted = False
-            score = len(theory.get("votes_up", [])) - len(theory.get("votes_down", []))
-            return (is_boosted, score)
-        
-        sorted_theories = sorted(filtered.items(), key=sort_key, reverse=True)[:10]
-        
-        title = f"💭 Théories" + (f" - {get_manga_emoji(manga)} {manga}" if manga else " Populaires")
-        
-        embed = discord.Embed(
-            title=title,
-            description=f"Top {len(sorted_theories)} théories",
-            color=discord.Color.purple(),
-            timestamp=datetime.now()
-        )
-        
-        for i, (tid, theory) in enumerate(sorted_theories, 1):
-            score = len(theory.get("votes_up", [])) - len(theory.get("votes_down", []))
-            score_emoji = "🔥" if score >= 5 else "👍" if score >= 0 else "👎"
-            
-            is_boosted = theory.get("boosted", False)
-            boost_text = "🚀 " if is_boosted else ""
-            
-            manga_emoji = get_manga_emoji(theory.get("manga", ""))
-            contenu = theory["contenu"][:100] + "..." if len(theory["contenu"]) > 100 else theory["contenu"]
-            
-            embed.add_field(
-                name=f"{i}. {boost_text}{manga_emoji} {theory.get('manga', 'N/A')} | {score_emoji} {score}",
-                value=f"*\"{contenu}\"*\n— {theory.get('author_name', 'Inconnu')} | `{tid[:20]}...`",
-                inline=False
+        except asyncio.TimeoutError:
+            embed = discord.Embed(
+                title="⏱️ Temps écoulé",
+                description=f"C'était: **{correct_manga}**",
+                color=COLORS["warning"]
             )
-        
-        embed.set_footer(text="Utilisez !theory_info <id> pour plus de détails")
-        await ctx.send(embed=embed)
+            await ctx.send(embed=embed)
     
-    @commands.command(name="theory_info")
-    async def theory_info(self, ctx, theory_id: str):
-        """Affiche les détails d'une théorie"""
-        found_id = None
-        for tid in theories_data.keys():
-            if tid.startswith(theory_id) or theory_id in tid:
-                found_id = tid
-                break
-        
-        if not found_id:
-            await ctx.send("❌ Théorie introuvable.")
-            return
-        
-        theory = theories_data[found_id]
-        manga_emoji = get_manga_emoji(theory.get("manga", ""))
-        
-        score = len(theory.get("votes_up", [])) - len(theory.get("votes_down", []))
-        
-        status_map = {
-            "active": "🔮 En attente",
-            "confirmed": "✅ Confirmée",
-            "debunked": "❌ Réfutée"
-        }
+    # ═══════════════════════════════════════════════════════════════════════════
+    # COMMANDES - STATISTIQUES ET LEADERBOARD
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    @commands.command(name="points", aliases=["pts", "balance"])
+    async def show_points(self, ctx, member: discord.Member = None):
+        """Affiche les points d'un utilisateur"""
+        member = member or ctx.author
+        stats = get_user_stats(member.id)
         
         embed = discord.Embed(
-            title=f"💭 Théorie - {manga_emoji} {theory.get('manga', 'N/A')}",
-            description=theory["contenu"],
-            color=discord.Color.purple(),
-            timestamp=datetime.fromisoformat(theory["created_at"])
+            title=f"💰 Points de {member.display_name}",
+            color=member.color if member.color != discord.Color.default() else COLORS["info"],
+            timestamp=datetime.now()
         )
         
-        author = ctx.guild.get_member(int(theory["author_id"]))
-        author_name = author.mention if author else theory.get("author_name", "Inconnu")
+        embed.add_field(name="💎 Points actuels", value=f"**{stats['points']:,}**", inline=True)
+        embed.add_field(name="📈 Total gagné", value=f"{stats['total_points_earned']:,}", inline=True)
+        embed.add_field(name="🔥 Streak", value=f"{stats.get('daily_streak', 0)} jours", inline=True)
         
-        embed.add_field(name="👤 Auteur", value=author_name, inline=True)
-        embed.add_field(name="📊 Score", value=f"👍 {len(theory.get('votes_up', []))} | 👎 {len(theory.get('votes_down', []))}", inline=True)
-        embed.add_field(name="🏷️ Statut", value=status_map.get(theory.get("status", "active"), "🔮 En attente"), inline=True)
+        embed.add_field(
+            name="📊 Activité",
+            value=(
+                f"💬 Messages: {stats.get('messages_count', 0)}\n"
+                f"🎤 Vocal: {stats.get('voice_minutes', 0)} min\n"
+                f"🔥 Réactions: {stats.get('chapter_reactions', 0)}"
+            ),
+            inline=True
+        )
         
-        embed.set_footer(text=f"ID: {found_id}")
+        embed.add_field(
+            name="🎮 Mini-jeux",
+            value=f"✅ Trivia réussies: {stats.get('trivia_correct', 0)}",
+            inline=True
+        )
+        
+        # Multiplicateur actif
+        multiplier = get_active_multiplier(member.id)
+        if multiplier > 1:
+            embed.add_field(name="⚡ Boost actif", value=f"x{multiplier:.1f}", inline=True)
+        
+        embed.set_thumbnail(url=member.avatar.url if member.avatar else None)
+        embed.set_footer(text="Utilise !daily pour ton bonus quotidien !")
         
         await ctx.send(embed=embed)
-    
-    @commands.command(name="theory_status")
-    @commands.has_any_role(1326417422663680090, 1330147432847114321)
-    async def theory_status(self, ctx, theory_id: str, status: str):
-        """Change le statut d'une théorie (admin)."""
-        valid_status = ["confirmed", "debunked", "active"]
-        if status.lower() not in valid_status:
-            await ctx.send(f"❌ Statut invalide. Choisissez parmi: {', '.join(valid_status)}")
-            return
-        
-        found_id = None
-        for tid in theories_data.keys():
-            if tid.startswith(theory_id) or theory_id in tid:
-                found_id = tid
-                break
-        
-        if not found_id:
-            await ctx.send("❌ Théorie introuvable.")
-            return
-        
-        old_status = theories_data[found_id].get("status", "active")
-        theories_data[found_id]["status"] = status.lower()
-        
-        # Bonus si théorie confirmée
-        if status.lower() == "confirmed" and old_status != "confirmed":
-            author_id = theories_data[found_id]["author_id"]
-            add_points(int(author_id), 100, "theory_confirmed")
-            
-            try:
-                from achievements import unlock_badge
-                unlock_badge(int(author_id), "theory_confirmed")
-            except:
-                pass
-        
-        sauvegarder_donnees()
-        
-        status_emoji = {"confirmed": "✅", "debunked": "❌", "active": "🔮"}
-        await ctx.send(f"{status_emoji.get(status.lower(), '🔮')} Statut de la théorie mis à jour: **{status}**")
-    
-    # ==================== LEADERBOARDS ====================
     
     @commands.command(name="leaderboard", aliases=["lb", "top"])
-    async def leaderboard(self, ctx, category: str = "points"):
-        """
-        Affiche les classements.
-        Catégories: points, reviews, theories, weekly
-        """
-        category = category.lower()
+    async def leaderboard(self, ctx, page: int = 1):
+        """Affiche le classement des points"""
+        if page < 1:
+            page = 1
         
-        if category not in ["points", "reviews", "theories", "weekly"]:
-            await ctx.send("❌ Catégorie invalide. Choisissez: `points`, `reviews`, `theories`, `weekly`")
+        # Trier par points
+        sorted_users = sorted(
+            user_stats.items(),
+            key=lambda x: x[1].get("points", 0),
+            reverse=True
+        )
+        
+        per_page = 10
+        start = (page - 1) * per_page
+        end = start + per_page
+        page_users = sorted_users[start:end]
+        
+        if not page_users:
+            await ctx.send("❌ Aucun utilisateur trouvé pour cette page.")
             return
         
-        # Trier les utilisateurs
-        if category == "points":
-            sorted_users = sorted(user_stats.items(), key=lambda x: x[1].get("points", 0), reverse=True)[:10]
-            title = "🏆 Top 10 - Points"
-            field_name = "points"
-            emoji = "💰"
-        elif category == "reviews":
-            sorted_users = sorted(user_stats.items(), key=lambda x: x[1].get("reviews_count", 0), reverse=True)[:10]
-            title = "📝 Top 10 - Reviews"
-            field_name = "reviews_count"
-            emoji = "📝"
-        elif category == "theories":
-            sorted_users = sorted(user_stats.items(), key=lambda x: x[1].get("theories_count", 0), reverse=True)[:10]
-            title = "💭 Top 10 - Théories"
-            field_name = "theories_count"
-            emoji = "💭"
-        elif category == "weekly":
-            sorted_users = sorted(user_stats.items(), key=lambda x: x[1].get("weekly_points", 0), reverse=True)[:10]
-            title = "📅 Top 10 - Cette Semaine"
-            field_name = "weekly_points"
-            emoji = "⚡"
-        
         embed = discord.Embed(
-            title=title,
-            color=discord.Color.gold(),
+            title="🏆 Classement des Points",
+            description=f"Page {page}/{(len(sorted_users) + per_page - 1) // per_page}",
+            color=COLORS["info"],
             timestamp=datetime.now()
         )
         
-        medals = ["🥇", "🥈", "🥉"]
-        
-        description = ""
-        for i, (user_id, stats) in enumerate(sorted_users, 1):
-            member = ctx.guild.get_member(int(user_id))
-            if not member:
-                continue
+        for i, (user_id_str, stats) in enumerate(page_users, start=start + 1):
+            try:
+                user = await self.bot.fetch_user(int(user_id_str))
+                username = user.display_name if user else f"User {user_id_str}"
+            except:
+                username = f"User {user_id_str}"
             
-            medal = medals[i-1] if i <= 3 else f"**{i}.**"
-            value = stats.get(field_name, 0)
+            medal = ""
+            if i == 1:
+                medal = "🥇"
+            elif i == 2:
+                medal = "🥈"
+            elif i == 3:
+                medal = "🥉"
             
-            # Indicateur de streak pour le leaderboard weekly
-            streak_text = ""
-            if category == "weekly" and stats.get("daily_streak", 0) > 1:
-                streak_text = f" 🔥{stats['daily_streak']}"
+            streak_emoji = "🔥" if stats.get("daily_streak", 0) > 0 else ""
             
-            description += f"{medal} {member.display_name} - {emoji} **{value:,}**{streak_text}\n"
-        
-        embed.description = description if description else "Aucune donnée disponible."
-        
-        # Position de l'utilisateur
-        user_pos = None
-        for i, (uid, _) in enumerate(sorted(user_stats.items(), key=lambda x: x[1].get(field_name, 0), reverse=True), 1):
-            if uid == str(ctx.author.id):
-                user_pos = i
-                break
-        
-        if user_pos:
-            my_stats = get_user_stats(ctx.author.id)
             embed.add_field(
-                name="📍 Votre Position",
-                value=f"#{user_pos} - {emoji} **{my_stats.get(field_name, 0):,}**",
+                name=f"{medal} #{i} - {username}",
+                value=(
+                    f"💰 **{stats['points']:,}** pts {streak_emoji}\n"
+                    f"📊 +{stats.get('weekly_points', 0):,} cette semaine"
+                ),
                 inline=False
             )
         
-        embed.set_footer(text=f"!leaderboard [points/reviews/theories/weekly]")
+        embed.set_footer(text="Utilise !daily pour gagner plus de points !")
         await ctx.send(embed=embed)
     
-    @commands.command(name="profile", aliases=["stats", "me"])
-    async def profile(self, ctx, member: discord.Member = None):
-        """Affiche le profil communautaire d'un membre"""
+    @commands.command(name="profile", aliases=["profil"])
+    async def user_profile(self, ctx, member: discord.Member = None):
+        """Affiche le profil complet d'un utilisateur"""
         member = member or ctx.author
         stats = get_user_stats(member.id)
         
         # Calculer le rang
-        sorted_by_points = sorted(user_stats.items(), key=lambda x: x[1].get("points", 0), reverse=True)
+        sorted_users = sorted(
+            user_stats.items(),
+            key=lambda x: x[1].get("points", 0),
+            reverse=True
+        )
+        
         rank = 1
-        for uid, _ in sorted_by_points:
-            if uid == str(member.id):
+        for user_id_str, _ in sorted_users:
+            if int(user_id_str) == member.id:
                 break
             rank += 1
         
@@ -898,14 +733,26 @@ class CommunitySystem(commands.Cog):
         embed.add_field(name="🏆 Rang", value=f"#{rank}", inline=True)
         embed.add_field(name="🔥 Streak", value=f"{stats.get('daily_streak', 0)} jours", inline=True)
         
-        embed.add_field(name="📝 Reviews", value=str(stats.get("reviews_count", 0)), inline=True)
-        embed.add_field(name="💭 Théories", value=str(stats.get("theories_count", 0)), inline=True)
-        embed.add_field(name="🗳️ Votes donnés", value=str(stats.get("theories_votes_given", 0)), inline=True)
+        embed.add_field(
+            name="📊 Activité",
+            value=(
+                f"💬 Messages: {stats.get('messages_count', 0)}\n"
+                f"🎤 Vocal: {stats.get('voice_minutes', 0)} min\n"
+                f"🔥 Réactions chapitres: {stats.get('chapter_reactions', 0)}"
+            ),
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🎮 Mini-jeux",
+            value=f"✅ Quiz réussis: {stats.get('trivia_correct', 0)}",
+            inline=True
+        )
         
         # Stats hebdomadaires
         embed.add_field(
             name="📅 Cette Semaine",
-            value=f"⚡ {stats.get('weekly_points', 0):,} pts\n📝 {stats.get('weekly_reviews', 0)} reviews",
+            value=f"⚡ {stats.get('weekly_points', 0):,} pts",
             inline=False
         )
         
@@ -919,7 +766,11 @@ class CommunitySystem(commands.Cog):
             from achievements import get_user_badges, badges_data
             user_badges = get_user_badges(member.id)
             if user_badges.get("displayed"):
-                badges_display = " ".join([badges_data[bid]["emoji"] for bid in user_badges["displayed"] if bid in badges_data])
+                badges_display = " ".join([
+                    badges_data[bid]["emoji"] 
+                    for bid in user_badges["displayed"] 
+                    if bid in badges_data
+                ])
                 embed.add_field(name="🏅 Badges", value=badges_display, inline=False)
         except:
             pass
@@ -928,169 +779,50 @@ class CommunitySystem(commands.Cog):
         
         await ctx.send(embed=embed)
     
-    # ==================== LISTENERS ====================
+    # ═══════════════════════════════════════════════════════════════════════════
+    # COMMANDES ADMIN
+    # ═══════════════════════════════════════════════════════════════════════════
     
-    @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload):
-        """Gère les votes sur les théories"""
-        if payload.user_id == self.bot.user.id:
+    @commands.command(name="give_points")
+    @commands.has_any_role(*ADMIN_ROLES)
+    async def give_points(self, ctx, member: discord.Member, amount: int):
+        """Donne des points à un utilisateur (ADMIN)"""
+        if amount == 0:
+            await ctx.send("❌ Le montant ne peut pas être 0.")
             return
         
-        emoji = str(payload.emoji)
-        if emoji not in ["👍", "👎"]:
-            return
+        final_amount, _ = add_points(member.id, amount, "admin_gift")
         
-        for theory_id, theory in theories_data.items():
-            if theory.get("message_id") == payload.message_id:
-                user_id = str(payload.user_id)
-                
-                # Ne pas voter pour sa propre théorie
-                if user_id == theory["author_id"]:
-                    return
-                
-                if user_id in theory.get("votes_up", []):
-                    theory["votes_up"].remove(user_id)
-                if user_id in theory.get("votes_down", []):
-                    theory["votes_down"].remove(user_id)
-                
-                # Vérifier super vote
-                super_vote = False
-                try:
-                    from shop import get_user_inventory
-                    inv = get_user_inventory(payload.user_id)
-                    if "super_vote" in inv.get("active_boosts", {}):
-                        super_vote = True
-                        del inv["active_boosts"]["super_vote"]
-                        from shop import sauvegarder_shop
-                        sauvegarder_shop()
-                except:
-                    pass
-                
-                vote_count = 3 if super_vote else 1
-                
-                if emoji == "👍":
-                    if "votes_up" not in theory:
-                        theory["votes_up"] = []
-                    for _ in range(vote_count):
-                        theory["votes_up"].append(user_id)
-                else:
-                    if "votes_down" not in theory:
-                        theory["votes_down"] = []
-                    theory["votes_down"].append(user_id)
-                
-                voter_stats = get_user_stats(payload.user_id)
-                voter_stats["theories_votes_given"] += 1
-                add_points(payload.user_id, POINTS["theory_vote"])
-                
-                if emoji == "👍":
-                    author_stats = get_user_stats(int(theory["author_id"]))
-                    author_stats["theories_votes_received"] += vote_count
-                    add_points(int(theory["author_id"]), vote_count)
-                
-                sauvegarder_donnees()
-                break
-    
-    # ==================== HELPERS ====================
-    
-    async def update_chapter_embed(self, chapter_key):
-        """Met à jour l'embed d'interaction d'un chapitre"""
-        if chapter_key not in chapters_data:
-            return
-        
-        chapter = chapters_data[chapter_key]
-        
-        if "interaction_message_id" not in chapter:
-            return
-        
-        try:
-            channel = self.bot.get_channel(chapter["channel_id"])
-            if not channel:
-                return
-            
-            message = await channel.fetch_message(chapter["interaction_message_id"])
-            
-            reviews = chapter.get("reviews", {})
-            moyenne = sum(r["note"] for r in reviews.values()) / len(reviews) if reviews else 0
-            
-            manga_emoji = get_manga_emoji(chapter["manga"])
-            
-            embed = discord.Embed(
-                title=f"{manga_emoji} {chapter['manga']} - Chapitre {chapter['chapter']}",
-                description=(
-                    "**📝 Partagez votre avis sur ce chapitre !**\n\n"
-                    f"⭐ **Noter** : `!review {chapter['manga']} {chapter['chapter']} <1-5> [commentaire]`\n"
-                    f"💭 **Théorie** : `!theory {chapter['manga']} <votre théorie>`\n"
-                    f"📊 **Voir les avis** : `!chapter_reviews {chapter['manga']} {chapter['chapter']}`\n\n"
-                    "━━━━━━━━━━━━━━━━━━━━━━━━"
-                ),
-                color=discord.Color.gold(),
-                timestamp=datetime.now()
-            )
-            
-            stars = f"⭐ {moyenne:.1f}/5" if reviews else "⭐ --"
-            embed.add_field(
-                name="📊 Statistiques",
-                value=f"{stars}\n📝 Reviews: {len(reviews)}\n💭 Théories: {len(chapter.get('theories_linked', []))}",
-                inline=True
-            )
-            
-            embed.add_field(
-                name="🏆 Points à gagner",
-                value=f"+{POINTS['review']} pts (review)\n+{POINTS['theory']} pts (théorie)",
-                inline=True
-            )
-            
-            embed.set_footer(text=f"ID: {chapter_key}")
-            
-            await message.edit(embed=embed)
-            
-        except Exception as e:
-            print(f"❌ Erreur mise à jour embed: {e}")
-    
-    @commands.command(name="my_reviews")
-    async def my_reviews(self, ctx):
-        """Affiche vos reviews"""
-        user_id = str(ctx.author.id)
-        
-        user_reviews = []
-        for chapter_key, chapter in chapters_data.items():
-            if user_id in chapter.get("reviews", {}):
-                user_reviews.append({
-                    "key": chapter_key,
-                    "manga": chapter["manga"],
-                    "chapter": chapter["chapter"],
-                    "review": chapter["reviews"][user_id]
-                })
-        
-        if not user_reviews:
-            await ctx.send("❌ Vous n'avez pas encore laissé de review.")
-            return
+        action = "ajouté" if amount > 0 else "retiré"
+        stats = get_user_stats(member.id)
         
         embed = discord.Embed(
-            title=f"📝 Vos Reviews",
-            description=f"Vous avez laissé **{len(user_reviews)}** review(s)",
-            color=discord.Color.blue(),
-            timestamp=datetime.now()
+            title=f"✅ Points {action}",
+            description=f"**{abs(final_amount)}** points ont été {action}s à {member.mention}",
+            color=COLORS["success"] if amount > 0 else COLORS["warning"]
         )
+        embed.add_field(name="💰 Nouveau total", value=f"{stats['points']:,} pts")
+        await ctx.send(embed=embed)
+    
+    @commands.command(name="reset_points")
+    @commands.has_any_role(*ADMIN_ROLES)
+    async def reset_points(self, ctx, member: discord.Member):
+        """Réinitialise les points d'un utilisateur (ADMIN)"""
+        stats = get_user_stats(member.id)
+        old_points = stats["points"]
+        stats["points"] = 0
+        sauvegarder_donnees()
         
-        for r in user_reviews[:10]:
-            manga_emoji = get_manga_emoji(r["manga"])
-            stars = "⭐" * r["review"]["note"]
-            
-            value = f"{stars}"
-            if r["review"].get("commentaire"):
-                value += f"\n*\"{r['review']['commentaire'][:50]}...\"*" if len(r["review"].get("commentaire", "")) > 50 else f"\n*\"{r['review']['commentaire']}\"*"
-            
-            embed.add_field(
-                name=f"{manga_emoji} {r['manga']} Ch.{r['chapter']}",
-                value=value,
-                inline=True
-            )
-        
-        embed.set_thumbnail(url=ctx.author.avatar.url if ctx.author.avatar else None)
+        embed = discord.Embed(
+            title="♻️ Points réinitialisés",
+            description=f"Les points de {member.mention} ont été remis à zéro.",
+            color=COLORS["warning"]
+        )
+        embed.add_field(name="💰 Anciens points", value=f"{old_points:,}")
         await ctx.send(embed=embed)
 
 
 async def setup(bot):
     """Setup pour discord.py 2.0+"""
     await bot.add_cog(CommunitySystem(bot))
+    logging.info("✅ Cog CommunitySystem chargé avec succès")
