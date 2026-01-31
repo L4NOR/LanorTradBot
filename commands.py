@@ -2263,8 +2263,12 @@ def setup(bot):
             await ctx.send(embed=embed)
             return
         
-        # Récupérer le canal
+        # Récupérer le canal ou le thread (fil)
         channel = ctx.guild.get_channel(channel_id_int)
+        if not channel:
+            # Essayer de récupérer comme un thread/fil
+            channel = ctx.guild.get_thread(channel_id_int)
+        
         if not channel:
             embed = discord.Embed(
                 color=THEME_COLORS["error"],
@@ -2273,14 +2277,14 @@ def setup(bot):
             embed.description = (
                 "```ansi\n"
                 "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Canal introuvable\u001b[0m           \u001b[1;31m║\u001b[0m\n"
+                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Canal/Fil introuvable\u001b[0m       \u001b[1;31m║\u001b[0m\n"
                 "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
                 "```\n"
-                f"**Le canal avec l'ID `{channel_id}` est introuvable !**\n\n"
+                f"**Le canal ou fil avec l'ID `{channel_id}` est introuvable !**\n\n"
                 "Vérifiez que :\n"
                 "• L'ID est correct\n"
-                "• Le canal existe sur ce serveur\n"
-                "• Le bot a accès au canal"
+                "• Le canal/fil existe sur ce serveur\n"
+                "• Le bot a accès au canal/fil"
             )
             await ctx.send(embed=embed)
             return
@@ -2301,11 +2305,25 @@ def setup(bot):
         )
         processing_msg = await ctx.send(embed=processing_embed)
         
-        # Récupérer tous les membres qui peuvent voir le canal
+        # Récupérer tous les membres qui peuvent voir le canal/fil
         members_in_channel = []
-        for member in ctx.guild.members:
-            if not member.bot and channel.permissions_for(member).view_channel:
-                members_in_channel.append(member)
+        
+        # Pour les threads, récupérer les membres différemment
+        if isinstance(channel, discord.Thread):
+            # Pour les threads, on récupère les membres qui peuvent voir le canal parent
+            parent_channel = channel.parent
+            if parent_channel:
+                for member in ctx.guild.members:
+                    if not member.bot and parent_channel.permissions_for(member).view_channel:
+                        members_in_channel.append(member)
+            else:
+                # Si pas de parent (ne devrait pas arriver), on prend tous les membres non-bots
+                members_in_channel = [m for m in ctx.guild.members if not m.bot]
+        else:
+            # Pour les canaux normaux
+            for member in ctx.guild.members:
+                if not member.bot and channel.permissions_for(member).view_channel:
+                    members_in_channel.append(member)
         
         # Filtrer ceux qui n'ont pas le rôle
         members_without_role = [m for m in members_in_channel if role not in m.roles]
@@ -2716,14 +2734,18 @@ def setup(bot):
             await ctx.send(embed=embed)
             return
         
-        # Récupérer le canal
+        # Récupérer le canal ou le thread (fil)
         channel = ctx.guild.get_channel(channel_id_int)
+        if not channel:
+            # Essayer de récupérer comme un thread/fil
+            channel = ctx.guild.get_thread(channel_id_int)
+        
         if not channel:
             embed = discord.Embed(
                 color=THEME_COLORS["error"],
                 timestamp=datetime.now()
             )
-            embed.description = f"❌ **Le canal avec l'ID `{channel_id_str}` est introuvable !**"
+            embed.description = f"❌ **Le canal ou fil avec l'ID `{channel_id_str}` est introuvable !**"
             await ctx.send(embed=embed)
             return
         
@@ -2780,11 +2802,25 @@ def setup(bot):
         )
         processing_msg = await ctx.send(embed=processing_embed)
         
-        # Récupérer tous les membres qui peuvent voir le canal
+        # Récupérer tous les membres qui peuvent voir le canal/fil
         members_in_channel = []
-        for member in ctx.guild.members:
-            if not member.bot and channel.permissions_for(member).view_channel:
-                members_in_channel.append(member)
+        
+        # Pour les threads, récupérer les membres différemment
+        if isinstance(channel, discord.Thread):
+            # Pour les threads, on récupère les membres qui peuvent voir le canal parent
+            parent_channel = channel.parent
+            if parent_channel:
+                for member in ctx.guild.members:
+                    if not member.bot and parent_channel.permissions_for(member).view_channel:
+                        members_in_channel.append(member)
+            else:
+                # Si pas de parent (ne devrait pas arriver), on prend tous les membres non-bots
+                members_in_channel = [m for m in ctx.guild.members if not m.bot]
+        else:
+            # Pour les canaux normaux
+            for member in ctx.guild.members:
+                if not member.bot and channel.permissions_for(member).view_channel:
+                    members_in_channel.append(member)
         
         # Listes pour suivre les résultats
         success_list = []
