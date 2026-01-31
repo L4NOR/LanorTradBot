@@ -238,6 +238,10 @@ HELP_CATEGORIES = {
             {"name": "ban", "usage": "!ban @user [raison]", "desc": "Bannir un membre"},
             {"name": "unban", "usage": "!unban nom#tag", "desc": "Débannir un membre"},
             {"name": "warn", "usage": "!warn @user [raison]", "desc": "Avertir un membre"},
+            {"name": "bulk_role", "usage": "!bulk_role @role @user1 ID2...", "desc": "Assigner un rôle à plusieurs personnes"},
+            {"name": "bulk_remove_role", "usage": "!bulk_remove_role @role @user1 ID2...", "desc": "Retirer un rôle à plusieurs personnes"},
+            {"name": "multi_bulk_role", "usage": "!multi_bulk_role @role1 @role2 - @user1 ID2...", "desc": "Assigner plusieurs rôles à plusieurs personnes"},
+            {"name": "multi_bulk_remove_role", "usage": "!multi_bulk_remove_role @role1 @role2 - @user1 ID2...", "desc": "Retirer plusieurs rôles à plusieurs personnes"},
         ]
     },
     "admin_data": {
@@ -1658,6 +1662,809 @@ def setup(bot):
                 description="⏰ **Temps écoulé.** L'opération a été annulée."
             )
             await message.edit(embed=timeout_embed)
+
+
+    @bot.command(name="bulk_role", aliases=["assign_roles"])
+    @commands.has_any_role(*ADMIN_ROLES)
+    async def bulk_role(ctx, role: discord.Role, *users):
+        """
+        Assigne un rôle à plusieurs utilisateurs en une seule commande.
+        
+        Usage: !bulk_role @Role @user1 @user2 ID3 ID4 ...
+        
+        Exemples:
+        - !bulk_role @Membre @John @Jane
+        - !bulk_role @Traducteur 123456789 987654321
+        - !bulk_role @Éditeur @User1 123456789 @User2
+        """
+        if not users:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = (
+                "```ansi\n"
+                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
+                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Erreur de Syntaxe\u001b[0m          \u001b[1;31m║\u001b[0m\n"
+                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
+                "```\n"
+                "**Vous devez spécifier au moins un utilisateur !**\n\n"
+                "**Usage:** `!bulk_role @Rôle @user1 @user2 ID3`\n"
+                "**Exemples:**\n"
+                "• `!bulk_role @Membre @John @Jane`\n"
+                "• `!bulk_role @Traducteur 123456789 987654321`"
+            )
+            embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+            await ctx.send(embed=embed)
+            return
+        
+        # Message de traitement
+        processing_embed = discord.Embed(
+            color=THEME_COLORS["info"],
+            timestamp=datetime.now()
+        )
+        processing_embed.description = (
+            "```ansi\n"
+            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;34m║\u001b[0m       \u001b[1;37m⏳ Traitement en cours\u001b[0m         \u001b[1;34m║\u001b[0m\n"
+            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```\n"
+            f"Attribution du rôle {role.mention} en cours..."
+        )
+        processing_msg = await ctx.send(embed=processing_embed)
+        
+        # Listes pour suivre les résultats
+        success_list = []
+        already_have = []
+        not_found = []
+        errors = []
+        
+        for user_identifier in users:
+            try:
+                # Essayer de récupérer l'utilisateur
+                member = None
+                
+                # Si c'est une mention
+                if user_identifier.startswith('<@') and user_identifier.endswith('>'):
+                    user_id = int(user_identifier.strip('<@!>'))
+                    member = ctx.guild.get_member(user_id)
+                # Si c'est un ID numérique
+                elif user_identifier.isdigit():
+                    member = ctx.guild.get_member(int(user_identifier))
+                # Sinon, essayer de chercher par nom
+                else:
+                    member = discord.utils.get(ctx.guild.members, name=user_identifier)
+                
+                if member is None:
+                    not_found.append(user_identifier)
+                    continue
+                
+                # Vérifier si le membre a déjà le rôle
+                if role in member.roles:
+                    already_have.append(member)
+                    continue
+                
+                # Ajouter le rôle
+                await member.add_roles(role)
+                success_list.append(member)
+                
+                # Petit délai pour éviter le rate limiting
+                await asyncio.sleep(0.5)
+                
+            except ValueError:
+                not_found.append(user_identifier)
+            except discord.Forbidden:
+                errors.append(f"{user_identifier} (permissions insuffisantes)")
+            except Exception as e:
+                errors.append(f"{user_identifier} ({str(e)})")
+        
+        # Créer l'embed de résultat
+        result_embed = discord.Embed(
+            color=THEME_COLORS["success"] if success_list else THEME_COLORS["warning"],
+            timestamp=datetime.now()
+        )
+        
+        result_embed.description = (
+            "```ansi\n"
+            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Attribution Terminée\u001b[0m        \u001b[1;32m║\u001b[0m\n"
+            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```"
+        )
+        
+        result_embed.add_field(
+            name=f"🎯 Rôle attribué",
+            value=role.mention,
+            inline=False
+        )
+        
+        # Résumé statistique
+        stats_text = (
+            f"✅ **Succès:** `{len(success_list)}`\n"
+            f"⚠️ **Déjà possédé:** `{len(already_have)}`\n"
+            f"❌ **Non trouvés:** `{len(not_found)}`\n"
+            f"🚫 **Erreurs:** `{len(errors)}`"
+        )
+        result_embed.add_field(name="📊 Statistiques", value=stats_text, inline=False)
+        
+        # Détails des succès
+        if success_list:
+            success_text = "\n".join([f"• {m.mention}" for m in success_list[:10]])
+            if len(success_list) > 10:
+                success_text += f"\n*... et {len(success_list) - 10} autre(s)*"
+            result_embed.add_field(name="✅ Rôle ajouté à", value=success_text, inline=True)
+        
+        # Détails des membres ayant déjà le rôle
+        if already_have:
+            already_text = "\n".join([f"• {m.mention}" for m in already_have[:10]])
+            if len(already_have) > 10:
+                already_text += f"\n*... et {len(already_have) - 10} autre(s)*"
+            result_embed.add_field(name="⚠️ Possédaient déjà", value=already_text, inline=True)
+        
+        # Détails des non trouvés
+        if not_found:
+            not_found_text = "\n".join([f"• `{u}`" for u in not_found[:10]])
+            if len(not_found) > 10:
+                not_found_text += f"\n*... et {len(not_found) - 10} autre(s)*"
+            result_embed.add_field(name="❌ Non trouvés", value=not_found_text, inline=True)
+        
+        # Détails des erreurs
+        if errors:
+            errors_text = "\n".join([f"• {e}" for e in errors[:5]])
+            if len(errors) > 5:
+                errors_text += f"\n*... et {len(errors) - 5} autre(s)*"
+            result_embed.add_field(name="🚫 Erreurs", value=errors_text, inline=True)
+        
+        result_embed.set_footer(
+            text=f"Exécuté par {ctx.author.name}",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        )
+        
+        await processing_msg.edit(embed=result_embed)
+        
+        # Log l'action
+        logging.info(f"Bulk role assignment: {role.name} to {len(success_list)} users by {ctx.author.name}")
+
+    @bot.command(name="multi_bulk_role", aliases=["assign_multi_roles"])
+    @commands.has_any_role(*ADMIN_ROLES)
+    async def multi_bulk_role(ctx, *args):
+        """
+        Assigne plusieurs rôles à plusieurs utilisateurs en une seule commande.
+        
+        Usage: !multi_bulk_role @Role1 @Role2 @Role3 - @user1 @user2 ID3 ID4 ...
+        
+        Le séparateur "-" (tiret) est obligatoire pour séparer les rôles des utilisateurs.
+        
+        Exemples:
+        - !multi_bulk_role @Membre @Traducteur - @John @Jane
+        - !multi_bulk_role @Role1 @Role2 @Role3 - 123456789 987654321
+        - !multi_bulk_role @Éditeur @Correcteur - @User1 123456789 @User2
+        """
+        if not args or '-' not in args:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = (
+                "```ansi\n"
+                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
+                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Erreur de Syntaxe\u001b[0m          \u001b[1;31m║\u001b[0m\n"
+                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
+                "```\n"
+                "**Vous devez utiliser le séparateur `-` (tiret) !**\n\n"
+                "**Usage:** `!multi_bulk_role @Role1 @Role2 - @user1 @user2`\n"
+                "**Exemples:**\n"
+                "• `!multi_bulk_role @Membre @Traducteur - @John @Jane`\n"
+                "• `!multi_bulk_role @Role1 @Role2 @Role3 - 123456789 987654321`"
+            )
+            embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+            await ctx.send(embed=embed)
+            return
+        
+        # Séparer les rôles et les utilisateurs
+        separator_index = args.index('-')
+        role_args = args[:separator_index]
+        user_args = args[separator_index + 1:]
+        
+        if not role_args:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = "❌ **Aucun rôle spécifié avant le séparateur `-` !**"
+            await ctx.send(embed=embed)
+            return
+        
+        if not user_args:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = "❌ **Aucun utilisateur spécifié après le séparateur `-` !**"
+            await ctx.send(embed=embed)
+            return
+        
+        # Récupérer les rôles
+        roles = []
+        invalid_roles = []
+        for role_arg in role_args:
+            # Essayer de récupérer le rôle
+            role = None
+            if role_arg.startswith('<@&') and role_arg.endswith('>'):
+                role_id = int(role_arg.strip('<@&>'))
+                role = ctx.guild.get_role(role_id)
+            elif role_arg.isdigit():
+                role = ctx.guild.get_role(int(role_arg))
+            else:
+                role = discord.utils.get(ctx.guild.roles, name=role_arg)
+            
+            if role:
+                roles.append(role)
+            else:
+                invalid_roles.append(role_arg)
+        
+        if invalid_roles:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = f"❌ **Rôle(s) invalide(s) :** {', '.join(f'`{r}`' for r in invalid_roles)}"
+            await ctx.send(embed=embed)
+            return
+        
+        if not roles:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = "❌ **Aucun rôle valide trouvé !**"
+            await ctx.send(embed=embed)
+            return
+        
+        # Message de traitement
+        processing_embed = discord.Embed(
+            color=THEME_COLORS["info"],
+            timestamp=datetime.now()
+        )
+        role_mentions = ", ".join([r.mention for r in roles])
+        processing_embed.description = (
+            "```ansi\n"
+            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;34m║\u001b[0m       \u001b[1;37m⏳ Traitement en cours\u001b[0m         \u001b[1;34m║\u001b[0m\n"
+            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```\n"
+            f"Attribution des rôles {role_mentions} en cours..."
+        )
+        processing_msg = await ctx.send(embed=processing_embed)
+        
+        # Listes pour suivre les résultats
+        success_list = []
+        partial_success = []  # Utilisateurs qui avaient déjà certains rôles
+        already_have_all = []
+        not_found = []
+        errors = []
+        
+        for user_identifier in user_args:
+            try:
+                # Essayer de récupérer l'utilisateur
+                member = None
+                
+                if user_identifier.startswith('<@') and user_identifier.endswith('>'):
+                    user_id = int(user_identifier.strip('<@!>'))
+                    member = ctx.guild.get_member(user_id)
+                elif user_identifier.isdigit():
+                    member = ctx.guild.get_member(int(user_identifier))
+                else:
+                    member = discord.utils.get(ctx.guild.members, name=user_identifier)
+                
+                if member is None:
+                    not_found.append(user_identifier)
+                    continue
+                
+                # Vérifier quels rôles le membre possède déjà
+                roles_to_add = [r for r in roles if r not in member.roles]
+                roles_already_had = [r for r in roles if r in member.roles]
+                
+                if not roles_to_add:
+                    # Le membre a déjà tous les rôles
+                    already_have_all.append(member)
+                    continue
+                
+                # Ajouter les rôles manquants
+                await member.add_roles(*roles_to_add)
+                
+                if roles_already_had:
+                    partial_success.append((member, len(roles_to_add), len(roles_already_had)))
+                else:
+                    success_list.append(member)
+                
+                # Petit délai pour éviter le rate limiting
+                await asyncio.sleep(0.5)
+                
+            except ValueError:
+                not_found.append(user_identifier)
+            except discord.Forbidden:
+                errors.append(f"{user_identifier} (permissions insuffisantes)")
+            except Exception as e:
+                errors.append(f"{user_identifier} ({str(e)})")
+        
+        # Créer l'embed de résultat
+        result_embed = discord.Embed(
+            color=THEME_COLORS["success"] if (success_list or partial_success) else THEME_COLORS["warning"],
+            timestamp=datetime.now()
+        )
+        
+        result_embed.description = (
+            "```ansi\n"
+            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Attribution Terminée\u001b[0m        \u001b[1;32m║\u001b[0m\n"
+            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```"
+        )
+        
+        result_embed.add_field(
+            name=f"🎯 Rôles attribués ({len(roles)})",
+            value=role_mentions,
+            inline=False
+        )
+        
+        # Résumé statistique
+        stats_text = (
+            f"✅ **Succès complet:** `{len(success_list)}`\n"
+            f"⚠️ **Succès partiel:** `{len(partial_success)}`\n"
+            f"🔵 **Déjà tous les rôles:** `{len(already_have_all)}`\n"
+            f"❌ **Non trouvés:** `{len(not_found)}`\n"
+            f"🚫 **Erreurs:** `{len(errors)}`"
+        )
+        result_embed.add_field(name="📊 Statistiques", value=stats_text, inline=False)
+        
+        # Détails des succès complets
+        if success_list:
+            success_text = "\n".join([f"• {m.mention} (+{len(roles)} rôles)" for m in success_list[:10]])
+            if len(success_list) > 10:
+                success_text += f"\n*... et {len(success_list) - 10} autre(s)*"
+            result_embed.add_field(name="✅ Succès complet", value=success_text, inline=True)
+        
+        # Détails des succès partiels
+        if partial_success:
+            partial_text = "\n".join([f"• {m.mention} (+{added}, avait {had})" for m, added, had in partial_success[:10]])
+            if len(partial_success) > 10:
+                partial_text += f"\n*... et {len(partial_success) - 10} autre(s)*"
+            result_embed.add_field(name="⚠️ Succès partiel", value=partial_text, inline=True)
+        
+        # Détails des membres ayant déjà tous les rôles
+        if already_have_all:
+            already_text = "\n".join([f"• {m.mention}" for m in already_have_all[:10]])
+            if len(already_have_all) > 10:
+                already_text += f"\n*... et {len(already_have_all) - 10} autre(s)*"
+            result_embed.add_field(name="🔵 Avaient déjà tout", value=already_text, inline=True)
+        
+        # Détails des non trouvés
+        if not_found:
+            not_found_text = "\n".join([f"• `{u}`" for u in not_found[:10]])
+            if len(not_found) > 10:
+                not_found_text += f"\n*... et {len(not_found) - 10} autre(s)*"
+            result_embed.add_field(name="❌ Non trouvés", value=not_found_text, inline=True)
+        
+        # Détails des erreurs
+        if errors:
+            errors_text = "\n".join([f"• {e}" for e in errors[:5]])
+            if len(errors) > 5:
+                errors_text += f"\n*... et {len(errors) - 5} autre(s)*"
+            result_embed.add_field(name="🚫 Erreurs", value=errors_text, inline=True)
+        
+        result_embed.set_footer(
+            text=f"Exécuté par {ctx.author.name}",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        )
+        
+        await processing_msg.edit(embed=result_embed)
+        
+        # Log l'action
+        roles_names = ", ".join([r.name for r in roles])
+        total_success = len(success_list) + len(partial_success)
+        logging.info(f"Multi bulk role assignment: {roles_names} to {total_success} users by {ctx.author.name}")
+
+    @bot.command(name="bulk_remove_role", aliases=["remove_roles"])
+    @commands.has_any_role(*ADMIN_ROLES)
+    async def bulk_remove_role(ctx, role: discord.Role, *users):
+        """
+        Retire un rôle à plusieurs utilisateurs en une seule commande.
+        
+        Usage: !bulk_remove_role @Role @user1 @user2 ID3 ID4 ...
+        
+        Exemples:
+        - !bulk_remove_role @Membre @John @Jane
+        - !bulk_remove_role @Traducteur 123456789 987654321
+        - !bulk_remove_role @Éditeur @User1 123456789 @User2
+        """
+        if not users:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = (
+                "```ansi\n"
+                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
+                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Erreur de Syntaxe\u001b[0m          \u001b[1;31m║\u001b[0m\n"
+                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
+                "```\n"
+                "**Vous devez spécifier au moins un utilisateur !**\n\n"
+                "**Usage:** `!bulk_remove_role @Rôle @user1 @user2 ID3`\n"
+                "**Exemples:**\n"
+                "• `!bulk_remove_role @Membre @John @Jane`\n"
+                "• `!bulk_remove_role @Traducteur 123456789 987654321`"
+            )
+            embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+            await ctx.send(embed=embed)
+            return
+        
+        # Message de traitement
+        processing_embed = discord.Embed(
+            color=THEME_COLORS["info"],
+            timestamp=datetime.now()
+        )
+        processing_embed.description = (
+            "```ansi\n"
+            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;34m║\u001b[0m       \u001b[1;37m⏳ Traitement en cours\u001b[0m         \u001b[1;34m║\u001b[0m\n"
+            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```\n"
+            f"Retrait du rôle {role.mention} en cours..."
+        )
+        processing_msg = await ctx.send(embed=processing_embed)
+        
+        # Listes pour suivre les résultats
+        success_list = []
+        dont_have = []
+        not_found = []
+        errors = []
+        
+        for user_identifier in users:
+            try:
+                # Essayer de récupérer l'utilisateur
+                member = None
+                
+                # Si c'est une mention
+                if user_identifier.startswith('<@') and user_identifier.endswith('>'):
+                    user_id = int(user_identifier.strip('<@!>'))
+                    member = ctx.guild.get_member(user_id)
+                # Si c'est un ID numérique
+                elif user_identifier.isdigit():
+                    member = ctx.guild.get_member(int(user_identifier))
+                # Sinon, essayer de chercher par nom
+                else:
+                    member = discord.utils.get(ctx.guild.members, name=user_identifier)
+                
+                if member is None:
+                    not_found.append(user_identifier)
+                    continue
+                
+                # Vérifier si le membre a le rôle
+                if role not in member.roles:
+                    dont_have.append(member)
+                    continue
+                
+                # Retirer le rôle
+                await member.remove_roles(role)
+                success_list.append(member)
+                
+                # Petit délai pour éviter le rate limiting
+                await asyncio.sleep(0.5)
+                
+            except ValueError:
+                not_found.append(user_identifier)
+            except discord.Forbidden:
+                errors.append(f"{user_identifier} (permissions insuffisantes)")
+            except Exception as e:
+                errors.append(f"{user_identifier} ({str(e)})")
+        
+        # Créer l'embed de résultat
+        result_embed = discord.Embed(
+            color=THEME_COLORS["success"] if success_list else THEME_COLORS["warning"],
+            timestamp=datetime.now()
+        )
+        
+        result_embed.description = (
+            "```ansi\n"
+            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Retrait Terminé\u001b[0m             \u001b[1;32m║\u001b[0m\n"
+            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```"
+        )
+        
+        result_embed.add_field(
+            name=f"🎯 Rôle retiré",
+            value=role.mention,
+            inline=False
+        )
+        
+        # Résumé statistique
+        stats_text = (
+            f"✅ **Succès:** `{len(success_list)}`\n"
+            f"⚠️ **N'avaient pas:** `{len(dont_have)}`\n"
+            f"❌ **Non trouvés:** `{len(not_found)}`\n"
+            f"🚫 **Erreurs:** `{len(errors)}`"
+        )
+        result_embed.add_field(name="📊 Statistiques", value=stats_text, inline=False)
+        
+        # Détails des succès
+        if success_list:
+            success_text = "\n".join([f"• {m.mention}" for m in success_list[:10]])
+            if len(success_list) > 10:
+                success_text += f"\n*... et {len(success_list) - 10} autre(s)*"
+            result_embed.add_field(name="✅ Rôle retiré à", value=success_text, inline=True)
+        
+        # Détails des membres n'ayant pas le rôle
+        if dont_have:
+            dont_have_text = "\n".join([f"• {m.mention}" for m in dont_have[:10]])
+            if len(dont_have) > 10:
+                dont_have_text += f"\n*... et {len(dont_have) - 10} autre(s)*"
+            result_embed.add_field(name="⚠️ N'avaient pas", value=dont_have_text, inline=True)
+        
+        # Détails des non trouvés
+        if not_found:
+            not_found_text = "\n".join([f"• `{u}`" for u in not_found[:10]])
+            if len(not_found) > 10:
+                not_found_text += f"\n*... et {len(not_found) - 10} autre(s)*"
+            result_embed.add_field(name="❌ Non trouvés", value=not_found_text, inline=True)
+        
+        # Détails des erreurs
+        if errors:
+            errors_text = "\n".join([f"• {e}" for e in errors[:5]])
+            if len(errors) > 5:
+                errors_text += f"\n*... et {len(errors) - 5} autre(s)*"
+            result_embed.add_field(name="🚫 Erreurs", value=errors_text, inline=True)
+        
+        result_embed.set_footer(
+            text=f"Exécuté par {ctx.author.name}",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        )
+        
+        await processing_msg.edit(embed=result_embed)
+        
+        # Log l'action
+        logging.info(f"Bulk role removal: {role.name} from {len(success_list)} users by {ctx.author.name}")
+
+
+    @bot.command(name="multi_bulk_remove_role", aliases=["remove_multi_roles"])
+    @commands.has_any_role(*ADMIN_ROLES)
+    async def multi_bulk_remove_role(ctx, *args):
+        """
+        Retire plusieurs rôles à plusieurs utilisateurs en une seule commande.
+        
+        Usage: !multi_bulk_remove_role @Role1 @Role2 @Role3 - @user1 @user2 ID3 ID4 ...
+        
+        Le séparateur "-" (tiret) est obligatoire pour séparer les rôles des utilisateurs.
+        
+        Exemples:
+        - !multi_bulk_remove_role @Membre @Traducteur - @John @Jane
+        - !multi_bulk_remove_role @Role1 @Role2 @Role3 - 123456789 987654321
+        - !multi_bulk_remove_role @Éditeur @Correcteur - @User1 123456789 @User2
+        """
+        if not args or '-' not in args:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = (
+                "```ansi\n"
+                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
+                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Erreur de Syntaxe\u001b[0m          \u001b[1;31m║\u001b[0m\n"
+                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
+                "```\n"
+                "**Vous devez utiliser le séparateur `-` (tiret) !**\n\n"
+                "**Usage:** `!multi_bulk_remove_role @Role1 @Role2 - @user1 @user2`\n"
+                "**Exemples:**\n"
+                "• `!multi_bulk_remove_role @Membre @Traducteur - @John @Jane`\n"
+                "• `!multi_bulk_remove_role @Role1 @Role2 @Role3 - 123456789 987654321`"
+            )
+            embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+            await ctx.send(embed=embed)
+            return
+        
+        # Séparer les rôles et les utilisateurs
+        separator_index = args.index('-')
+        role_args = args[:separator_index]
+        user_args = args[separator_index + 1:]
+        
+        if not role_args:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = "❌ **Aucun rôle spécifié avant le séparateur `-` !**"
+            await ctx.send(embed=embed)
+            return
+        
+        if not user_args:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = "❌ **Aucun utilisateur spécifié après le séparateur `-` !**"
+            await ctx.send(embed=embed)
+            return
+        
+        # Récupérer les rôles
+        roles = []
+        invalid_roles = []
+        for role_arg in role_args:
+            role = None
+            if role_arg.startswith('<@&') and role_arg.endswith('>'):
+                role_id = int(role_arg.strip('<@&>'))
+                role = ctx.guild.get_role(role_id)
+            elif role_arg.isdigit():
+                role = ctx.guild.get_role(int(role_arg))
+            else:
+                role = discord.utils.get(ctx.guild.roles, name=role_arg)
+            
+            if role:
+                roles.append(role)
+            else:
+                invalid_roles.append(role_arg)
+        
+        if invalid_roles:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = f"❌ **Rôle(s) invalide(s) :** {', '.join(f'`{r}`' for r in invalid_roles)}"
+            await ctx.send(embed=embed)
+            return
+        
+        if not roles:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = "❌ **Aucun rôle valide trouvé !**"
+            await ctx.send(embed=embed)
+            return
+        
+        # Message de traitement
+        processing_embed = discord.Embed(
+            color=THEME_COLORS["info"],
+            timestamp=datetime.now()
+        )
+        role_mentions = ", ".join([r.mention for r in roles])
+        processing_embed.description = (
+            "```ansi\n"
+            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;34m║\u001b[0m       \u001b[1;37m⏳ Traitement en cours\u001b[0m         \u001b[1;34m║\u001b[0m\n"
+            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```\n"
+            f"Retrait des rôles {role_mentions} en cours..."
+        )
+        processing_msg = await ctx.send(embed=processing_embed)
+        
+        # Listes pour suivre les résultats
+        success_list = []
+        partial_success = []  # Utilisateurs qui n'avaient pas certains rôles
+        dont_have_any = []
+        not_found = []
+        errors = []
+        
+        for user_identifier in user_args:
+            try:
+                # Essayer de récupérer l'utilisateur
+                member = None
+                
+                if user_identifier.startswith('<@') and user_identifier.endswith('>'):
+                    user_id = int(user_identifier.strip('<@!>'))
+                    member = ctx.guild.get_member(user_id)
+                elif user_identifier.isdigit():
+                    member = ctx.guild.get_member(int(user_identifier))
+                else:
+                    member = discord.utils.get(ctx.guild.members, name=user_identifier)
+                
+                if member is None:
+                    not_found.append(user_identifier)
+                    continue
+                
+                # Vérifier quels rôles le membre possède
+                roles_to_remove = [r for r in roles if r in member.roles]
+                roles_didnt_have = [r for r in roles if r not in member.roles]
+                
+                if not roles_to_remove:
+                    # Le membre n'a aucun de ces rôles
+                    dont_have_any.append(member)
+                    continue
+                
+                # Retirer les rôles
+                await member.remove_roles(*roles_to_remove)
+                
+                if roles_didnt_have:
+                    partial_success.append((member, len(roles_to_remove), len(roles_didnt_have)))
+                else:
+                    success_list.append(member)
+                
+                # Petit délai pour éviter le rate limiting
+                await asyncio.sleep(0.5)
+                
+            except ValueError:
+                not_found.append(user_identifier)
+            except discord.Forbidden:
+                errors.append(f"{user_identifier} (permissions insuffisantes)")
+            except Exception as e:
+                errors.append(f"{user_identifier} ({str(e)})")
+        
+        # Créer l'embed de résultat
+        result_embed = discord.Embed(
+            color=THEME_COLORS["success"] if (success_list or partial_success) else THEME_COLORS["warning"],
+            timestamp=datetime.now()
+        )
+        
+        result_embed.description = (
+            "```ansi\n"
+            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Retrait Terminé\u001b[0m             \u001b[1;32m║\u001b[0m\n"
+            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```"
+        )
+        
+        result_embed.add_field(
+            name=f"🎯 Rôles retirés ({len(roles)})",
+            value=role_mentions,
+            inline=False
+        )
+        
+        # Résumé statistique
+        stats_text = (
+            f"✅ **Succès complet:** `{len(success_list)}`\n"
+            f"⚠️ **Succès partiel:** `{len(partial_success)}`\n"
+            f"🔵 **N'avaient aucun rôle:** `{len(dont_have_any)}`\n"
+            f"❌ **Non trouvés:** `{len(not_found)}`\n"
+            f"🚫 **Erreurs:** `{len(errors)}`"
+        )
+        result_embed.add_field(name="📊 Statistiques", value=stats_text, inline=False)
+        
+        # Détails des succès complets
+        if success_list:
+            success_text = "\n".join([f"• {m.mention} (-{len(roles)} rôles)" for m in success_list[:10]])
+            if len(success_list) > 10:
+                success_text += f"\n*... et {len(success_list) - 10} autre(s)*"
+            result_embed.add_field(name="✅ Succès complet", value=success_text, inline=True)
+        
+        # Détails des succès partiels
+        if partial_success:
+            partial_text = "\n".join([f"• {m.mention} (-{removed}, n'avait pas {didnt})" for m, removed, didnt in partial_success[:10]])
+            if len(partial_success) > 10:
+                partial_text += f"\n*... et {len(partial_success) - 10} autre(s)*"
+            result_embed.add_field(name="⚠️ Succès partiel", value=partial_text, inline=True)
+        
+        # Détails des membres n'ayant aucun rôle
+        if dont_have_any:
+            dont_have_text = "\n".join([f"• {m.mention}" for m in dont_have_any[:10]])
+            if len(dont_have_any) > 10:
+                dont_have_text += f"\n*... et {len(dont_have_any) - 10} autre(s)*"
+            result_embed.add_field(name="🔵 N'avaient aucun rôle", value=dont_have_text, inline=True)
+        
+        # Détails des non trouvés
+        if not_found:
+            not_found_text = "\n".join([f"• `{u}`" for u in not_found[:10]])
+            if len(not_found) > 10:
+                not_found_text += f"\n*... et {len(not_found) - 10} autre(s)*"
+            result_embed.add_field(name="❌ Non trouvés", value=not_found_text, inline=True)
+        
+        # Détails des erreurs
+        if errors:
+            errors_text = "\n".join([f"• {e}" for e in errors[:5]])
+            if len(errors) > 5:
+                errors_text += f"\n*... et {len(errors) - 5} autre(s)*"
+            result_embed.add_field(name="🚫 Erreurs", value=errors_text, inline=True)
+        
+        result_embed.set_footer(
+            text=f"Exécuté par {ctx.author.name}",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        )
+        
+        await processing_msg.edit(embed=result_embed)
+        
+        # Log l'action
+        roles_names = ", ".join([r.name for r in roles])
+        total_success = len(success_list) + len(partial_success)
+        logging.info(f"Multi bulk role removal: {roles_names} from {total_success} users by {ctx.author.name}")
 
 
 def generate_progress_bar(progress, total, size=10):
