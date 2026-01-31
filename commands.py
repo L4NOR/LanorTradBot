@@ -242,6 +242,8 @@ HELP_CATEGORIES = {
             {"name": "bulk_remove_role", "usage": "!bulk_remove_role @role @user1 ID2...", "desc": "Retirer un rôle à plusieurs personnes"},
             {"name": "multi_bulk_role", "usage": "!multi_bulk_role @role1 @role2 - @user1 ID2...", "desc": "Assigner plusieurs rôles à plusieurs personnes"},
             {"name": "multi_bulk_remove_role", "usage": "!multi_bulk_remove_role @role1 @role2 - @user1 ID2...", "desc": "Retirer plusieurs rôles à plusieurs personnes"},
+            {"name": "bulk_role_channel", "usage": "!bulk_role_channel @role ID_CANAL", "desc": "Assigner un rôle à tous les membres d'un canal"},
+            {"name": "multi_bulk_role_channel", "usage": "!multi_bulk_role_channel @role1 @role2 - ID_CANAL", "desc": "Assigner plusieurs rôles aux membres d'un canal"},
         ]
     },
     "admin_data": {
@@ -2227,6 +2229,180 @@ def setup(bot):
         logging.info(f"Bulk role removal: {role.name} from {len(success_list)} users by {ctx.author.name}")
 
 
+    @bot.command(name="bulk_role_channel", aliases=["assign_role_channel"])
+    @commands.has_any_role(*ADMIN_ROLES)
+    async def bulk_role_channel(ctx, role: discord.Role, channel_id: str):
+        """
+        Assigne un rôle à tous les membres d'un canal qui ne l'ont pas encore.
+        
+        Usage: !bulk_role_channel @Role ID_DU_CANAL
+        
+        Exemples:
+        - !bulk_role_channel @Traducteur 1234567890123456789
+        - !bulk_role_channel @Membre 9876543210987654321
+        """
+        # Convertir l'ID en entier
+        try:
+            channel_id_int = int(channel_id)
+        except ValueError:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = (
+                "```ansi\n"
+                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
+                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ ID de canal invalide\u001b[0m        \u001b[1;31m║\u001b[0m\n"
+                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
+                "```\n"
+                f"**L'ID `{channel_id}` n'est pas valide !**\n\n"
+                "L'ID d'un canal doit être une série de chiffres.\n"
+                "**Exemple:** `!bulk_role_channel @Role 1234567890123456789`"
+            )
+            embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+            await ctx.send(embed=embed)
+            return
+        
+        # Récupérer le canal
+        channel = ctx.guild.get_channel(channel_id_int)
+        if not channel:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = (
+                "```ansi\n"
+                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
+                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Canal introuvable\u001b[0m           \u001b[1;31m║\u001b[0m\n"
+                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
+                "```\n"
+                f"**Le canal avec l'ID `{channel_id}` est introuvable !**\n\n"
+                "Vérifiez que :\n"
+                "• L'ID est correct\n"
+                "• Le canal existe sur ce serveur\n"
+                "• Le bot a accès au canal"
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        # Message de traitement
+        processing_embed = discord.Embed(
+            color=THEME_COLORS["info"],
+            timestamp=datetime.now()
+        )
+        processing_embed.description = (
+            "```ansi\n"
+            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;34m║\u001b[0m       \u001b[1;37m⏳ Analyse en cours\u001b[0m            \u001b[1;34m║\u001b[0m\n"
+            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```\n"
+            f"Analyse des membres du canal **#{channel.name}**...\n"
+            f"Attribution du rôle {role.mention} en cours..."
+        )
+        processing_msg = await ctx.send(embed=processing_embed)
+        
+        # Récupérer tous les membres qui peuvent voir le canal
+        members_in_channel = []
+        for member in ctx.guild.members:
+            if not member.bot and channel.permissions_for(member).view_channel:
+                members_in_channel.append(member)
+        
+        # Filtrer ceux qui n'ont pas le rôle
+        members_without_role = [m for m in members_in_channel if role not in m.roles]
+        
+        if not members_without_role:
+            embed = discord.Embed(
+                color=THEME_COLORS["warning"],
+                timestamp=datetime.now()
+            )
+            embed.description = (
+                "```ansi\n"
+                "\u001b[1;33m╔═══════════════════════════════════════╗\u001b[0m\n"
+                "\u001b[1;33m║\u001b[0m       \u001b[1;37m⚠️ Aucun membre à traiter\u001b[0m      \u001b[1;33m║\u001b[0m\n"
+                "\u001b[1;33m╚═══════════════════════════════════════╝\u001b[0m\n"
+                "```\n"
+                f"**Tous les membres de #{channel.name} ont déjà le rôle {role.mention} !**\n\n"
+                f"📊 **Membres du canal:** {len(members_in_channel)}\n"
+                f"✅ **Ont déjà le rôle:** {len(members_in_channel)}\n"
+                f"❌ **Sans le rôle:** 0"
+            )
+            await processing_msg.edit(embed=embed)
+            return
+        
+        # Attribuer le rôle
+        success_list = []
+        errors = []
+        
+        for member in members_without_role:
+            try:
+                await member.add_roles(role)
+                success_list.append(member)
+                await asyncio.sleep(0.5)
+            except discord.Forbidden:
+                errors.append(f"{member.mention} (permissions insuffisantes)")
+            except Exception as e:
+                errors.append(f"{member.mention} ({str(e)})")
+        
+        # Créer l'embed de résultat
+        result_embed = discord.Embed(
+            color=THEME_COLORS["success"] if success_list else THEME_COLORS["warning"],
+            timestamp=datetime.now()
+        )
+        
+        result_embed.description = (
+            "```ansi\n"
+            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Attribution Terminée\u001b[0m        \u001b[1;32m║\u001b[0m\n"
+            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```"
+        )
+        
+        result_embed.add_field(
+            name=f"📺 Canal",
+            value=f"#{channel.name} (`{channel.id}`)",
+            inline=False
+        )
+        
+        result_embed.add_field(
+            name=f"🎯 Rôle attribué",
+            value=role.mention,
+            inline=False
+        )
+        
+        # Résumé statistique
+        already_had = len(members_in_channel) - len(members_without_role)
+        stats_text = (
+            f"📊 **Total membres du canal:** `{len(members_in_channel)}`\n"
+            f"✅ **Rôle ajouté:** `{len(success_list)}`\n"
+            f"🔵 **Avaient déjà:** `{already_had}`\n"
+            f"🚫 **Erreurs:** `{len(errors)}`"
+        )
+        result_embed.add_field(name="📊 Statistiques", value=stats_text, inline=False)
+        
+        # Détails des succès
+        if success_list:
+            success_text = "\n".join([f"• {m.mention}" for m in success_list[:15]])
+            if len(success_list) > 15:
+                success_text += f"\n*... et {len(success_list) - 15} autre(s)*"
+            result_embed.add_field(name="✅ Rôle ajouté à", value=success_text, inline=True)
+        
+        # Détails des erreurs
+        if errors:
+            errors_text = "\n".join([f"• {e}" for e in errors[:5]])
+            if len(errors) > 5:
+                errors_text += f"\n*... et {len(errors) - 5} autre(s)*"
+            result_embed.add_field(name="🚫 Erreurs", value=errors_text, inline=True)
+        
+        result_embed.set_footer(
+            text=f"Exécuté par {ctx.author.name}",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        )
+        
+        await processing_msg.edit(embed=result_embed)
+        
+        # Log l'action
+        logging.info(f"Bulk role channel: {role.name} to {len(success_list)} members of #{channel.name} by {ctx.author.name}")
+
     @bot.command(name="multi_bulk_remove_role", aliases=["remove_multi_roles"])
     @commands.has_any_role(*ADMIN_ROLES)
     async def multi_bulk_remove_role(ctx, *args):
@@ -2465,6 +2641,251 @@ def setup(bot):
         roles_names = ", ".join([r.name for r in roles])
         total_success = len(success_list) + len(partial_success)
         logging.info(f"Multi bulk role removal: {roles_names} from {total_success} users by {ctx.author.name}")
+
+
+    @bot.command(name="multi_bulk_role_channel", aliases=["assign_multi_roles_channel"])
+    @commands.has_any_role(*ADMIN_ROLES)
+    async def multi_bulk_role_channel(ctx, *args):
+        """
+        Assigne plusieurs rôles à tous les membres d'un canal qui ne les ont pas encore.
+        
+        Usage: !multi_bulk_role_channel @Role1 @Role2 @Role3 - ID_DU_CANAL
+        
+        Le séparateur "-" (tiret) est obligatoire pour séparer les rôles de l'ID du canal.
+        
+        Exemples:
+        - !multi_bulk_role_channel @Traducteur @Membre - 1234567890123456789
+        - !multi_bulk_role_channel @Role1 @Role2 @Role3 - 9876543210987654321
+        """
+        if not args or '-' not in args:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = (
+                "```ansi\n"
+                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
+                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Erreur de Syntaxe\u001b[0m          \u001b[1;31m║\u001b[0m\n"
+                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
+                "```\n"
+                "**Vous devez utiliser le séparateur `-` (tiret) !**\n\n"
+                "**Usage:** `!multi_bulk_role_channel @Role1 @Role2 - ID_CANAL`\n"
+                "**Exemples:**\n"
+                "• `!multi_bulk_role_channel @Membre @Traducteur - 1234567890`\n"
+                "• `!multi_bulk_role_channel @Role1 @Role2 @Role3 - 9876543210`"
+            )
+            embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+            await ctx.send(embed=embed)
+            return
+        
+        # Séparer les rôles et l'ID du canal
+        separator_index = args.index('-')
+        role_args = args[:separator_index]
+        channel_args = args[separator_index + 1:]
+        
+        if not role_args:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = "❌ **Aucun rôle spécifié avant le séparateur `-` !**"
+            await ctx.send(embed=embed)
+            return
+        
+        if not channel_args:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = "❌ **Aucun ID de canal spécifié après le séparateur `-` !**"
+            await ctx.send(embed=embed)
+            return
+        
+        # Récupérer l'ID du canal (premier argument après le -)
+        channel_id_str = channel_args[0]
+        
+        # Convertir l'ID en entier
+        try:
+            channel_id_int = int(channel_id_str)
+        except ValueError:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = f"❌ **L'ID de canal `{channel_id_str}` n'est pas valide !**"
+            await ctx.send(embed=embed)
+            return
+        
+        # Récupérer le canal
+        channel = ctx.guild.get_channel(channel_id_int)
+        if not channel:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = f"❌ **Le canal avec l'ID `{channel_id_str}` est introuvable !**"
+            await ctx.send(embed=embed)
+            return
+        
+        # Récupérer les rôles
+        roles = []
+        invalid_roles = []
+        for role_arg in role_args:
+            role = None
+            if role_arg.startswith('<@&') and role_arg.endswith('>'):
+                role_id = int(role_arg.strip('<@&>'))
+                role = ctx.guild.get_role(role_id)
+            elif role_arg.isdigit():
+                role = ctx.guild.get_role(int(role_arg))
+            else:
+                role = discord.utils.get(ctx.guild.roles, name=role_arg)
+            
+            if role:
+                roles.append(role)
+            else:
+                invalid_roles.append(role_arg)
+        
+        if invalid_roles:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = f"❌ **Rôle(s) invalide(s) :** {', '.join(f'`{r}`' for r in invalid_roles)}"
+            await ctx.send(embed=embed)
+            return
+        
+        if not roles:
+            embed = discord.Embed(
+                color=THEME_COLORS["error"],
+                timestamp=datetime.now()
+            )
+            embed.description = "❌ **Aucun rôle valide trouvé !**"
+            await ctx.send(embed=embed)
+            return
+        
+        # Message de traitement
+        processing_embed = discord.Embed(
+            color=THEME_COLORS["info"],
+            timestamp=datetime.now()
+        )
+        role_mentions = ", ".join([r.mention for r in roles])
+        processing_embed.description = (
+            "```ansi\n"
+            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;34m║\u001b[0m       \u001b[1;37m⏳ Analyse en cours\u001b[0m            \u001b[1;34m║\u001b[0m\n"
+            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```\n"
+            f"Analyse des membres du canal **#{channel.name}**...\n"
+            f"Attribution des rôles {role_mentions} en cours..."
+        )
+        processing_msg = await ctx.send(embed=processing_embed)
+        
+        # Récupérer tous les membres qui peuvent voir le canal
+        members_in_channel = []
+        for member in ctx.guild.members:
+            if not member.bot and channel.permissions_for(member).view_channel:
+                members_in_channel.append(member)
+        
+        # Listes pour suivre les résultats
+        success_list = []
+        partial_success = []
+        already_have_all = []
+        errors = []
+        
+        for member in members_in_channel:
+            try:
+                # Vérifier quels rôles le membre possède déjà
+                roles_to_add = [r for r in roles if r not in member.roles]
+                roles_already_had = [r for r in roles if r in member.roles]
+                
+                if not roles_to_add:
+                    # Le membre a déjà tous les rôles
+                    already_have_all.append(member)
+                    continue
+                
+                # Ajouter les rôles manquants
+                await member.add_roles(*roles_to_add)
+                
+                if roles_already_had:
+                    partial_success.append((member, len(roles_to_add), len(roles_already_had)))
+                else:
+                    success_list.append(member)
+                
+                await asyncio.sleep(0.5)
+                
+            except discord.Forbidden:
+                errors.append(f"{member.mention} (permissions insuffisantes)")
+            except Exception as e:
+                errors.append(f"{member.mention} ({str(e)})")
+        
+        # Créer l'embed de résultat
+        result_embed = discord.Embed(
+            color=THEME_COLORS["success"] if (success_list or partial_success) else THEME_COLORS["warning"],
+            timestamp=datetime.now()
+        )
+        
+        result_embed.description = (
+            "```ansi\n"
+            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Attribution Terminée\u001b[0m        \u001b[1;32m║\u001b[0m\n"
+            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```"
+        )
+        
+        result_embed.add_field(
+            name=f"📺 Canal",
+            value=f"#{channel.name} (`{channel.id}`)",
+            inline=False
+        )
+        
+        result_embed.add_field(
+            name=f"🎯 Rôles attribués ({len(roles)})",
+            value=role_mentions,
+            inline=False
+        )
+        
+        # Résumé statistique
+        stats_text = (
+            f"📊 **Total membres du canal:** `{len(members_in_channel)}`\n"
+            f"✅ **Succès complet:** `{len(success_list)}`\n"
+            f"⚠️ **Succès partiel:** `{len(partial_success)}`\n"
+            f"🔵 **Avaient tous les rôles:** `{len(already_have_all)}`\n"
+            f"🚫 **Erreurs:** `{len(errors)}`"
+        )
+        result_embed.add_field(name="📊 Statistiques", value=stats_text, inline=False)
+        
+        # Détails des succès complets
+        if success_list:
+            success_text = "\n".join([f"• {m.mention} (+{len(roles)} rôles)" for m in success_list[:10]])
+            if len(success_list) > 10:
+                success_text += f"\n*... et {len(success_list) - 10} autre(s)*"
+            result_embed.add_field(name="✅ Succès complet", value=success_text, inline=True)
+        
+        # Détails des succès partiels
+        if partial_success:
+            partial_text = "\n".join([f"• {m.mention} (+{added}, avait {had})" for m, added, had in partial_success[:10]])
+            if len(partial_success) > 10:
+                partial_text += f"\n*... et {len(partial_success) - 10} autre(s)*"
+            result_embed.add_field(name="⚠️ Succès partiel", value=partial_text, inline=True)
+        
+        # Détails des erreurs
+        if errors:
+            errors_text = "\n".join([f"• {e}" for e in errors[:5]])
+            if len(errors) > 5:
+                errors_text += f"\n*... et {len(errors) - 5} autre(s)*"
+            result_embed.add_field(name="🚫 Erreurs", value=errors_text, inline=True)
+        
+        result_embed.set_footer(
+            text=f"Exécuté par {ctx.author.name}",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        )
+        
+        await processing_msg.edit(embed=result_embed)
+        
+        # Log l'action
+        roles_names = ", ".join([r.name for r in roles])
+        total_success = len(success_list) + len(partial_success)
+        logging.info(f"Multi bulk role channel: {roles_names} to {total_success} members of #{channel.name} by {ctx.author.name}")
 
 
 def generate_progress_bar(progress, total, size=10):
