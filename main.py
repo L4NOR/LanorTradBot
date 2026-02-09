@@ -103,11 +103,6 @@ async def main():
     import role_selector
     await role_selector.setup(bot)
     logging.info("✅ Module Role Selector chargé")
-
-    # Charger le système de dm reminder
-    import dm_reminder
-    await dm_reminder.setup(bot)
-    logging.info("✅ Module DM Reminder chargé")
     
     # ═══════════════════════════════════════════════════════════════════════════
     # DÉMARRAGE DU BOT
