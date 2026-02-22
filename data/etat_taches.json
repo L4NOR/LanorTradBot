@@ -1,64 +1,4 @@
 {
-    "ao no exorcist_166": {
-        "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
-        "check": "❌ Non commencé",
-        "edit": "❌ Non commencé"
-    },
-    "tougen anki_222": {
-        "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
-        "check": "✅ Terminé",
-        "edit": "✅ Terminé"
-    },
-    "tougen anki_223": {
-        "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
-        "check": "✅ Terminé",
-        "edit": "✅ Terminé"
-    },
-    "tougen anki_224": {
-        "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
-        "check": "✅ Terminé",
-        "edit": "✅ Terminé"
-    },
-    "tougen anki_225": {
-        "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
-        "check": "✅ Terminé",
-        "edit": "✅ Terminé"
-    },
-    "tougen anki_226": {
-        "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
-        "check": "✅ Terminé",
-        "edit": "✅ Terminé"
-    },
-    "tougen anki_227": {
-        "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
-        "check": "✅ Terminé",
-        "edit": "✅ Terminé"
-    },
-    "tougen anki_228": {
-        "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
-        "check": "✅ Terminé",
-        "edit": "✅ Terminé"
-    },
-    "tougen anki_229": {
-        "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
-        "check": "❌ Non commencé",
-        "edit": "✅ Terminé"
-    },
-    "tougen anki_230": {
-        "clean": "✅ Terminé",
-        "trad": "✅ Terminé",
-        "check": "❌ Non commencé",
-        "edit": "❌ Non commencé"
-    },
     "tougen anki_231": {
         "clean": "✅ Terminé",
         "trad": "❌ Non commencé",
@@ -233,45 +173,51 @@
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
-    "catenaccio_47": {
+    "tougen anki_260": {
         "clean": "✅ Terminé",
         "trad": "❌ Non commencé",
+        "check": "❌ Non commencé",
+        "edit": "❌ Non commencé"
+    },
+    "catenaccio_47": {
+        "clean": "✅ Terminé",
+        "trad": "✅ Terminé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
     "catenaccio_48": {
         "clean": "✅ Terminé",
-        "trad": "❌ Non commencé",
+        "trad": "✅ Terminé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
     "catenaccio_49": {
         "clean": "✅ Terminé",
-        "trad": "❌ Non commencé",
+        "trad": "✅ Terminé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
     "catenaccio_50": {
         "clean": "✅ Terminé",
-        "trad": "❌ Non commencé",
+        "trad": "✅ Terminé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
     "catenaccio_51": {
         "clean": "✅ Terminé",
-        "trad": "❌ Non commencé",
+        "trad": "✅ Terminé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
     "catenaccio_52": {
         "clean": "✅ Terminé",
-        "trad": "❌ Non commencé",
+        "trad": "✅ Terminé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
     "catenaccio_53": {
         "clean": "✅ Terminé",
-        "trad": "❌ Non commencé",
+        "trad": "✅ Terminé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
@@ -590,26 +536,26 @@
     "tokyo underworld_35": {
         "clean": "✅ Terminé",
         "trad": "✅ Terminé",
-        "check": "❌ Non commencé",
+        "check": "✅ Terminé",
         "edit": "✅ Terminé"
     },
     "tokyo underworld_36": {
         "clean": "✅ Terminé",
         "trad": "✅ Terminé",
-        "check": "❌ Non commencé",
-        "edit": "❌ Non commencé"
+        "check": "✅ Terminé",
+        "edit": "✅ Terminé"
     },
     "tokyo underworld_37": {
         "clean": "✅ Terminé",
         "trad": "✅ Terminé",
-        "check": "❌ Non commencé",
-        "edit": "❌ Non commencé"
+        "check": "✅ Terminé",
+        "edit": "✅ Terminé"
     },
     "tokyo underworld_38": {
         "clean": "✅ Terminé",
         "trad": "✅ Terminé",
         "check": "❌ Non commencé",
-        "edit": "❌ Non commencé"
+        "edit": "✅ Terminé"
     },
     "tokyo underworld_39": {
         "clean": "✅ Terminé",

@@ -2,7 +2,7 @@
 import discord
 from discord.ext import commands
 from datetime import datetime
-from config import CHANNELS, ROLES, COLORS, ADMIN_ROLES, MANGA_CHANNELS, MANGA_ROLES
+from config import CHANNELS, ROLES, COLORS, ADMIN_ROLES, MANGA_CHANNELS, MANGA_ROLES, TASK_ROLES
 import logging
 import asyncio
 import json
@@ -900,7 +900,7 @@ def setup(bot):
         await ctx.send(embed=embed)
     
     @bot.command()
-    @commands.has_any_role(*ADMIN_ROLES)
+    @commands.has_any_role(*TASK_ROLES)
     async def task(ctx, action: str, manga: str, *chapitres: str):
         """Met à jour l'état d'une tâche pour un ou plusieurs chapitres"""
         actions_valides = ["clean", "trad", "check", "edit"]
@@ -1041,7 +1041,7 @@ def setup(bot):
                     await thread_channel.send(message_aleatoire)
     
     @bot.command()
-    @commands.has_any_role(*ADMIN_ROLES)
+    @commands.has_any_role(*TASK_ROLES)
     async def task_status(ctx, manga: str, chapitre: int):
         """Affiche l'état des tâches pour un chapitre donné"""
         manga_normalized = normaliser_manga_name(manga)
@@ -1109,7 +1109,7 @@ def setup(bot):
         await ctx.send(embed=embed)
     
     @bot.command()
-    @commands.has_any_role(*ADMIN_ROLES)
+    @commands.has_any_role(*TASK_ROLES)
     async def delete_task(ctx, manga: str, chapitre: int):
         """Supprime toutes les tâches d'un chapitre"""
         manga_normalized = normaliser_manga_name(manga)
@@ -1157,7 +1157,7 @@ def setup(bot):
             await ctx.send(embed=embed)
     
     @bot.command(name="fix_tasks")
-    @commands.has_any_role(*ADMIN_ROLES)
+    @commands.has_any_role(*TASK_ROLES)
     async def fix_tasks(ctx):
         """Normalise les clés des tâches"""
         global etat_taches_global
@@ -1377,7 +1377,7 @@ def setup(bot):
             await message.edit(embed=embed)
     
     @bot.command(name="task_all")
-    @commands.has_any_role(*ADMIN_ROLES)
+    @commands.has_any_role(*TASK_ROLES)
     async def task_all(ctx, *, manga_filter: str = None):
         """Affiche toutes les tâches en cours (optionnel: spécifier un manga)"""
         if not etat_taches_global:
@@ -1545,7 +1545,7 @@ def setup(bot):
                     break
     
     @bot.command(name="actualiser")
-    @commands.has_any_role(*ADMIN_ROLES)
+    @commands.has_any_role(*TASK_ROLES)
     async def actualiser(ctx):
         """Sauvegarder et envoyer les données"""
         TARGET_USER_ID = 608234789564186644

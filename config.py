@@ -44,6 +44,12 @@ ADMIN_ROLES = [
     1465027978324086846
 ]
 
+# Rôles autorisés pour les commandes de tâches (task/taches)
+# Inclut les admins + rôle traducteur/staff
+TASK_ROLES = ADMIN_ROLES + [
+    1465027945189081113,
+]
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # IDS DES RÔLES GÉNÉRAUX
 # ═══════════════════════════════════════════════════════════════════════════════
