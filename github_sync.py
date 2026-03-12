@@ -16,93 +16,102 @@ sync_history = []
 MAX_HISTORY = 20
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Configuration automatique de l'authentification GitHub
+# Configuration automatique de Git + GitHub (compatible Render)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def setup_git_auth():
-    """
-    Configure l'authentification GitHub pour le push.
-    Utilise GITHUB_TOKEN depuis les variables d'environnement.
-    Compatible avec Render et autres hébergeurs cloud.
-    """
-    token = os.getenv("GITHUB_TOKEN")
-    if not token:
-        logging.warning("⚠️ GITHUB_TOKEN non défini - le git push pourrait échouer")
-        return False
+# URL du repo GitHub (sans token)
+GITHUB_REPO_URL = os.getenv("GITHUB_REPO_URL", "https://github.com/L4NOR/LanorTradBot.git")
+GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
 
+# Construire l'URL avec token pour le push
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+if GITHUB_TOKEN:
+    # https://github.com/USER/REPO.git → https://TOKEN@github.com/USER/REPO.git
+    PUSH_URL = GITHUB_REPO_URL.replace("https://github.com/", f"https://{GITHUB_TOKEN}@github.com/")
+else:
+    PUSH_URL = None
+    logging.warning("⚠️ GITHUB_TOKEN non défini dans les variables d'environnement - git push désactivé")
+
+
+def setup_git_repo():
+    """
+    Initialise git si nécessaire et configure le remote.
+    Sur Render, le dossier peut ne pas avoir de .git ou de remote.
+    """
     repo_dir = os.path.dirname(os.path.abspath(__file__))
 
-    # Récupérer l'URL remote actuelle
     try:
-        result = subprocess.run(
-            ["git", "remote", "get-url", "origin"],
-            capture_output=True, text=True, cwd=repo_dir, timeout=10
-        )
-        if result.returncode != 0:
-            logging.error("❌ Impossible de récupérer l'URL remote git")
-            return False
-
-        current_url = result.stdout.strip()
-
-        # Si l'URL contient déjà un token, ne rien faire
-        if "@" in current_url and "github.com" in current_url:
-            logging.info("✅ Authentification GitHub déjà configurée")
-            return True
-
-        # Transformer https://github.com/USER/REPO.git
-        # en https://<TOKEN>@github.com/USER/REPO.git
-        if current_url.startswith("https://github.com/"):
-            new_url = current_url.replace(
-                "https://github.com/",
-                f"https://{token}@github.com/"
-            )
+        # Étape 1 : Vérifier si .git existe, sinon init
+        git_dir = os.path.join(repo_dir, ".git")
+        if not os.path.exists(git_dir):
+            logging.info("📂 Pas de .git trouvé — initialisation du repo git...")
             subprocess.run(
-                ["git", "remote", "set-url", "origin", new_url],
+                ["git", "init"],
                 capture_output=True, text=True, cwd=repo_dir, timeout=10
             )
-            logging.info("✅ Authentification GitHub configurée avec succès")
-            return True
-        else:
-            logging.warning(f"⚠️ URL remote non standard: {current_url}")
-            return False
+            subprocess.run(
+                ["git", "checkout", "-b", GITHUB_BRANCH],
+                capture_output=True, text=True, cwd=repo_dir, timeout=10
+            )
+            logging.info(f"✅ Repo git initialisé sur la branche {GITHUB_BRANCH}")
 
-    except Exception as e:
-        logging.error(f"❌ Erreur configuration auth GitHub: {e}")
-        return False
-
-
-def setup_git_identity():
-    """Configure l'identité git si pas déjà définie (nécessaire pour commit)"""
-    repo_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # Vérifier si user.name est défini
-    result = subprocess.run(
-        ["git", "config", "user.name"],
-        capture_output=True, text=True, cwd=repo_dir, timeout=10
-    )
-    if not result.stdout.strip():
+        # Étape 2 : Configurer l'identité git
         subprocess.run(
             ["git", "config", "user.name", "LanorTradBot"],
             capture_output=True, text=True, cwd=repo_dir, timeout=10
         )
-
-    # Vérifier si user.email est défini
-    result = subprocess.run(
-        ["git", "config", "user.email"],
-        capture_output=True, text=True, cwd=repo_dir, timeout=10
-    )
-    if not result.stdout.strip():
         subprocess.run(
             ["git", "config", "user.email", "bot@lanortrad.com"],
             capture_output=True, text=True, cwd=repo_dir, timeout=10
         )
 
-    logging.info("✅ Identité git configurée")
+        # Étape 3 : Configurer le remote origin avec le token
+        if PUSH_URL:
+            # Vérifier si origin existe
+            result = subprocess.run(
+                ["git", "remote", "get-url", "origin"],
+                capture_output=True, text=True, cwd=repo_dir, timeout=10
+            )
+            if result.returncode != 0:
+                # Origin n'existe pas → l'ajouter
+                subprocess.run(
+                    ["git", "remote", "add", "origin", PUSH_URL],
+                    capture_output=True, text=True, cwd=repo_dir, timeout=10
+                )
+                logging.info("✅ Remote origin ajouté avec authentification")
+            else:
+                # Origin existe → mettre à jour l'URL avec le token
+                subprocess.run(
+                    ["git", "remote", "set-url", "origin", PUSH_URL],
+                    capture_output=True, text=True, cwd=repo_dir, timeout=10
+                )
+                logging.info("✅ Remote origin mis à jour avec authentification")
+
+            # Étape 4 : Fetch pour synchroniser avec le remote
+            fetch_result = subprocess.run(
+                ["git", "fetch", "origin", GITHUB_BRANCH],
+                capture_output=True, text=True, cwd=repo_dir, timeout=30
+            )
+            if fetch_result.returncode == 0:
+                # Configurer le tracking de la branche
+                subprocess.run(
+                    ["git", "branch", f"--set-upstream-to=origin/{GITHUB_BRANCH}", GITHUB_BRANCH],
+                    capture_output=True, text=True, cwd=repo_dir, timeout=10
+                )
+                logging.info(f"✅ Branche {GITHUB_BRANCH} synchronisée avec origin")
+            else:
+                logging.warning(f"⚠️ Fetch échoué (premier push?) : {fetch_result.stderr.strip()}")
+
+        logging.info("✅ Configuration git complète")
+        return True
+
+    except Exception as e:
+        logging.error(f"❌ Erreur configuration git: {e}")
+        return False
 
 
 # Exécuter la configuration au chargement du module
-setup_git_auth()
-setup_git_identity()
+setup_git_repo()
 
 
 def git_run(cmd, cwd=None):
@@ -170,10 +179,21 @@ def git_sync(commit_message=None):
             return True, "Aucun changement à commiter."
         return False, f"Erreur git commit: {stderr}"
 
-    # Étape 3: git push
-    success, stdout, stderr = git_run(["git", "push"])
+    # Étape 3: git push (explicitement vers origin/branch)
+    success, stdout, stderr = git_run(["git", "push", "origin", GITHUB_BRANCH])
     if not success:
-        return False, f"Erreur git push: {stderr}"
+        # Si le push échoue à cause de divergence, tenter un pull --rebase d'abord
+        if "rejected" in stderr or "non-fast-forward" in stderr:
+            logging.info("🔄 Divergence détectée, tentative de rebase...")
+            rb_success, rb_out, rb_err = git_run(["git", "pull", "--rebase", "origin", GITHUB_BRANCH])
+            if rb_success:
+                success, stdout, stderr = git_run(["git", "push", "origin", GITHUB_BRANCH])
+                if not success:
+                    return False, f"Erreur git push après rebase: {stderr}"
+            else:
+                return False, f"Erreur git pull --rebase: {rb_err}"
+        else:
+            return False, f"Erreur git push: {stderr}"
 
     return True, f"Sync réussi: {commit_message}"
 
