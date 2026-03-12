@@ -252,36 +252,54 @@ SHOP_ROLES = {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# CONFIGURATION COMMUNAUTAIRE (POINTS) - SYSTÈME AUTOMATIQUE
+# CONFIGURATION COMMUNAUTAIRE (XP / NIVEAUX) - SYSTÈME AUTOMATIQUE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-POINTS = {
+XP_GAINS = {
     # Activité de messages (passif)
     "message_min": 1,
     "message_max": 3,
     "message_cooldown": 60,  # secondes
-    
+
     # Bonus quotidien
     "daily_min": 20,
     "daily_max": 50,
     "streak_bonus": 5,      # par jour consécutif
     "streak_max_bonus": 50, # bonus max
-    
+
     # Réactions aux annonces
     "chapter_reaction": 10,
-    
+
     # Vocal
     "voice_per_15min": 5,
-    
+
     # Ancienneté (hebdomadaire)
     "seniority_base": 50,
     "seniority_max": 200,
-    
+
     # Mini-jeux
     "trivia_easy": 20,
     "trivia_medium": 50,
     "trivia_hard": 100,
     "guess_correct": 30,
+}
+
+# Alias pour compatibilité
+POINTS = XP_GAINS
+
+# Configuration du système de niveaux
+LEVELS = {
+    "xp_per_level_base": 100,       # XP pour atteindre le niveau 1
+    "xp_growth_factor": 1.15,       # Multiplicateur XP par niveau
+    "max_level": 100,               # Niveau maximum
+    "announce_channel": CHANNELS.get("general"),  # Channel pour les annonces de level-up
+    "level_roles": {
+        # niveau: role_id (rôles attribués automatiquement)
+        # 5: ROLE_ID,
+        # 10: ROLE_ID,
+        # 25: ROLE_ID,
+        # 50: ROLE_ID,
+    },
 }
 
 # Salons autorisés pour gagner des points par message
@@ -303,6 +321,16 @@ DM_REMINDER_CONFIG = {
     "role_channel_id": None,  # Sera auto-détecté
     "send_hour": 12,          # Heure d'envoi des DMs (midi)
     "timezone": "Europe/Paris",
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONFIGURATION GITHUB SYNC
+# ═══════════════════════════════════════════════════════════════════════════════
+
+GITHUB_SYNC = {
+    "auto_sync_interval": 1800,     # Auto-sync toutes les 30 minutes (en secondes)
+    "sync_channel": CHANNELS.get("test"),  # Channel pour les notifications de sync
+    "commit_prefix": "🔄 sync:",    # Préfixe des messages de commit
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════

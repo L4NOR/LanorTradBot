@@ -639,7 +639,7 @@ class Achievements(commands.Cog):
         )
         
         embed.add_field(name="Rareté", value=RARITY_NAMES[rarity], inline=True)
-        embed.add_field(name="Récompense", value=f"{badge_data['points_reward']} points", inline=True)
+        embed.add_field(name="Récompense", value=f"{badge_data['points_reward']} XP", inline=True)
         embed.add_field(name="Catégorie", value=badge_data["category"].title(), inline=True)
         
         # Progression si applicable
@@ -857,7 +857,7 @@ class Achievements(commands.Cog):
                 description=f"{member.mention} a reçu le badge **{badge['emoji']} {badge['name']}**!",
                 color=RARITY_COLORS.get(badge["rarity"], 0xffd700)
             )
-            embed.add_field(name="Récompense", value=f"+{badge['points_reward']} points")
+            embed.add_field(name="Récompense", value=f"+{badge['points_reward']} XP")
             await ctx.send(embed=embed)
             
             # Notifier le membre
@@ -867,7 +867,7 @@ class Achievements(commands.Cog):
                     description=f"Tu as reçu le badge **{badge['emoji']} {badge['name']}**\n\n*{badge['description']}*",
                     color=RARITY_COLORS.get(badge["rarity"], 0xffd700)
                 )
-                dm_embed.add_field(name="Récompense", value=f"+{badge['points_reward']} points")
+                dm_embed.add_field(name="Récompense", value=f"+{badge['points_reward']} XP")
                 await member.send(embed=dm_embed)
             except:
                 pass

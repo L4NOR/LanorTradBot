@@ -387,10 +387,10 @@ class ShopSystem(commands.Cog):
         try:
             from community import get_user_stats
             user_stats = get_user_stats(ctx.author.id)
-            user_points = user_stats.get("points", 0)
+            user_points = user_stats.get("xp", user_stats.get("points", 0))
         except:
             user_points = 0
-        
+
         if not shop_items:
             await ctx.send("❌ La boutique est vide. Contactez un administrateur.")
             return
@@ -705,8 +705,8 @@ class ShopSystem(commands.Cog):
         try:
             from community import get_user_stats
             user_stats = get_user_stats(ctx.author.id)
-            user_points = user_stats.get("points", 0)
-            
+            user_points = user_stats.get("xp", user_stats.get("points", 0))
+
             if user_points >= price and stock != 0:
                 purchase_status = "✅ Vous pouvez acheter cet article !"
                 status_color = discord.Color.green()
@@ -715,7 +715,7 @@ class ShopSystem(commands.Cog):
                 status_color = discord.Color.orange()
             else:
                 missing = price - user_points
-                purchase_status = f"🔒 Il vous manque {missing:,} points"
+                purchase_status = f"🔒 Il vous manque {missing:,} XP"
                 status_color = discord.Color.red()
             
             embed.add_field(
@@ -794,7 +794,7 @@ class ShopSystem(commands.Cog):
         try:
             from community import get_user_stats, add_points
             user_stats = get_user_stats(ctx.author.id)
-            user_points = user_stats.get("points", 0)
+            user_points = user_stats.get("xp", user_stats.get("points", 0))
         except Exception as e:
             await ctx.send(f"❌ Erreur système: {e}")
             return
@@ -1031,17 +1031,19 @@ class ShopSystem(commands.Cog):
         inv = get_user_inventory(target.id)
         
         try:
-            from community import get_user_stats
+            from community import get_user_stats, calculate_level
             user_stats = get_user_stats(target.id)
-            user_points = user_stats.get("points", 0)
+            user_points = user_stats.get("xp", user_stats.get("points", 0))
+            user_level = calculate_level(user_stats.get("total_xp", user_stats.get("total_points_earned", 0)))
         except:
             user_points = 0
-        
+            user_level = 0
+
         embed = discord.Embed(
             title=f"🎒 Inventaire de {target.display_name}",
             description=f"*Contenu de votre sac magique...*\n\n"
                        f"╔══════════════════════════════╗\n"
-                       f"  💰 Points: **{user_points:,}**\n"
+                       f"  ⭐ Niveau: **{user_level}** — 💎 XP: **{user_points:,}**\n"
                        f"  💳 Total dépensé: **{inv.get('total_spent', 0):,}**\n"
                        f"╚══════════════════════════════╝",
             color=discord.Color.purple(),
@@ -1363,34 +1365,37 @@ class ShopSystem(commands.Cog):
         
         await ctx.send(f"✅ **{item_data.get('name', item_name)}** donné à {member.mention} !")
     
-    @commands.command(name="set_points")
+    @commands.command(name="set_xp", aliases=["set_points"])
     @commands.has_any_role(*ADMIN_ROLES)
-    async def set_points(self, ctx, member: discord.Member, amount: int):
-        """Définit les points d'un membre"""
+    async def set_xp(self, ctx, member: discord.Member, amount: int):
+        """Définit l'XP d'un membre"""
         try:
-            from community import get_user_stats, sauvegarder_donnees
+            from community import get_user_stats, sauvegarder_donnees, calculate_level
             stats = get_user_stats(member.id)
-            old_points = stats.get("points", 0)
-            stats["points"] = amount
+            old_xp = stats.get("xp", stats.get("points", 0))
+            stats["xp"] = amount
+            stats["total_xp"] = amount
             sauvegarder_donnees()
-            
-            await ctx.send(f"✅ Points de {member.mention}: **{old_points}** → **{amount}**")
+            level = calculate_level(amount)
+
+            await ctx.send(f"✅ XP de {member.mention}: **{old_xp}** → **{amount}** (Niveau {level})")
         except Exception as e:
             await ctx.send(f"❌ Erreur: {e}")
-    
-    @commands.command(name="add_points_admin")
+
+    @commands.command(name="add_xp_admin", aliases=["add_points_admin"])
     @commands.has_any_role(*ADMIN_ROLES)
-    async def add_points_admin(self, ctx, member: discord.Member, amount: int):
-        """Ajoute/retire des points à un membre"""
+    async def add_xp_admin(self, ctx, member: discord.Member, amount: int):
+        """Ajoute/retire de l'XP à un membre"""
         try:
-            from community import add_points, get_user_stats
+            from community import add_points, get_user_stats, calculate_level
             final, _ = add_points(member.id, amount, "admin_adjustment")
             stats = get_user_stats(member.id)
-            
+            level = calculate_level(stats.get("total_xp", stats.get("total_points_earned", 0)))
+
             if amount >= 0:
-                await ctx.send(f"✅ +{amount} points pour {member.mention} ! (Total: **{stats['points']:,}**)")
+                await ctx.send(f"✅ +{amount} XP pour {member.mention} ! (Nv. {level} — {stats.get('xp', 0):,} XP)")
             else:
-                await ctx.send(f"✅ {amount} points pour {member.mention} ! (Total: **{stats['points']:,}**)")
+                await ctx.send(f"✅ {amount} XP pour {member.mention} ! (Nv. {level} — {stats.get('xp', 0):,} XP)")
         except Exception as e:
             await ctx.send(f"❌ Erreur: {e}")
     
