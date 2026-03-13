@@ -310,6 +310,7 @@ HELP_CATEGORIES = {
             {"name": "planning_add", "usage": "!planning_add [manga chap JJ/MM/AAAA]", "desc": "Ajouter une sortie au planning"},
             {"name": "planning_status", "usage": "!planning_status <manga> <chap> <statut>", "desc": "Changer le statut d'une sortie"},
             {"name": "planning_date", "usage": "!planning_date <manga> <chap> <JJ/MM/AAAA>", "desc": "Modifier la date d'une sortie"},
+            {"name": "planning_teaser", "usage": "!planning_teaser <id> <texte>", "desc": "Ajouter/modifier un teaser spoil (caché)"},
             {"name": "planning_remove", "usage": "!planning_remove <manga> <chap>", "desc": "Retirer une sortie du planning"},
             {"name": "planning_post", "usage": "!planning_post", "desc": "Poster/actualiser le planning dans le channel"},
             {"name": "planning_full", "usage": "!planning_full", "desc": "Planning complet (toutes les sorties)"},

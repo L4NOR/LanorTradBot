@@ -25,7 +25,7 @@ PLANNING_FILE = f"{DATA_DIR}/planning.json"
 PLANNING_META_FILE = f"{DATA_DIR}/planning_meta.json"
 
 # Données en mémoire
-planning_data = {}  # {"id": {manga, chapter, date, status, notes, added_by, message_id}}
+planning_data = {}  # {"id": {manga, chapter, date, status, notes, teaser, added_by, message_id}}
 
 # Statuts possibles
 STATUTS = {
@@ -107,6 +107,7 @@ def build_planning_embed(upcoming_only=True):
         status_info = STATUTS.get(status_key, STATUTS["prevu"])
         emoji_manga = get_manga_emoji(manga)
         notes = pdata.get("notes", "")
+        teaser = pdata.get("teaser", "")
 
         # Calcul jours restants
         delta = (date - today).days
@@ -130,6 +131,8 @@ def build_planning_embed(upcoming_only=True):
         )
         if notes:
             field_value += f"\n📝 _{notes}_"
+        if teaser:
+            field_value += f"\n🔮 **Teaser** : ||{teaser}||"
 
         embed.add_field(
             name=f"{emoji_manga} {manga} — Chapitre {chapter}",
@@ -358,13 +361,18 @@ class PlanningSystem(commands.Cog):
                 emoji = get_manga_emoji(manga)
                 date_fr = format_date_fr(pdata["date"])
 
+                teaser = pdata.get("teaser", "")
+                field_val = (
+                    f"{status_info['emoji']} {status_info['label']}\n"
+                    f"📆 {date_fr}\n"
+                    f"🆔 `{pid}`"
+                )
+                if teaser:
+                    field_val += f"\n🔮 ||{teaser}||"
+
                 embed.add_field(
                     name=f"{emoji} {manga} — Ch. {chapter}",
-                    value=(
-                        f"{status_info['emoji']} {status_info['label']}\n"
-                        f"📆 {date_fr}\n"
-                        f"🆔 `{pid}`"
-                    ),
+                    value=field_val,
                     inline=True
                 )
 
@@ -387,6 +395,8 @@ class PlanningSystem(commands.Cog):
 
         Usage rapide: !planning_add "Tougen Anki" 220 2026-03-20 Notes optionnelles
         Usage interactif: !planning_add (sans arguments)
+
+        Le teaser (spoil) est ajouté via le mode interactif ou avec !planning_teaser.
         """
         if manga and chapter and date:
             await self._add_quick(ctx, manga, chapter, date, notes)
@@ -466,12 +476,27 @@ class PlanningSystem(commands.Cog):
             msg = await self.bot.wait_for('message', check=check, timeout=60)
             notes = msg.content.strip() if msg.content.strip().lower() != "non" else None
 
-            await self._finalize_add(ctx, manga, chapter, date_str, notes)
+            # Teaser / Spoil
+            embed = discord.Embed(
+                title="🔮 Teaser / Spoil (optionnel)",
+                description=(
+                    "Ajoutez un petit teaser pour donner envie !\n"
+                    "Il sera caché sous un ||spoiler|| dans le planning.\n\n"
+                    "*Ex: \"Attention, ça va chauffer dans ce chapitre...\"*\n\n"
+                    "Tapez `non` pour passer."
+                ),
+                color=0x9B59B6
+            )
+            await ctx.send(embed=embed)
+            msg = await self.bot.wait_for('message', check=check, timeout=60)
+            teaser = msg.content.strip() if msg.content.strip().lower() != "non" else None
+
+            await self._finalize_add(ctx, manga, chapter, date_str, notes, teaser)
 
         except asyncio.TimeoutError:
             await ctx.send("⏰ Temps écoulé. Ajout annulé.", delete_after=10)
 
-    async def _finalize_add(self, ctx, manga, chapter, date_str, notes=None):
+    async def _finalize_add(self, ctx, manga, chapter, date_str, notes=None, teaser=None):
         """Finalise l'ajout au planning."""
         planning_id = f"{manga.lower().replace(' ', '_')}_{chapter}"
 
@@ -490,6 +515,7 @@ class PlanningSystem(commands.Cog):
             "date": date_str,
             "status": "prevu",
             "notes": notes or "",
+            "teaser": teaser or "",
             "added_by": ctx.author.id,
             "created_at": datetime.datetime.now().isoformat(),
             "last_updated": datetime.datetime.now().isoformat(),
@@ -511,6 +537,8 @@ class PlanningSystem(commands.Cog):
         embed.add_field(name="📆 Date prévue", value=date_fr, inline=True)
         if notes:
             embed.add_field(name="📝 Notes", value=notes, inline=False)
+        if teaser:
+            embed.add_field(name="🔮 Teaser", value=f"||{teaser}||", inline=False)
         embed.add_field(name="🆔 ID", value=f"`{planning_id}`", inline=False)
         embed.set_footer(text=f"Ajouté par {ctx.author.name}")
 
@@ -661,6 +689,90 @@ class PlanningSystem(commands.Cog):
         await self.update_planning_message()
 
     # ─────────────────────────────────────────────────────────────────────────
+    # COMMANDE - AJOUTER/MODIFIER UN TEASER
+    # ─────────────────────────────────────────────────────────────────────────
+
+    @commands.command(name="planning_teaser", aliases=["planning_spoil", "teaser"])
+    @commands.has_any_role(*TASK_ROLES)
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    async def set_teaser(self, ctx, planning_id: str = None, *, teaser_text: str = None):
+        """
+        Ajoute ou modifie le teaser (spoil) d'une sortie.
+
+        Usage: !planning_teaser <id> <texte du teaser>
+        Pour supprimer: !planning_teaser <id> supprimer
+        """
+        if not planning_id:
+            await ctx.send(
+                "❌ Usage : `!planning_teaser <id> <texte>`\n"
+                "Exemple : `!planning_teaser tougen_anki_220 Attention, ça va chauffer !`\n"
+                "Pour supprimer : `!planning_teaser <id> supprimer`",
+                delete_after=15
+            )
+            return
+
+        entry = planning_data.get(planning_id)
+        if not entry:
+            # Correspondance partielle
+            matches = [pid for pid in planning_data if planning_id.lower() in pid.lower()]
+            if len(matches) == 1:
+                planning_id = matches[0]
+                entry = planning_data[planning_id]
+            else:
+                await ctx.send(f"❌ Entrée `{planning_id}` introuvable.", delete_after=10)
+                return
+
+        if not teaser_text:
+            # Afficher le teaser actuel
+            current = entry.get("teaser", "")
+            emoji = get_manga_emoji(entry["manga"])
+            embed = discord.Embed(
+                title=f"{emoji} {entry['manga']} — Ch. {entry['chapter']}",
+                color=0x9B59B6
+            )
+            if current:
+                embed.add_field(name="🔮 Teaser actuel", value=f"||{current}||", inline=False)
+                embed.set_footer(text="Pour modifier : !planning_teaser <id> <nouveau texte>")
+            else:
+                embed.description = "*Aucun teaser défini.*"
+                embed.set_footer(text="Pour ajouter : !planning_teaser <id> <texte>")
+            await ctx.send(embed=embed)
+            return
+
+        # Supprimer le teaser
+        if teaser_text.lower() in ["supprimer", "delete", "remove", "none", "aucun"]:
+            entry["teaser"] = ""
+            entry["last_updated"] = datetime.datetime.now().isoformat()
+            sauvegarder_planning()
+
+            emoji = get_manga_emoji(entry["manga"])
+            embed = discord.Embed(
+                title=f"🗑️ Teaser supprimé",
+                description=f"{emoji} **{entry['manga']}** — Ch. **{entry['chapter']}**",
+                color=COLORS["warning"]
+            )
+            embed.set_footer(text=f"Par {ctx.author.name}")
+            await ctx.send(embed=embed)
+        else:
+            # Ajouter/modifier le teaser
+            entry["teaser"] = teaser_text
+            entry["last_updated"] = datetime.datetime.now().isoformat()
+            sauvegarder_planning()
+
+            emoji = get_manga_emoji(entry["manga"])
+            embed = discord.Embed(
+                title=f"🔮 Teaser mis à jour !",
+                description=f"{emoji} **{entry['manga']}** — Ch. **{entry['chapter']}**",
+                color=0x9B59B6
+            )
+            embed.add_field(name="🔮 Teaser", value=f"||{teaser_text}||", inline=False)
+            embed.set_footer(text=f"Par {ctx.author.name}")
+            await ctx.send(embed=embed)
+
+        # Mettre à jour le message dans le canal planning
+        await self.update_planning_message()
+
+    # ─────────────────────────────────────────────────────────────────────────
     # COMMANDE - SUPPRIMER DU PLANNING
     # ─────────────────────────────────────────────────────────────────────────
 
@@ -757,6 +869,9 @@ class PlanningSystem(commands.Cog):
 
         if pdata.get("notes"):
             embed.add_field(name="📝 Notes", value=pdata["notes"], inline=False)
+
+        if pdata.get("teaser"):
+            embed.add_field(name="🔮 Teaser", value=f"||{pdata['teaser']}||", inline=False)
 
         # Autres sorties à venir
         if len(upcoming) > 1:
