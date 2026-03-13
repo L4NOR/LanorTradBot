@@ -42,11 +42,10 @@ LOOT_COMMON = [
 ]
 
 LOOT_UNCOMMON = [
-    {"item": "highlight_review", "quantity": 1},
-    {"item": "theory_boost", "quantity": 1},
     {"item": "lottery_ticket", "quantity": 2},
     {"item": "points", "quantity": 150},
     {"item": "points", "quantity": 200},
+    {"item": "points", "quantity": 250},
 ]
 
 LOOT_RARE = [
@@ -378,6 +377,7 @@ class ShopSystem(commands.Cog):
     # ==================== COMMANDES SHOP AMÉLIORÉES ====================
     
     @commands.command(name="shop", aliases=["boutique", "magasin"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def shop(self, ctx, category: str = None):
         """
         Affiche la boutique avec une interface immersive type RPG.
@@ -736,6 +736,7 @@ class ShopSystem(commands.Cog):
         await ctx.send(embed=embed)
     
     @commands.command(name="buy", aliases=["acheter"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def buy(self, ctx, *, item_name: str):
         """Achète un article de la boutique avec confirmation immersive"""
         # Trouver l'item
@@ -1025,6 +1026,7 @@ class ShopSystem(commands.Cog):
     # [... Le reste du code reste identique - commandes inventory, use, lottery, etc. ...]
     
     @commands.command(name="inventory", aliases=["inv", "inventaire"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def inventory(self, ctx, member: discord.Member = None):
         """Affiche l'inventaire d'un utilisateur de façon immersive"""
         target = member or ctx.author
@@ -1144,6 +1146,7 @@ class ShopSystem(commands.Cog):
         await ctx.send(embed=embed)
     
     @commands.command(name="use", aliases=["utiliser"])
+    @commands.cooldown(1, 10, commands.BucketType.user)
     async def use_item(self, ctx, *, item_name: str):
         """Utilise un item consommable"""
         inv = get_user_inventory(ctx.author.id)
@@ -1198,6 +1201,7 @@ class ShopSystem(commands.Cog):
             await ctx.send("⚠️ Cet article ne peut pas être utilisé de cette manière.")
     
     @commands.command(name="lottery", aliases=["loterie"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def lottery_info(self, ctx):
         """Affiche les informations sur la loterie"""
         jackpot = lottery_data.get("current_jackpot", 500)

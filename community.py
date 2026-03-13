@@ -582,6 +582,7 @@ class CommunitySystem(commands.Cog):
     # ═══════════════════════════════════════════════════════════════════════════
 
     @commands.command(name="daily")
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def daily_bonus(self, ctx):
         """Récupère le bonus quotidien avec streak"""
         stats = get_user_stats(ctx.author.id)
@@ -666,6 +667,7 @@ class CommunitySystem(commands.Cog):
     # ═══════════════════════════════════════════════════════════════════════════
 
     @commands.command(name="trivia")
+    @commands.cooldown(1, 30, commands.BucketType.user)
     async def trivia_game(self, ctx, difficulty: str = "easy"):
         """Lance un quiz manga (easy/medium/hard)"""
         difficulty = difficulty.lower()
@@ -740,6 +742,7 @@ class CommunitySystem(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command(name="guess")
+    @commands.cooldown(1, 30, commands.BucketType.user)
     async def guess_game(self, ctx):
         """Devine le manga à partir d'un emoji"""
         manga_list = list(MANGA_EMOJIS.items())
@@ -801,6 +804,7 @@ class CommunitySystem(commands.Cog):
     # ═══════════════════════════════════════════════════════════════════════════
 
     @commands.command(name="xp", aliases=["points", "pts", "balance", "niveau", "level"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def show_xp(self, ctx, member: discord.Member = None):
         """Affiche le niveau et l'XP d'un utilisateur"""
         member = member or ctx.author
@@ -852,6 +856,7 @@ class CommunitySystem(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="leaderboard", aliases=["lb", "top"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def leaderboard(self, ctx, page: int = 1):
         """Affiche le classement par niveau"""
         if page < 1:
@@ -912,8 +917,9 @@ class CommunitySystem(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="profile", aliases=["profil"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def user_profile(self, ctx, member: discord.Member = None):
-        """Affiche le profil complet d'un utilisateur"""
+        """Affiche le profil enrichi d'un utilisateur"""
         member = member or ctx.author
         stats = get_user_stats(member.id)
 
@@ -934,17 +940,30 @@ class CommunitySystem(commands.Cog):
         level, xp_in, xp_needed = xp_progress(total_xp)
         bar = generate_xp_bar(xp_in, xp_needed)
 
+        # Titre de niveau enrichi
+        level_titles = {
+            0: "🌱 Novice", 5: "📖 Lecteur", 10: "⭐ Habitué",
+            20: "🌟 Fidèle", 30: "💫 Expert", 40: "✨ Vétéran",
+            50: "🔥 Légende", 60: "💎 Diamant", 70: "👑 Roi",
+            80: "🏆 Champion", 90: "🌈 Mythique", 100: "🎆 Transcendant"
+        }
+        title = "🌱 Novice"
+        for threshold in sorted(level_titles.keys(), reverse=True):
+            if level >= threshold:
+                title = level_titles[threshold]
+                break
+
         embed = discord.Embed(
-            title=f"📊 Profil de {member.display_name}",
+            title=f"{title} — {member.display_name}",
             color=member.color if member.color != discord.Color.default() else discord.Color.blue(),
             timestamp=datetime.now()
         )
 
-        embed.set_thumbnail(url=member.avatar.url if member.avatar else None)
+        embed.set_thumbnail(url=member.display_avatar.url)
 
         # Stats principales
         embed.add_field(name="⭐ Niveau", value=f"**{level}**", inline=True)
-        embed.add_field(name="🏆 Rang", value=f"#{rank}", inline=True)
+        embed.add_field(name="🏆 Rang", value=f"#{rank}/{len(user_stats)}", inline=True)
         embed.add_field(name="🔥 Streak", value=f"{stats.get('daily_streak', 0)} jours", inline=True)
 
         # Barre XP
@@ -954,51 +973,100 @@ class CommunitySystem(commands.Cog):
             inline=False
         )
 
+        # Activité détaillée
+        messages = stats.get('messages_count', 0)
+        voice_min = stats.get('voice_minutes', 0)
+        reactions = stats.get('chapter_reactions', 0)
+
         embed.add_field(
             name="📊 Activité",
             value=(
-                f"💬 Messages: {stats.get('messages_count', 0)}\n"
-                f"🎤 Vocal: {stats.get('voice_minutes', 0)} min\n"
-                f"🔥 Réactions chapitres: {stats.get('chapter_reactions', 0)}"
+                f"💬 Messages: **{messages:,}**\n"
+                f"🎤 Vocal: **{voice_min:,}** min ({voice_min // 60}h {voice_min % 60}m)\n"
+                f"🔥 Réactions: **{reactions}**"
             ),
             inline=True
         )
 
         embed.add_field(
             name="🎮 Mini-jeux",
-            value=f"✅ Quiz réussis: {stats.get('trivia_correct', 0)}",
+            value=f"✅ Quiz réussis: **{stats.get('trivia_correct', 0)}**",
             inline=True
         )
+
+        # Tâches réclamées (enrichi)
+        try:
+            import commands as cmd
+            claimed_tasks = 0
+            done_tasks = 0
+            for key, tasks_data in cmd.etat_taches_global.items():
+                for task_name, task_val in tasks_data.items():
+                    if isinstance(task_val, dict) and task_val.get("claimed_by") == member.id:
+                        claimed_tasks += 1
+                    if isinstance(task_val, dict) and task_val.get("claimed_by") == member.id and task_val.get("status") == "✅ Terminé":
+                        done_tasks += 1
+
+            if claimed_tasks > 0:
+                embed.add_field(
+                    name="📋 Contributions",
+                    value=f"📌 Tâches réclamées: **{claimed_tasks}**\n✅ Terminées: **{done_tasks}**",
+                    inline=True
+                )
+        except:
+            pass
 
         # Stats hebdomadaires
         embed.add_field(
             name="📅 Cette Semaine",
             value=f"⚡ {stats.get('weekly_xp', stats.get('weekly_points', 0)):,} XP",
-            inline=False
+            inline=True
         )
+
+        # Ancienneté serveur
+        if member.joined_at:
+            days_on_server = (datetime.now(member.joined_at.tzinfo) - member.joined_at).days
+            embed.add_field(
+                name="📆 Ancienneté",
+                value=f"Membre depuis **{days_on_server}** jour(s)\n({discord.utils.format_dt(member.joined_at, style='D')})",
+                inline=True
+            )
 
         # Multiplicateur actif
         multiplier = get_active_multiplier(member.id)
         if multiplier > 1:
             embed.add_field(name="⚡ Boost Actif", value=f"x{multiplier:.1f}", inline=True)
 
-        # Badges
+        # Badges enrichi
         try:
             from achievements import get_user_badges, BADGES_DATA as badges_data
             user_badges = get_user_badges(member.id)
-            if user_badges.get("badges"):
-                displayed = user_badges.get("displayed", user_badges.get("badges", [])[:5])
+            all_badges = user_badges.get("badges", [])
+            if all_badges:
+                displayed = user_badges.get("displayed", all_badges[:5])
                 badges_display = " ".join([
                     badges_data[bid]["emoji"]
                     for bid in displayed
                     if bid in badges_data
                 ])
                 if badges_display:
-                    embed.add_field(name="🏅 Badges", value=badges_display, inline=False)
+                    embed.add_field(
+                        name=f"🏅 Badges ({len(all_badges)})",
+                        value=badges_display,
+                        inline=False
+                    )
         except:
             pass
 
-        embed.set_footer(text=f"XP total gagné: {total_xp:,}")
+        # Rôles principaux
+        roles = [r.mention for r in member.roles if r.name != "@everyone"][:8]
+        if roles:
+            embed.add_field(
+                name=f"🏷️ Rôles ({len(member.roles) - 1})",
+                value=" ".join(roles),
+                inline=False
+            )
+
+        embed.set_footer(text=f"XP total: {total_xp:,} • ID: {member.id}")
 
         await ctx.send(embed=embed)
 

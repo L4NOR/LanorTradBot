@@ -53,26 +53,6 @@ DATA_MODULES = {
         "save_func": "sauvegarder_giveaways",
         "data_var": "giveaways_actifs"
     },
-    "reviews": {
-        "name": "Reviews",
-        "emoji": "⭐",
-        "file": "data/reviews.json",
-        "meta_file": "data/reviews_meta.json",
-        "module": "community",
-        "load_func": "charger_donnees",
-        "save_func": "sauvegarder_donnees",
-        "data_var": "reviews_data"
-    },
-    "theories": {
-        "name": "Théories",
-        "emoji": "💭",
-        "file": "data/theories.json",
-        "meta_file": "data/theories_meta.json",
-        "module": "community",
-        "load_func": "charger_donnees",
-        "save_func": "sauvegarder_donnees",
-        "data_var": "theories_data"
-    },
     "chapters": {
         "name": "Chapitres Community",
         "emoji": "📚",
@@ -155,7 +135,7 @@ DATA_GROUPS = {
     "community": {
         "name": "Communauté",
         "emoji": "👥",
-        "modules": ["reviews", "theories", "chapters", "user_stats"]
+        "modules": ["chapters", "user_stats"]
     },
     "achievements": {
         "name": "Achievements",
@@ -643,7 +623,7 @@ class AdminData(commands.Cog):
             value=(
                 "`!data save all` - Tout sauvegarder\n"
                 "`!data export community` - Exporter le groupe communauté\n"
-                "`!data reload reviews` - Recharger les reviews\n"
+                "`!data reload user_stats` - Recharger les stats\n"
                 "`!backup` - Sauvegarder + Exporter tout"
             ),
             inline=False

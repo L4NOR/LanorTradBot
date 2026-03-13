@@ -135,7 +135,7 @@ def setup(bot):
                     logging.error(f"Erreur lors de l'envoi du ping pour les partenaires : {e}")
         
         # Vérifier si c'est une des commandes autorisées pour LanorTrad
-        allowed_commands = ["!help", "!info", "!userinfo", "!avatar", "!ping", "!poll"]
+        allowed_commands = ["!help", "!info", "!userinfo", "!avatar", "!ping", "!poll", "!planning", "!next_release", "!prochaine_sortie", "!serverstats", "!dashboard", "!membercount", "!mc", "!topcontrib", "!polls", "!poll_results"]
         is_allowed_command = any(message.content.startswith(cmd) for cmd in allowed_commands)
         
         # Si c'est LanorTrad et ce n'est pas une commande autorisée, ne pas traiter la commande
@@ -168,6 +168,14 @@ def setup(bot):
                 color=discord.Color.red()
             )
             await ctx.send(embed=embed)
+        elif isinstance(error, commands.CommandOnCooldown):
+            remaining = round(error.retry_after, 1)
+            embed = discord.Embed(
+                title="⏳ Cooldown",
+                description=f"Cette commande est en cooldown. Réessayez dans **{remaining}** seconde(s).",
+                color=discord.Color.orange()
+            )
+            await ctx.send(embed=embed, delete_after=5)
         else:
             # Log l'erreur pour débogage
             logging.error(f"Erreur non gérée: {type(error).__name__}: {error}")

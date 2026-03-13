@@ -534,6 +534,88 @@ async def handle_command_error(ctx, error):
 # PARSEURS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAGINATION UNIFIÉE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class PaginationView(discord.ui.View):
+    """Vue de pagination réutilisable avec boutons."""
+
+    def __init__(self, pages: list, author_id: int, timeout: int = 120):
+        super().__init__(timeout=timeout)
+        self.pages = pages
+        self.current = 0
+        self.author_id = author_id
+        self.message = None
+        self._update_buttons()
+
+    def _update_buttons(self):
+        self.first_btn.disabled = self.current == 0
+        self.prev_btn.disabled = self.current == 0
+        self.counter_btn.label = f"{self.current + 1}/{len(self.pages)}"
+        self.next_btn.disabled = self.current >= len(self.pages) - 1
+        self.last_btn.disabled = self.current >= len(self.pages) - 1
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message("Ce n'est pas votre menu.", ephemeral=True)
+            return False
+        return True
+
+    async def on_timeout(self):
+        if self.message:
+            try:
+                for item in self.children:
+                    item.disabled = True
+                await self.message.edit(view=self)
+            except:
+                pass
+
+    @discord.ui.button(emoji="⏮️", style=discord.ButtonStyle.secondary)
+    async def first_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current = 0
+        self._update_buttons()
+        await interaction.response.edit_message(embed=self.pages[self.current], view=self)
+
+    @discord.ui.button(emoji="⬅️", style=discord.ButtonStyle.primary)
+    async def prev_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current = max(0, self.current - 1)
+        self._update_buttons()
+        await interaction.response.edit_message(embed=self.pages[self.current], view=self)
+
+    @discord.ui.button(label="1/1", style=discord.ButtonStyle.secondary, disabled=True)
+    async def counter_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        pass
+
+    @discord.ui.button(emoji="➡️", style=discord.ButtonStyle.primary)
+    async def next_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current = min(len(self.pages) - 1, self.current + 1)
+        self._update_buttons()
+        await interaction.response.edit_message(embed=self.pages[self.current], view=self)
+
+    @discord.ui.button(emoji="⏭️", style=discord.ButtonStyle.secondary)
+    async def last_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current = len(self.pages) - 1
+        self._update_buttons()
+        await interaction.response.edit_message(embed=self.pages[self.current], view=self)
+
+
+async def paginate(ctx, pages: list, timeout: int = 120):
+    """Helper pour envoyer un message paginé."""
+    if not pages:
+        return
+    if len(pages) == 1:
+        await ctx.send(embed=pages[0])
+        return
+    view = PaginationView(pages, ctx.author.id, timeout)
+    message = await ctx.send(embed=pages[0], view=view)
+    view.message = message
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PARSEURS
+# ═══════════════════════════════════════════════════════════════════════════════
+
 def parse_duration(duration_str):
     """Parse une durée string en timedelta.
     

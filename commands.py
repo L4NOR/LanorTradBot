@@ -2,7 +2,7 @@
 import discord
 from discord.ext import commands
 from datetime import datetime
-from config import CHANNELS, ROLES, COLORS, ADMIN_ROLES, MANGA_CHANNELS, MANGA_ROLES, TASK_ROLES
+from config import CHANNELS, ROLES, COLORS, ADMIN_ROLES, MANGA_CHANNELS, MANGA_ROLES, TASK_ROLES, TASK_EMOJIS
 import logging
 import asyncio
 import json
@@ -96,20 +96,6 @@ HELP_CATEGORIES = {
             {"name": "userinfo", "usage": "!userinfo [@membre]", "desc": "Détails du profil d'un membre"},
             {"name": "ping", "usage": "!ping", "desc": "Vérifie la latence du bot"},
             {"name": "avancee", "usage": "!avancee", "desc": "Voir l'avancée des chapitres manga"},
-        ]
-    },
-    "community": {
-        "emoji": "💬",
-        "name": "Communauté",
-        "description": "Reviews, théories et interactions",
-        "color": 0x9B59B6,
-        "commands": [
-            {"name": "review", "usage": "!review <manga> <chap> <1-5> [msg]", "desc": "Laisser une review sur un chapitre"},
-            {"name": "my_reviews", "usage": "!my_reviews", "desc": "Voir toutes vos reviews"},
-            {"name": "chapter_reviews", "usage": "!chapter_reviews <manga> <chap>", "desc": "Voir les reviews d'un chapitre"},
-            {"name": "theory", "usage": "!theory <manga> <théorie>", "desc": "Poster une théorie"},
-            {"name": "theories", "usage": "!theories [manga]", "desc": "Lister les théories populaires"},
-            {"name": "theory_info", "usage": "!theory_info <id>", "desc": "Détails d'une théorie"},
         ]
     },
     "badges": {
@@ -206,7 +192,7 @@ HELP_CATEGORIES = {
         "admin": True,
         "commands": [
             {"name": "newchapter", "usage": "!newchapter <msg_id> <manga> <chap>", "desc": "Lier chapitre au système"},
-            {"name": "theory_status", "usage": "!theory_status <id> <status>", "desc": "Changer statut théorie"},
+            {"name": "stats", "usage": "!stats", "desc": "Statistiques du serveur"},
             {"name": "give_badge", "usage": "!give_badge @user <badge>", "desc": "Donner un badge"},
             {"name": "announce_chapter", "usage": "!announce_chapter", "desc": "Annoncer chapitre (interactif)"},
             {"name": "test_announce", "usage": "!test_announce", "desc": "Tester une annonce"},
@@ -259,6 +245,76 @@ HELP_CATEGORIES = {
             {"name": "backup", "usage": "!backup", "desc": "Sauvegarde + export complet"},
         ]
     },
+    "polls": {
+        "emoji": "📊",
+        "name": "Sondages",
+        "description": "Système de sondages interactifs",
+        "color": 0x3498DB,
+        "commands": [
+            {"name": "poll", "usage": "!poll Question | Opt1 | Opt2", "desc": "Créer un sondage (rapide ou interactif)"},
+            {"name": "polls", "usage": "!polls", "desc": "Voir les sondages actifs"},
+            {"name": "poll_results", "usage": "!poll_results <id>", "desc": "Résultats détaillés d'un sondage"},
+        ]
+    },
+    "stats_serveur": {
+        "emoji": "📈",
+        "name": "Statistiques",
+        "description": "Statistiques du serveur et contributeurs",
+        "color": 0x1ABC9C,
+        "commands": [
+            {"name": "serverstats", "usage": "!serverstats", "desc": "Dashboard complet du serveur (paginé)"},
+            {"name": "membercount", "usage": "!membercount", "desc": "Nombre de membres rapide"},
+            {"name": "topcontrib", "usage": "!topcontrib", "desc": "Top contributeurs du projet"},
+        ]
+    },
+    "admin_polls": {
+        "emoji": "📊",
+        "name": "Admin Sondages",
+        "description": "Gestion des sondages",
+        "color": 0x9B59B6,
+        "admin": True,
+        "commands": [
+            {"name": "poll_close", "usage": "!poll_close <id>", "desc": "Fermer un sondage"},
+            {"name": "poll_delete", "usage": "!poll_delete <id>", "desc": "Supprimer un sondage"},
+        ]
+    },
+    "admin_tickets": {
+        "emoji": "📩",
+        "name": "Tickets",
+        "description": "Système de tickets et candidatures",
+        "color": 0xE67E22,
+        "admin": True,
+        "commands": [
+            {"name": "setup_tickets", "usage": "!setup_tickets", "desc": "Configurer le panneau tickets/candidatures"},
+            {"name": "close_ticket", "usage": "!close_ticket", "desc": "Fermer un ticket"},
+            {"name": "audit_test", "usage": "!audit_test", "desc": "Tester les logs d'audit"},
+        ]
+    },
+    "planning": {
+        "emoji": "📅",
+        "name": "Planning",
+        "description": "Planning des sorties de chapitres",
+        "color": 0x1E90FF,
+        "commands": [
+            {"name": "planning", "usage": "!planning", "desc": "Voir le planning des prochaines sorties"},
+            {"name": "next_release", "usage": "!next_release", "desc": "Prochaine sortie de chapitre"},
+        ]
+    },
+    "admin_planning": {
+        "emoji": "📅",
+        "name": "Admin Planning",
+        "description": "Gestion du planning des sorties",
+        "color": 0x1E90FF,
+        "admin": True,
+        "commands": [
+            {"name": "planning_add", "usage": "!planning_add [manga chap JJ/MM/AAAA]", "desc": "Ajouter une sortie au planning"},
+            {"name": "planning_status", "usage": "!planning_status <manga> <chap> <statut>", "desc": "Changer le statut d'une sortie"},
+            {"name": "planning_date", "usage": "!planning_date <manga> <chap> <JJ/MM/AAAA>", "desc": "Modifier la date d'une sortie"},
+            {"name": "planning_remove", "usage": "!planning_remove <manga> <chap>", "desc": "Retirer une sortie du planning"},
+            {"name": "planning_post", "usage": "!planning_post", "desc": "Poster/actualiser le planning dans le channel"},
+            {"name": "planning_full", "usage": "!planning_full", "desc": "Planning complet (toutes les sorties)"},
+        ]
+    },
 }
 
 
@@ -271,6 +327,7 @@ def setup(bot):
     # ==================== NOUVELLE COMMANDE HELP ====================
     
     @bot.command()
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def help(ctx, *, command_name: str = None):
         """Affiche le menu d'aide interactif"""
         admin_roles = ADMIN_ROLES
@@ -559,6 +616,7 @@ def setup(bot):
     
     @bot.command()
     @commands.has_permissions(manage_messages=True)
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def clear(ctx, amount: int):
         """Supprime un nombre spécifié de messages"""
         if amount <= 0:
@@ -592,6 +650,7 @@ def setup(bot):
     
     @bot.command()
     @commands.has_permissions(kick_members=True)
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def kick(ctx, member: discord.Member, *, reason=None):
         """Expulse un membre du serveur"""
         await member.kick(reason=reason)
@@ -619,6 +678,7 @@ def setup(bot):
     
     @bot.command()
     @commands.has_permissions(ban_members=True)
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def ban(ctx, member: discord.Member, *, reason=None):
         """Bannit un membre du serveur"""
         await member.ban(reason=reason)
@@ -646,6 +706,7 @@ def setup(bot):
     
     @bot.command()
     @commands.has_permissions(ban_members=True)
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def unban(ctx, *, member):
         """Débannit un membre du serveur"""
         banned_users = [entry async for entry in ctx.guild.bans()]
@@ -692,6 +753,7 @@ def setup(bot):
     
     @bot.command()
     @commands.has_permissions(kick_members=True)
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def warn(ctx, member: discord.Member, *, reason=None):
         """Avertit un membre"""
         embed = discord.Embed(
@@ -728,6 +790,7 @@ def setup(bot):
             pass  # MPs désactivés
     
     @bot.command()
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def info(ctx):
         """Affiche les informations du serveur"""
         guild = ctx.guild
@@ -792,6 +855,7 @@ def setup(bot):
         await ctx.send(embed=embed)
     
     @bot.command()
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def userinfo(ctx, member: discord.Member = None):
         """Affiche les informations d'un utilisateur"""
         member = member or ctx.author
@@ -863,6 +927,7 @@ def setup(bot):
         await ctx.send(embed=embed)
     
     @bot.command()
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def ping(ctx):
         """Vérifie la latence du bot"""
         latency = round(bot.latency * 1000)
@@ -901,6 +966,7 @@ def setup(bot):
     
     @bot.command()
     @commands.has_any_role(*TASK_ROLES)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def task(ctx, action: str, manga: str, *chapitres: str):
         """Met à jour l'état d'une tâche pour un ou plusieurs chapitres"""
         actions_valides = ["clean", "trad", "check", "edit"]
@@ -1036,12 +1102,192 @@ def setup(bot):
                     notif_embed.set_footer(text="Excellent travail d'équipe ! 💪")
                     
                     await thread_channel.send(f"{mention_role}", embed=notif_embed)
+
+                    # Envoyer aussi au channel logs/staff
+                    logs_channel = bot.get_channel(CHANNELS.get("logs"))
+                    if logs_channel:
+                        staff_embed = discord.Embed(
+                            title="🎉 Chapitre(s) terminé(s) !",
+                            description=f"**{manga_nom_formate}** - Chapitres **{chapitres_mention}**\nToutes les tâches sont complètes.",
+                            color=0xFFD700,
+                            timestamp=datetime.now()
+                        )
+                        staff_embed.add_field(name="👤 Dernière action par", value=ctx.author.mention, inline=True)
+                        staff_embed.set_footer(text="Notification de progression")
+                        await logs_channel.send(embed=staff_embed)
+
+                        # ══════ DM de notification aux membres qui ont contribué ══════
+                        notified_users = set()
+                        for chap in chapitres_complets:
+                            chap_key = f"{manga_normalized}_{chap}" if chap.isdigit() else f"{manga_normalized.lower()}_{chap}"
+                            # Chercher la clé exacte
+                            for k in etat_taches_global:
+                                if k.lower() == chap_key.lower():
+                                    chap_key = k
+                                    break
+                            task_data = etat_taches_global.get(chap_key, {})
+                            for t_name, t_val in task_data.items():
+                                if isinstance(t_val, dict) and t_val.get("claimed_by"):
+                                    uid = t_val["claimed_by"]
+                                    if uid not in notified_users and uid != ctx.author.id:
+                                        notified_users.add(uid)
+                                        try:
+                                            user = await bot.fetch_user(uid)
+                                            dm_embed = discord.Embed(
+                                                title="🎉 Chapitre terminé !",
+                                                description=(
+                                                    f"Le chapitre **{chap}** de **{manga_nom_formate}** est maintenant complet !\n"
+                                                    f"Merci pour ta contribution en **{t_name}** ! 💪"
+                                                ),
+                                                color=0xFFD700
+                                            )
+                                            dm_embed.set_footer(text="LanorTrad • Notification de progression")
+                                            await user.send(embed=dm_embed)
+                                        except:
+                                            pass
                 else:
                     message_aleatoire = random.choice(MESSAGES_ALEATOIRES)
                     await thread_channel.send(message_aleatoire)
-    
+
+                    # ══════ ATTRIBUTION AUTOMATIQUE : Suggérer les tâches suivantes ══════
+                    # Trouver les tâches non réclamées pour ce manga
+                    unclaimed_tasks = []
+                    for key, tasks_data in etat_taches_global.items():
+                        m_name, _ = extraire_manga_chapitre(key)
+                        if m_name and normaliser_manga_name(m_name) == normaliser_manga_name(manga_normalized):
+                            for t_name in ["clean", "trad", "check", "edit"]:
+                                val = tasks_data.get(t_name, "❌ Non commencé")
+                                if val == "❌ Non commencé":
+                                    unclaimed_tasks.append(f"• `!claim \"{m_name}\" {key.rsplit('_',1)[-1]} {t_name}`")
+
+                    if unclaimed_tasks and len(unclaimed_tasks) <= 10:
+                        suggest_embed = discord.Embed(
+                            title="💡 Tâches disponibles",
+                            description="Tu veux continuer ? Voici les tâches disponibles :\n" + "\n".join(unclaimed_tasks[:5]),
+                            color=COLORS["info"]
+                        )
+                        suggest_embed.set_footer(text="Utilise !claim pour en récupérer une !")
+                        await ctx.send(embed=suggest_embed, delete_after=30)
+
+    # ==================== COMMANDES CLAIM / UNCLAIM ====================
+
     @bot.command()
     @commands.has_any_role(*TASK_ROLES)
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    async def claim(ctx, manga: str, chapitre: str, tache: str):
+        """Réclame une tâche pour un chapitre (ex: !claim "Tougen Anki" 216 clean)"""
+        actions_valides = ["clean", "trad", "check", "edit"]
+        tache = tache.lower()
+
+        if tache not in actions_valides:
+            await ctx.send(f"❌ Tâche invalide. Choisissez parmi: `{', '.join(actions_valides)}`", delete_after=10)
+            return
+
+        try:
+            chapitre_num = int(chapitre)
+        except ValueError:
+            await ctx.send("❌ Numéro de chapitre invalide.", delete_after=10)
+            return
+
+        manga_normalized = manga.strip()
+        chapitre_key = f"{manga_normalized.lower()}_{chapitre_num}"
+
+        if chapitre_key not in etat_taches_global:
+            etat_taches_global[chapitre_key] = {
+                "clean": "❌ Non commencé",
+                "trad": "❌ Non commencé",
+                "check": "❌ Non commencé",
+                "edit": "❌ Non commencé"
+            }
+
+        current = etat_taches_global[chapitre_key].get(tache, "❌ Non commencé")
+
+        # Vérifier si déjà terminé
+        if current == "✅ Terminé":
+            await ctx.send(f"⚠️ Cette tâche est déjà terminée !", delete_after=10)
+            return
+
+        # Vérifier si déjà claim par quelqu'un d'autre
+        if isinstance(current, dict) and current.get("status") == "🔄 En cours":
+            claimed_by = current.get("claimed_by")
+            if claimed_by != ctx.author.id:
+                await ctx.send(f"⚠️ Cette tâche est déjà réclamée par <@{claimed_by}>.", delete_after=10)
+                return
+            else:
+                await ctx.send(f"ℹ️ Vous avez déjà réclamé cette tâche.", delete_after=10)
+                return
+
+        # Claim la tâche
+        etat_taches_global[chapitre_key][tache] = {
+            "status": "🔄 En cours",
+            "claimed_by": ctx.author.id,
+            "claimed_at": datetime.now().isoformat()
+        }
+        sauvegarder_etat_taches()
+
+        task_emoji = TASK_EMOJIS.get(tache, "📝")
+        embed = discord.Embed(
+            title=f"{task_emoji} Tâche réclamée !",
+            description=f"**{manga_normalized}** - Chapitre **{chapitre_num}**\nTâche: **{tache.capitalize()}**",
+            color=0x3498DB,
+            timestamp=datetime.now()
+        )
+        embed.add_field(name="👤 Réclamée par", value=ctx.author.mention, inline=True)
+        embed.set_footer(text="Utilisez !task pour marquer comme terminée")
+        await ctx.send(embed=embed)
+
+    @bot.command()
+    @commands.has_any_role(*TASK_ROLES)
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    async def unclaim(ctx, manga: str, chapitre: str, tache: str):
+        """Libère une tâche réclamée (ex: !unclaim "Tougen Anki" 216 clean)"""
+        actions_valides = ["clean", "trad", "check", "edit"]
+        tache = tache.lower()
+
+        if tache not in actions_valides:
+            await ctx.send(f"❌ Tâche invalide. Choisissez parmi: `{', '.join(actions_valides)}`", delete_after=10)
+            return
+
+        try:
+            chapitre_num = int(chapitre)
+        except ValueError:
+            await ctx.send("❌ Numéro de chapitre invalide.", delete_after=10)
+            return
+
+        manga_normalized = manga.strip()
+        chapitre_key = f"{manga_normalized.lower()}_{chapitre_num}"
+
+        if chapitre_key not in etat_taches_global:
+            await ctx.send("❌ Ce chapitre n'existe pas dans les tâches.", delete_after=10)
+            return
+
+        current = etat_taches_global[chapitre_key].get(tache, "❌ Non commencé")
+
+        if not isinstance(current, dict) or current.get("status") != "🔄 En cours":
+            await ctx.send("⚠️ Cette tâche n'est pas réclamée.", delete_after=10)
+            return
+
+        # Vérifier que c'est le bon user ou un admin
+        user_roles = [role.id for role in ctx.author.roles]
+        is_admin = any(role in user_roles for role in ADMIN_ROLES)
+
+        if current.get("claimed_by") != ctx.author.id and not is_admin:
+            await ctx.send("❌ Vous ne pouvez libérer que vos propres tâches.", delete_after=10)
+            return
+
+        etat_taches_global[chapitre_key][tache] = "❌ Non commencé"
+        sauvegarder_etat_taches()
+
+        embed = discord.Embed(
+            title="🔓 Tâche libérée",
+            description=f"**{manga_normalized}** - Chapitre **{chapitre_num}** - **{tache.capitalize()}**",
+            color=0xE67E22
+        )
+        await ctx.send(embed=embed)
+
+    @bot.command()
+    @commands.has_any_role(*TASK_ROLES)
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def task_status(ctx, manga: str, chapitre: int):
         """Affiche l'état des tâches pour un chapitre donné"""
         manga_normalized = normaliser_manga_name(manga)
@@ -1205,6 +1451,7 @@ def setup(bot):
         await ctx.send(embed=embed)
     
     @bot.command(name="avancee")
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def avancee(ctx):
         """Affiche l'avancée des mangas avec pagination"""
         embed = discord.Embed(
@@ -1378,6 +1625,7 @@ def setup(bot):
     
     @bot.command(name="task_all")
     @commands.has_any_role(*TASK_ROLES)
+    @commands.cooldown(1, 10, commands.BucketType.user)
     async def task_all(ctx, *, manga_filter: str = None):
         """Affiche toutes les tâches en cours (optionnel: spécifier un manga)"""
         if not etat_taches_global:
@@ -1546,6 +1794,7 @@ def setup(bot):
     
     @bot.command(name="actualiser")
     @commands.has_any_role(*TASK_ROLES)
+    @commands.cooldown(1, 30, commands.BucketType.user)
     async def actualiser(ctx):
         """Sauvegarder et envoyer les données"""
         TARGET_USER_ID = 608234789564186644

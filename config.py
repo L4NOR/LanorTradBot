@@ -164,6 +164,9 @@ CHANNELS = {
     "sorties": 1326213946188890142,
     "test": 1330221808753840159,
     "roles": 1326212401036529665,
+    "logs": 1330221808753840159,
+    "tickets": 1326357433588912179,
+    "planning": 1332363693174034472,
 }
 
 MANGA_CHANNELS = {
@@ -358,8 +361,6 @@ DATA_FILES = {
     "invites": f"{DATA_DIR}/invites_tracker.json",
     
     # Community
-    "reviews": f"{DATA_DIR}/reviews.json",
-    "theories": f"{DATA_DIR}/theories.json",
     "chapters": f"{DATA_DIR}/chapters_community.json",
     "user_stats": f"{DATA_DIR}/user_stats.json",
     
@@ -373,6 +374,16 @@ DATA_FILES = {
     "purchases": f"{DATA_DIR}/purchases.json",
     "lottery": f"{DATA_DIR}/lottery.json",
     
+    # Polls
+    "polls": f"{DATA_DIR}/polls.json",
+
+    # Database
+    "database": f"{DATA_DIR}/lanortrad.db",
+
+    # Planning
+    "planning": f"{DATA_DIR}/planning.json",
+    "planning_meta": f"{DATA_DIR}/planning_meta.json",
+
     # DM Reminder
     "dm_reminder": f"{DATA_DIR}/dm_reminder_notified.json",
     "dm_reminder_meta": f"{DATA_DIR}/dm_reminder_meta.json",

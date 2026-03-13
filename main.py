@@ -109,6 +109,35 @@ async def main():
     await github_sync.setup(bot)
     logging.info("✅ Module GitHub Sync chargé")
 
+    # Charger le système d'audit/logs
+    import logs
+    await logs.setup(bot)
+    logging.info("✅ Module Audit Logs chargé")
+
+    # Charger le système de sondages
+    import polls
+    await polls.setup(bot)
+    logging.info("✅ Module Polls chargé")
+
+    # Charger le système de tickets et candidatures
+    import tickets
+    await tickets.setup(bot)
+    logging.info("✅ Module Tickets chargé")
+
+    # Charger les statistiques du serveur
+    import stats
+    await stats.setup(bot)
+    logging.info("✅ Module Stats chargé")
+
+    # Initialiser la base de données
+    import database
+    logging.info("✅ Module Database initialisé")
+
+    # Charger le système de planning
+    import planning
+    await planning.setup(bot)
+    logging.info("✅ Module Planning chargé")
+
     # ═══════════════════════════════════════════════════════════════════════════
     # DÉMARRAGE DU BOT
     # ═══════════════════════════════════════════════════════════════════════════

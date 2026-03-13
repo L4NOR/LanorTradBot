@@ -6,11 +6,13 @@
 import discord
 from discord.ext import commands, tasks
 from config import ADMIN_ROLES, DATA_FILES
-from utils import load_json, save_json, save_with_meta, get_manga_emoji, get_task_emoji
+from utils import load_json, save_json, save_with_meta, get_manga_emoji, get_task_emoji, paginate
 import datetime
 import asyncio
 import pytz
 import logging
+import json
+import os
 
 # Fichiers de données
 RAPPELS_FILE = DATA_FILES["rappels"]
@@ -21,6 +23,70 @@ rappels_actifs = {}
 
 # Variable pour éviter d'envoyer plusieurs rappels dans la même minute
 last_rappel_time = None
+
+
+class RappelDoneButton(discord.ui.Button):
+    """Bouton pour marquer un rappel comme fait depuis les DMs."""
+
+    def __init__(self, rappel_id: str, manga: str, chapitres: list, task: str):
+        super().__init__(
+            label="✅ Marquer comme fait",
+            style=discord.ButtonStyle.success,
+            custom_id=f"rappel_done_{rappel_id[:80]}"
+        )
+        self.rappel_id = rappel_id
+        self.manga = manga
+        self.chapitres = chapitres
+        self.task = task
+
+    async def callback(self, interaction: discord.Interaction):
+        # Mettre à jour les tâches
+        try:
+            import commands as cmd
+            task_mapping = {"traduire": "trad", "qcheck": "check"}
+            task_key = task_mapping.get(self.task, self.task)
+
+            for chap in self.chapitres:
+                key = f"{self.manga}_{chap}"
+                if key in cmd.etat_taches_global:
+                    cmd.etat_taches_global[key][task_key] = "✅ Terminé"
+                else:
+                    cmd.etat_taches_global[key] = {
+                        "clean": "❌ Non commencé",
+                        "trad": "❌ Non commencé",
+                        "check": "❌ Non commencé",
+                        "edit": "❌ Non commencé"
+                    }
+                    cmd.etat_taches_global[key][task_key] = "✅ Terminé"
+            cmd.sauvegarder_etat_taches()
+        except Exception as e:
+            logging.error(f"Erreur mise à jour tâche depuis rappel: {e}")
+
+        # Supprimer le rappel
+        if self.rappel_id in rappels_actifs:
+            del rappels_actifs[self.rappel_id]
+            sauvegarder_rappels()
+
+        # Désactiver le bouton
+        self.disabled = True
+        self.label = "✅ Fait !"
+        self.style = discord.ButtonStyle.secondary
+
+        chapitres_str = ", ".join([f"#{c}" for c in self.chapitres])
+        embed = discord.Embed(
+            title="✅ Tâche marquée comme terminée !",
+            description=f"**{self.manga}** - Chapitres {chapitres_str}\nTâche: **{self.task.capitalize()}**",
+            color=discord.Color.green()
+        )
+        await interaction.response.edit_message(embed=embed, view=self.view)
+
+
+class RappelDoneView(discord.ui.View):
+    """View persistante pour le bouton 'Marquer comme fait'."""
+
+    def __init__(self, rappel_id: str, manga: str, chapitres: list, task: str):
+        super().__init__(timeout=None)
+        self.add_item(RappelDoneButton(rappel_id, manga, chapitres, task))
 
 
 def charger_rappels():
@@ -123,7 +189,25 @@ async def envoyer_rappel(bot):
                 mention_message = f"🔔 **Rappel quotidien** {user.mention} !"
                 await channel.send(mention_message)
                 await channel.send(embed=embed)
-                
+
+                # Envoyer en DM avec bouton "Marquer comme fait"
+                try:
+                    dm_embed = discord.Embed(
+                        title=f"{task_emoji} Rappel - {rappel['manga']}",
+                        description=f"N'oublie pas ta tâche **{rappel['task'].capitalize()}** !",
+                        color=urgence_color
+                    )
+                    dm_embed.add_field(name="📖 Chapitres", value=chapitres_str, inline=True)
+                    dm_embed.add_field(name="📅 Date limite", value=f"{date_limite_str} ({urgence})", inline=True)
+                    dm_embed.set_footer(text="Clique sur le bouton quand c'est fait ! 💪")
+
+                    view = RappelDoneView(rappel_id, rappel["manga"], chapitres, rappel["task"])
+                    await user.send(embed=dm_embed, view=view)
+                except discord.Forbidden:
+                    logging.warning(f"⚠️ Impossible d'envoyer un DM à {user.name} (DMs fermés)")
+                except Exception as e:
+                    logging.error(f"❌ Erreur DM rappel pour {user.name}: {e}")
+
                 logging.info(f"✅ Rappel envoyé pour {user.name} - {rappel['manga']} ch.{chapitres_str}")
                 rappels_envoyes += 1
             
@@ -142,6 +226,11 @@ class RappelTask(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         charger_rappels()
+        # Restaurer les views persistantes pour les rappels actifs
+        for rappel_id, rappel in rappels_actifs.items():
+            chapitres = rappel.get("chapitres", [rappel.get("chapitre", 0)])
+            view = RappelDoneView(rappel_id, rappel["manga"], chapitres, rappel["task"])
+            bot.add_view(view)
         self.check_rappels.start()
     
     def cog_unload(self):
@@ -341,40 +430,8 @@ class RappelTask(commands.Cog):
             )
             pages.append(embed)
         
-        # Afficher avec pagination
-        if len(pages) == 1:
-            await ctx.send(embed=pages[0])
-            return
-        
-        current_page = 0
-        message = await ctx.send(embed=pages[current_page])
-        
-        await message.add_reaction('⬅️')
-        await message.add_reaction('➡️')
-        await message.add_reaction('❌')
-        
-        def check(reaction, user):
-            return user == ctx.author and str(reaction.emoji) in ['⬅️', '➡️', '❌'] and reaction.message.id == message.id
-        
-        while True:
-            try:
-                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-                
-                if str(reaction.emoji) == '⬅️' and current_page > 0:
-                    current_page -= 1
-                    await message.edit(embed=pages[current_page])
-                elif str(reaction.emoji) == '➡️' and current_page < len(pages) - 1:
-                    current_page += 1
-                    await message.edit(embed=pages[current_page])
-                elif str(reaction.emoji) == '❌':
-                    await message.clear_reactions()
-                    break
-                
-                await message.remove_reaction(reaction, user)
-            
-            except asyncio.TimeoutError:
-                await message.clear_reactions()
-                break
+        # Afficher avec pagination unifiée
+        await paginate(ctx, pages)
 
     @commands.command(name='delete_rappel')
     @commands.has_any_role(*ADMIN_ROLES)

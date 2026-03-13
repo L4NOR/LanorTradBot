@@ -167,7 +167,7 @@ def git_sync(commit_message=None):
     else:
         commit_message = f"{prefix} {commit_message}"
 
-    # Étape 1: git add data/
+    # Étape 1: git add data/ (inclut JSON et la BDD SQLite)
     success, stdout, stderr = git_run(["git", "add", "data/"])
     if not success:
         return False, f"Erreur git add: {stderr}"
@@ -230,6 +230,14 @@ class GitHubSync(commands.Cog):
     @tasks.loop(seconds=GITHUB_SYNC.get("auto_sync_interval", 1800))
     async def auto_sync_loop(self):
         """Vérifie et sync automatiquement toutes les 30 min"""
+        # Exporter la BDD en JSON avant la sync
+        try:
+            from database import db
+            db.export_to_json()
+            logging.info("📦 Export BDD → JSON effectué avant sync")
+        except Exception as e:
+            logging.warning(f"⚠️ Export BDD échoué (non bloquant): {e}")
+
         if not git_has_changes():
             return
 

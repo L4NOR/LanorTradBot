@@ -538,6 +538,7 @@ class Achievements(commands.Cog):
     # ─────────────────────────────────────────────────────────────────────────
     
     @commands.command(name="badges", aliases=["achievements", "mes_badges"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def show_badges(self, ctx, member: Optional[discord.Member] = None):
         """Affiche les badges d'un membre"""
         target = member or ctx.author
@@ -603,6 +604,7 @@ class Achievements(commands.Cog):
         await ctx.send(embed=embed)
     
     @commands.command(name="badge_info", aliases=["badgeinfo"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def badge_info(self, ctx, *, badge_name: str):
         """Affiche les détails d'un badge"""
         # Recherche par nom ou ID
@@ -669,6 +671,7 @@ class Achievements(commands.Cog):
         await ctx.send(embed=embed)
     
     @commands.command(name="all_badges", aliases=["listbadges", "badges_list"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def all_badges(self, ctx, category: Optional[str] = None):
         """
         Affiche tous les badges disponibles
@@ -718,6 +721,7 @@ class Achievements(commands.Cog):
         await ctx.send(embed=embed)
     
     @commands.command(name="badge_stats", aliases=["mystats"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def badge_stats(self, ctx):
         """Affiche tes statistiques de progression"""
         user_data = get_user_badges(ctx.author.id)
@@ -788,6 +792,7 @@ class Achievements(commands.Cog):
         await ctx.send(embed=embed)
     
     @commands.command(name="leaderboard_badges", aliases=["top_badges"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def leaderboard_badges(self, ctx):
         """Affiche le classement des badges"""
         data = load_badges_data()

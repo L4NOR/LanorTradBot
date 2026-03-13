@@ -899,6 +899,7 @@ class Giveaways(commands.Cog):
         await ctx.send(f"🎉 Nouveau gagnant: <@{winner_id}> a gagné **{giveaway['prize']}** !")
 
     @commands.command(name="glist", aliases=["giveaways"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def list_giveaways(self, ctx):
         """Liste les giveaways actifs"""
         data = load_giveaways()
@@ -1036,6 +1037,7 @@ class Giveaways(commands.Cog):
             pass
 
     @commands.command(name="invites", aliases=["myinvites"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def show_invites(self, ctx, member: Optional[discord.Member] = None):
         """Affiche les invitations d'un membre"""
         target = member or ctx.author
@@ -1136,6 +1138,7 @@ class Giveaways(commands.Cog):
     # ─────────────────────────────────────────────────────────────────────────
 
     @commands.command(name="gstats", aliases=["giveaway_stats"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def giveaway_stats(self, ctx, member: Optional[discord.Member] = None):
         """Affiche les statistiques de giveaways"""
         target = member or ctx.author
