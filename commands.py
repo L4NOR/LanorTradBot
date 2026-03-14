@@ -304,30 +304,20 @@ HELP_CATEGORIES = {
             {"name": "audit_test", "usage": "!audit_test", "desc": "Tester les logs d'audit"},
         ]
     },
-    "planning": {
-        "emoji": "📅",
-        "name": "Planning",
-        "description": "Planning des sorties de chapitres",
-        "color": 0x1E90FF,
-        "commands": [
-            {"name": "planning", "usage": "!planning [mois] [année]", "desc": "Voir le calendrier des sorties"},
-            {"name": "next_release", "usage": "!next_release", "desc": "Prochaine sortie de chapitre"},
-        ]
-    },
     "admin_planning": {
         "emoji": "📅",
-        "name": "Admin Planning",
-        "description": "Gestion du planning des sorties",
-        "color": 0x1E90FF,
+        "name": "Planning",
+        "description": "Gestion du planning (auto-update dans #planning, ping rôle manga)",
+        "color": 0x7c3aed,
         "admin": True,
         "commands": [
-            {"name": "planning_add", "usage": "!planning_add [manga chap(s) AAAA-MM-JJ]", "desc": "Ajouter une/plusieurs sorties (ex: 220-222)"},
-            {"name": "planning_status", "usage": "!planning_status <manga> <chap> <statut>", "desc": "Changer le statut d'une sortie"},
-            {"name": "planning_date", "usage": "!planning_date <manga> <chap> <JJ/MM/AAAA>", "desc": "Modifier la date d'une sortie"},
-            {"name": "planning_teaser", "usage": "!planning_teaser <id> <texte>", "desc": "Ajouter/modifier un teaser spoil (caché)"},
-            {"name": "planning_remove", "usage": "!planning_remove <manga> <chap>", "desc": "Retirer une sortie du planning"},
-            {"name": "planning_post", "usage": "!planning_post", "desc": "Poster/actualiser le planning dans le channel"},
-            {"name": "planning_full", "usage": "!planning_full", "desc": "Planning complet (toutes les sorties)"},
+            {"name": "planning_add", "usage": "!planning_add [manga chap(s) AAAA-MM-JJ notes]", "desc": "Ajouter sortie(s) → auto-update #planning + ping rôle"},
+            {"name": "planning_status", "usage": "!planning_status <id> [statut]", "desc": "Changer le statut (prevu/en_cours/trad_done/check_done/pret/sorti/retarde)"},
+            {"name": "planning_date", "usage": "!planning_date <id> <AAAA-MM-JJ>", "desc": "Modifier la date de sortie"},
+            {"name": "planning_teaser", "usage": "!planning_teaser <id> <texte>", "desc": "Ajouter/modifier un teaser spoil"},
+            {"name": "planning_remove", "usage": "!planning_remove <id>", "desc": "Retirer une sortie du planning"},
+            {"name": "planning_full", "usage": "!planning_full", "desc": "Liste toutes les entrées avec IDs"},
+            {"name": "planning_post", "usage": "!planning_post", "desc": "Forcer le rafraîchissement des messages"},
         ]
     },
 }
@@ -435,7 +425,7 @@ def setup(bot):
         
         # Catégories publiques
         public_cats = ""
-        for cat_key in ["general", "community", "badges", "shop", "giveaway", "planning"]:
+        for cat_key in ["general", "community", "badges", "shop", "giveaway"]:
             cat = HELP_CATEGORIES[cat_key]
             cmd_count = len(cat["commands"])
             public_cats += f"{cat['emoji']} **{cat['name']}** › `{cmd_count}` cmds\n"
