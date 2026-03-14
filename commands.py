@@ -98,6 +98,20 @@ HELP_CATEGORIES = {
             {"name": "avancee", "usage": "!avancee", "desc": "Voir l'avancée des chapitres manga"},
         ]
     },
+    "community": {
+        "emoji": "🌟",
+        "name": "Communauté",
+        "description": "Niveaux, XP et mini-jeux",
+        "color": 0x9B59B6,
+        "commands": [
+            {"name": "xp", "usage": "!xp [@membre]", "desc": "Voir votre XP et niveau"},
+            {"name": "profile", "usage": "!profile [@membre]", "desc": "Afficher votre profil"},
+            {"name": "leaderboard", "usage": "!leaderboard [page]", "desc": "Classement XP du serveur"},
+            {"name": "daily", "usage": "!daily", "desc": "Récupérer votre bonus quotidien"},
+            {"name": "trivia", "usage": "!trivia [difficulté]", "desc": "Jouer au quiz"},
+            {"name": "guess", "usage": "!guess", "desc": "Jeu de devinette"},
+        ]
+    },
     "badges": {
         "emoji": "🏆",
         "name": "Badges",
