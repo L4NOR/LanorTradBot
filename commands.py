@@ -310,7 +310,7 @@ HELP_CATEGORIES = {
         "description": "Planning des sorties de chapitres",
         "color": 0x1E90FF,
         "commands": [
-            {"name": "planning", "usage": "!planning", "desc": "Voir le planning des prochaines sorties"},
+            {"name": "planning", "usage": "!planning [mois] [année]", "desc": "Voir le calendrier des sorties"},
             {"name": "next_release", "usage": "!next_release", "desc": "Prochaine sortie de chapitre"},
         ]
     },
@@ -321,7 +321,7 @@ HELP_CATEGORIES = {
         "color": 0x1E90FF,
         "admin": True,
         "commands": [
-            {"name": "planning_add", "usage": "!planning_add [manga chap JJ/MM/AAAA]", "desc": "Ajouter une sortie au planning"},
+            {"name": "planning_add", "usage": "!planning_add [manga chap(s) AAAA-MM-JJ]", "desc": "Ajouter une/plusieurs sorties (ex: 220-222)"},
             {"name": "planning_status", "usage": "!planning_status <manga> <chap> <statut>", "desc": "Changer le statut d'une sortie"},
             {"name": "planning_date", "usage": "!planning_date <manga> <chap> <JJ/MM/AAAA>", "desc": "Modifier la date d'une sortie"},
             {"name": "planning_teaser", "usage": "!planning_teaser <id> <texte>", "desc": "Ajouter/modifier un teaser spoil (caché)"},
@@ -435,7 +435,7 @@ def setup(bot):
         
         # Catégories publiques
         public_cats = ""
-        for cat_key in ["general", "community", "badges", "shop", "giveaway"]:
+        for cat_key in ["general", "community", "badges", "shop", "giveaway", "planning"]:
             cat = HELP_CATEGORIES[cat_key]
             cmd_count = len(cat["commands"])
             public_cats += f"{cat['emoji']} **{cat['name']}** › `{cmd_count}` cmds\n"
