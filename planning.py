@@ -1,8 +1,8 @@
 # planning.py
 # ═══════════════════════════════════════════════════════════════════════════════
 # SYSTÈME DE PLANNING - Sorties de chapitres à venir
-# Un message par mois dans #planning, auto-update à chaque modification.
-# Les users n'ont qu'à regarder le channel, aucune commande nécessaire.
+# Un message PAR MANGA PAR MOIS dans #planning.
+# À chaque modification → le message est supprimé et recréé (remonte + ping).
 # ═══════════════════════════════════════════════════════════════════════════════
 
 import discord
@@ -31,7 +31,7 @@ PLANNING_MESSAGES_FILE = f"{DATA_DIR}/planning_messages.json"
 
 # Données en mémoire
 planning_data = {}       # {"id": {manga, chapter, date, status, notes, teaser, ...}}
-planning_messages = {}   # {"2026-03": message_id, "2026-04": message_id, ...}
+planning_messages = {}   # {"2026-03_catenaccio": msg_id, "2026-03_tougen_anki": msg_id, ...}
 
 # Statuts
 STATUTS = {
@@ -115,6 +115,16 @@ def get_month_key(date_str):
     return date_str[:7]
 
 
+def get_manga_key(manga_name):
+    """Normalise le nom manga pour clé: 'Tougen Anki' → 'tougen_anki'"""
+    return manga_name.lower().replace(" ", "_")
+
+
+def get_message_key(month_key, manga_name):
+    """Clé unique par mois+manga: '2026-03_catenaccio'"""
+    return f"{month_key}_{get_manga_key(manga_name)}"
+
+
 def resolve_manga_role(manga_name):
     for name, role_id in MANGA_ROLES.items():
         if name.lower() == manga_name.lower():
@@ -137,8 +147,26 @@ def get_progress_bar(status_key):
     return f"{bar} {pct}%"
 
 
+def get_overall_progress(entries):
+    """Calcule la progression globale de toutes les entrées d'un manga/mois."""
+    stages = ["prevu", "en_cours", "trad_done", "check_done", "pret", "sorti"]
+    if not entries:
+        return 0
+    total_pct = 0
+    for e in entries:
+        status = e.get("status", "prevu")
+        if status == "retarde":
+            continue
+        try:
+            idx = stages.index(status)
+        except ValueError:
+            idx = 0
+        total_pct += int((idx / (len(stages) - 1)) * 100)
+    return total_pct // len(entries)
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
-# CONSTRUCTION DU CALENDRIER VISUEL
+# CONSTRUCTION DU CALENDRIER VISUEL (pour un seul manga)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def build_calendar_grid(year, month, releases_by_day, today):
@@ -167,114 +195,109 @@ def build_calendar_grid(year, month, releases_by_day, today):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# CONSTRUCTION DE L'EMBED MENSUEL (le message unique par mois)
+# CONSTRUCTION DE L'EMBED PAR MANGA PAR MOIS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def build_month_embed(year, month):
+def build_manga_month_embed(year, month, manga_name, manga_entries):
     """
-    Construit l'embed complet pour un mois donné.
-    Calendrier + détails de chaque sortie, le tout dans un seul embed.
+    Construit l'embed pour UN manga sur UN mois.
+    manga_entries: liste de dict avec chapter, date, status, notes, teaser...
     """
     now = datetime.datetime.now()
     today = now.date()
     mois_nom = MOIS_FR[month]
+    emoji = get_manga_emoji(manga_name)
 
-    # ── Collecter les entrées du mois ──
+    # Trier par date
+    manga_entries.sort(key=lambda e: e["date"])
+
+    # Collecter les jours de sortie
     releases_by_day = {}
-    month_entries = []
-
-    for pid, pdata in planning_data.items():
+    for e in manga_entries:
         try:
-            date = datetime.datetime.strptime(pdata["date"], "%Y-%m-%d").date()
-            if date.year == year and date.month == month:
-                day = date.day
-                if day not in releases_by_day:
-                    releases_by_day[day] = []
-                releases_by_day[day].append({
-                    "id": pid,
-                    "manga": pdata["manga"],
-                    "chapter": pdata["chapter"],
-                    "status": pdata.get("status", "prevu"),
-                    "notes": pdata.get("notes", ""),
-                    "teaser": pdata.get("teaser", ""),
-                    "date": date,
-                })
-                month_entries.append((pid, pdata, date))
+            d = datetime.datetime.strptime(e["date"], "%Y-%m-%d").date()
+            day = d.day
+            if day not in releases_by_day:
+                releases_by_day[day] = []
+            releases_by_day[day].append(e)
         except:
             continue
 
-    month_entries.sort(key=lambda x: x[2])
+    # ── Couleur dynamique selon progression globale ──
+    overall = get_overall_progress(manga_entries)
+    if overall == 100:
+        color = 0x2ECC71   # Tout sorti → vert
+    elif overall >= 60:
+        color = 0x1ABC9C   # Bien avancé → turquoise
+    elif overall >= 20:
+        color = 0xF39C12   # En cours → orange
+    else:
+        color = CALENDAR_COLOR  # Prévu → bleu
 
-    # ── Embed principal ──
-    embed = discord.Embed(color=CALENDAR_COLOR)
-    embed.title = f"📅  Planning — {mois_nom} {year}"
+    # ── Embed ──
+    embed = discord.Embed(color=color)
+    embed.title = f"{emoji}  Planning {mois_nom} {year} — {manga_name}"
 
-    # ── Partie 1 : Calendrier ──
+    # ── Calendrier ──
     cal_text = build_calendar_grid(year, month, releases_by_day, today)
     desc = f"```\n{cal_text}\n```\n"
     desc += "```\n[XX] = Aujourd'hui    ★ = Jour de sortie\n```\n"
 
-    # ── Stats rapides ──
-    total = len(month_entries)
-    sorti_count = sum(1 for _, p, _ in month_entries if p.get("status") == "sorti")
-    en_cours_count = sum(1 for _, p, _ in month_entries if p.get("status") not in ["sorti", "prevu"])
+    # ── Stats ──
+    total = len(manga_entries)
+    sorti = sum(1 for e in manga_entries if e.get("status") == "sorti")
+    desc += f"**{total}** chapitre(s)"
+    if sorti:
+        desc += f" · **{sorti}** publié(s)"
+    desc += f" · Progression globale : **{overall}%**\n"
 
-    if total > 0:
-        stats_parts = [f"**{total}** sortie(s)"]
-        if sorti_count:
-            stats_parts.append(f"**{sorti_count}** publiée(s)")
-        if en_cours_count:
-            stats_parts.append(f"**{en_cours_count}** en cours")
-        desc += " · ".join(stats_parts) + "\n"
+    # Barre globale
+    filled = overall * 20 // 100
+    bar = "█" * filled + "░" * (20 - filled)
+    desc += f"`{bar}` {overall}%\n"
 
     desc += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
 
-    # ── Partie 2 : Détails par jour ──
-    if releases_by_day:
-        for day in sorted(releases_by_day.keys()):
-            date_obj = datetime.date(year, month, day)
-            jour_nom = JOURS_FR[date_obj.weekday()]
-            delta = (date_obj - today).days
+    # ── Détails par jour ──
+    for day in sorted(releases_by_day.keys()):
+        date_obj = datetime.date(year, month, day)
+        jour_nom = JOURS_FR[date_obj.weekday()]
+        delta = (date_obj - today).days
 
-            # Header du jour
-            if delta == 0:
-                day_header = f"🔥 **{jour_nom} {day} {mois_nom}** — AUJOURD'HUI"
-            elif delta == 1:
-                day_header = f"⏰ **{jour_nom} {day} {mois_nom}** — Demain"
-            elif delta == -1:
-                day_header = f"📆 **{jour_nom} {day} {mois_nom}** — Hier"
-            elif delta < -1:
-                day_header = f"📆 ~~{jour_nom} {day} {mois_nom}~~"
-            elif delta <= 7:
-                day_header = f"📆 **{jour_nom} {day} {mois_nom}** — J-{delta}"
-            else:
-                day_header = f"📆 **{jour_nom} {day} {mois_nom}**"
+        # Header du jour
+        if delta == 0:
+            day_header = f"🔥 **{jour_nom} {day} {mois_nom}** — AUJOURD'HUI"
+        elif delta == 1:
+            day_header = f"⏰ **{jour_nom} {day} {mois_nom}** — Demain"
+        elif delta == -1:
+            day_header = f"📆 **{jour_nom} {day} {mois_nom}** — Hier"
+        elif delta < -1:
+            day_header = f"📆 ~~{jour_nom} {day} {mois_nom}~~"
+        elif delta <= 7:
+            day_header = f"📆 **{jour_nom} {day} {mois_nom}** — J-{delta}"
+        else:
+            day_header = f"📆 **{jour_nom} {day} {mois_nom}**"
 
-            desc += f"{day_header}\n"
+        desc += f"{day_header}\n"
 
-            for entry in releases_by_day[day]:
-                emoji = get_manga_emoji(entry["manga"])
-                status_info = STATUTS.get(entry["status"], STATUTS["prevu"])
+        for entry in releases_by_day[day]:
+            status_info = STATUTS.get(entry.get("status", "prevu"), STATUTS["prevu"])
 
-                desc += f"> {emoji} **{entry['manga']}** · Ch. **{entry['chapter']}**\n"
-                desc += f"> {status_info['emoji']} `{status_info['label']}`  {get_progress_bar(entry['status'])}\n"
+            desc += f"> 📖 **Chapitre {entry['chapter']}**\n"
+            desc += f"> {status_info['emoji']} `{status_info['label']}`  {get_progress_bar(entry.get('status', 'prevu'))}\n"
 
-                if entry.get("teaser"):
-                    desc += f"> 🔮 ||{entry['teaser']}||\n"
-                if entry.get("notes"):
-                    desc += f"> 📝 *{entry['notes']}*\n"
+            if entry.get("teaser"):
+                desc += f"> 🔮 ||{entry['teaser']}||\n"
+            if entry.get("notes"):
+                desc += f"> 📝 *{entry['notes']}*\n"
 
-            desc += "\n"
-    else:
-        desc += "*Aucune sortie planifiée pour ce mois.*\n"
+        desc += "\n"
 
-    # ── Sécurité limite 4096 chars ──
+    # ── Sécurité 4096 chars ──
     if len(desc) > 4000:
         desc = desc[:3990] + "\n*...et plus*"
 
     embed.description = desc
-
-    # ── Timestamp de dernière MAJ ──
     embed.set_footer(text=f"LanorTrad · Dernière mise à jour")
     embed.timestamp = now
 
@@ -282,7 +305,7 @@ def build_month_embed(year, month):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# VUE DE MISE À JOUR DU STATUT (pour les boutons select admin)
+# VUE SELECT STATUT (admin, menu déroulant)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class PlanningStatusSelect(Select):
@@ -321,10 +344,10 @@ class PlanningStatusSelect(Select):
             ephemeral=True
         )
 
+        # Delete + recreate le message du manga/mois
         cog = interaction.client.get_cog("PlanningSystem")
         if cog:
-            month_key = get_month_key(entry["date"])
-            await cog.refresh_month_message(month_key)
+            await cog.refresh_manga_message(entry["manga"], get_month_key(entry["date"]))
 
 
 class PlanningStatusView(View):
@@ -338,13 +361,12 @@ class PlanningStatusView(View):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class PlanningSystem(commands.Cog):
-    """Système de planning auto-update dans #planning."""
+    """Système de planning : 1 message par manga par mois, auto-update."""
 
     def __init__(self, bot):
         self.bot = bot
         charger_planning()
         self.daily_planning_check.start()
-        # Restaurer les views persistantes
         for pid in planning_data:
             bot.add_view(PlanningStatusView(pid))
 
@@ -353,67 +375,83 @@ class PlanningSystem(commands.Cog):
         sauvegarder_planning()
 
     # ─────────────────────────────────────────────────────────────────────────
-    # CŒUR : Rafraîchir/créer le message d'un mois dans #planning
+    # CŒUR : Delete + Recreate le message d'un manga pour un mois
     # ─────────────────────────────────────────────────────────────────────────
 
-    async def refresh_month_message(self, month_key):
+    async def refresh_manga_message(self, manga_name, month_key, silent=False):
         """
-        Met à jour (ou crée) le message embed d'un mois dans #planning.
+        Supprime l'ancien message et en crée un nouveau (remonte dans le channel).
+        Mentionne le rôle manga pour notifier.
+
+        manga_name: "Catenaccio"
         month_key: "2026-03"
+        silent: si True, pas de ping rôle (pour les refreshs quotidiens)
         """
         channel = self.bot.get_channel(PLANNING_CHANNEL_ID)
         if not channel:
             logger.warning(f"Canal planning {PLANNING_CHANNEL_ID} introuvable.")
             return
 
-        # Parser le month_key
         try:
             year, month = int(month_key[:4]), int(month_key[5:7])
         except:
             logger.error(f"month_key invalide: {month_key}")
             return
 
-        # Vérifier s'il y a des entrées pour ce mois
-        has_entries = any(
-            pdata["date"].startswith(month_key)
-            for pdata in planning_data.values()
-        )
+        msg_key = get_message_key(month_key, manga_name)
 
-        if not has_entries:
-            # Plus d'entrées → supprimer le message si il existe
-            msg_id = planning_messages.get(month_key)
-            if msg_id:
-                try:
-                    msg = await channel.fetch_message(msg_id)
-                    await msg.delete()
-                except:
-                    pass
-                del planning_messages[month_key]
-                sauvegarder_planning()
+        # Collecter les entrées de ce manga pour ce mois
+        manga_entries = []
+        for pid, pdata in planning_data.items():
+            if (get_manga_key(pdata["manga"]) == get_manga_key(manga_name)
+                    and pdata["date"].startswith(month_key)):
+                manga_entries.append(pdata)
+
+        # ── Supprimer l'ancien message ──
+        old_msg_id = planning_messages.get(msg_key)
+        if old_msg_id:
+            try:
+                old_msg = await channel.fetch_message(old_msg_id)
+                await old_msg.delete()
+                logger.info(f"📅 Ancien message supprimé pour {msg_key}")
+            except discord.NotFound:
+                pass
+            except Exception as e:
+                logger.error(f"Erreur suppression message {msg_key}: {e}")
+            del planning_messages[msg_key]
+
+        # Plus d'entrées → on ne recrée rien
+        if not manga_entries:
+            sauvegarder_planning()
             return
 
-        # Construire l'embed
-        embed = build_month_embed(year, month)
+        # ── Construire le nouvel embed ──
+        embed = build_manga_month_embed(year, month, manga_name, manga_entries)
 
-        # Essayer d'éditer le message existant
-        msg_id = planning_messages.get(month_key)
-        if msg_id:
-            try:
-                msg = await channel.fetch_message(msg_id)
-                await msg.edit(embed=embed)
-                logger.info(f"📅 Message planning {month_key} mis à jour (ID: {msg_id})")
-                return
-            except discord.NotFound:
-                logger.info(f"📅 Message planning {month_key} introuvable, recréation...")
-                del planning_messages[month_key]
-            except Exception as e:
-                logger.error(f"Erreur édition message planning: {e}")
+        # ── Ping du rôle manga ──
+        role_id = resolve_manga_role(manga_name)
+        role_mention = f"<@&{role_id}>" if role_id and not silent else ""
 
-        # Créer un nouveau message
-        msg = await channel.send(embed=embed)
-        planning_messages[month_key] = msg.id
+        # ── Envoyer (nouveau message → remonte en bas du channel) ──
+        msg = await channel.send(role_mention, embed=embed, allowed_mentions=discord.AllowedMentions(roles=True))
+        planning_messages[msg_key] = msg.id
         sauvegarder_planning()
-        logger.info(f"📅 Nouveau message planning créé pour {month_key} (ID: {msg.id})")
+        logger.info(f"📅 Nouveau message planning pour {msg_key} (ID: {msg.id})")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # RAFRAÎCHIR TOUS LES MESSAGES D'UN MOIS (silencieux, pour daily check)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def refresh_all_for_month(self, month_key, silent=True):
+        """Rafraîchit tous les messages manga d'un mois."""
+        mangas_in_month = set()
+        for pdata in planning_data.values():
+            if pdata["date"].startswith(month_key):
+                mangas_in_month.add(pdata["manga"])
+
+        for manga in sorted(mangas_in_month):
+            await self.refresh_manga_message(manga, month_key, silent=silent)
+            await asyncio.sleep(1)  # Rate limit
 
     # ─────────────────────────────────────────────────────────────────────────
     # LOOP - VÉRIFICATION QUOTIDIENNE (9h Paris)
@@ -434,48 +472,38 @@ class PlanningSystem(commands.Cog):
         if not channel:
             return
 
-        # Rafraîchir le message du mois courant (met à jour "AUJOURD'HUI")
+        # Rafraîchir les messages du mois courant (silencieux, pas de ping)
         current_month_key = today_str[:7]
-        await self.refresh_month_message(current_month_key)
+        await self.refresh_all_for_month(current_month_key, silent=True)
 
-        # Notifications sorties du jour
+        # Notifications sorties du jour (message séparé éphémère)
         today_releases = []
-        tomorrow_releases = []
-
         for pid, pdata in planning_data.items():
             if pdata.get("status") == "sorti":
                 continue
             if pdata["date"] == today_str:
                 today_releases.append(pdata)
-            elif pdata["date"] == tomorrow_str:
-                tomorrow_releases.append(pdata)
 
         if today_releases:
-            embed = discord.Embed(title="🔥  SORTIES DU JOUR", color=0xFF6B6B, timestamp=now)
-            desc = ""
-            mentions = []
+            # Grouper par manga
+            by_manga = {}
             for r in today_releases:
-                emoji = get_manga_emoji(r["manga"])
-                status = STATUTS.get(r.get("status", "prevu"), STATUTS["prevu"])
-                desc += f"> {emoji} **{r['manga']}** · Ch. **{r['chapter']}**\n"
-                desc += f"> {status['emoji']} `{status['label']}`\n\n"
-                role_id = resolve_manga_role(r["manga"])
-                if role_id:
-                    mentions.append(f"<@&{role_id}>")
-            embed.description = desc
-            embed.set_footer(text="LanorTrad · Planning")
-            await channel.send(" ".join(set(mentions)) if mentions else "", embed=embed)
+                by_manga.setdefault(r["manga"], []).append(r)
 
-        if tomorrow_releases:
-            embed = discord.Embed(title="⏰  Sorties prévues DEMAIN", color=COLORS["warning"], timestamp=now)
-            desc = ""
-            for r in tomorrow_releases:
-                emoji = get_manga_emoji(r["manga"])
-                desc += f"> {emoji} **{r['manga']}** · Ch. **{r['chapter']}**\n"
-                desc += f"> 📆 {format_date_fr(r['date'])}\n\n"
-            embed.description = desc
-            embed.set_footer(text="LanorTrad · Planning")
-            await channel.send(embed=embed)
+            for manga, releases in by_manga.items():
+                emoji = get_manga_emoji(manga)
+                role_id = resolve_manga_role(manga)
+                mention = f"<@&{role_id}>" if role_id else ""
+
+                embed = discord.Embed(title=f"🔥  SORTIE(S) DU JOUR", color=0xFF6B6B, timestamp=now)
+                desc = ""
+                for r in releases:
+                    status = STATUTS.get(r.get("status", "prevu"), STATUTS["prevu"])
+                    desc += f"> {emoji} **{manga}** · Ch. **{r['chapter']}**\n"
+                    desc += f"> {status['emoji']} `{status['label']}`\n\n"
+                embed.description = desc
+                embed.set_footer(text="LanorTrad · Planning")
+                await channel.send(mention, embed=embed)
 
     @daily_planning_check.before_loop
     async def before_daily_check(self):
@@ -540,25 +568,9 @@ class PlanningSystem(commands.Cog):
             embed.set_footer(text=f"Ajouté par {ctx.author.name} · {len(added)} chapitre(s)")
             await ctx.send(embed=embed)
 
-            # Auto-update le message du mois dans #planning
+            # Delete + recreate le message du manga/mois dans #planning
             month_key = get_month_key(date_str)
-            await self.refresh_month_message(month_key)
-
-            # Notification ping dans #planning
-            planning_channel = self.bot.get_channel(PLANNING_CHANNEL_ID)
-            if planning_channel and role_mention:
-                notif = discord.Embed(
-                    title=f"📅  Nouvelle(s) sortie(s) planifiée(s) !",
-                    color=CALENDAR_COLOR,
-                )
-                notif.description = (
-                    f"{emoji} **{manga}** · Ch. **{chapters_display}**\n"
-                    f"📆 {format_date_fr(date_str)}"
-                )
-                if notes:
-                    notif.description += f"\n📝 *{notes}*"
-                notif.set_footer(text=f"Ajouté par {ctx.author.name}")
-                await planning_channel.send(role_mention, embed=notif)
+            await self.refresh_manga_message(manga.strip(), month_key)
 
     async def _add_interactive(self, ctx):
         def check(m):
@@ -615,21 +627,22 @@ class PlanningSystem(commands.Cog):
 
             # Étape 4 : Notes
             embed = discord.Embed(
-                title="📝  Notes & Teaser (optionnel)",
+                title="📝  Notes (optionnel)",
                 description="Ajoutez des **notes** ou tapez `non` pour passer.",
                 color=CALENDAR_COLOR
             )
-            embed.set_footer(text="Étape 4/4")
+            embed.set_footer(text="Étape 4/5")
             await ctx.send(embed=embed)
             msg = await self.bot.wait_for('message', check=check, timeout=60)
             notes = msg.content.strip() if msg.content.strip().lower() != "non" else None
 
-            # Teaser
+            # Étape 5 : Teaser
             embed = discord.Embed(
                 title="🔮  Teaser / Spoil (optionnel)",
                 description="Tapez un **teaser** (caché sous spoiler) ou `non` pour passer.",
                 color=0x9B59B6
             )
+            embed.set_footer(text="Étape 5/5")
             await ctx.send(embed=embed)
             msg = await self.bot.wait_for('message', check=check, timeout=60)
             teaser = msg.content.strip() if msg.content.strip().lower() != "non" else None
@@ -664,27 +677,16 @@ class PlanningSystem(commands.Cog):
                 embed.set_footer(text=f"Ajouté par {ctx.author.name} · {len(added)} chapitre(s)")
                 await ctx.send(embed=embed)
 
-                # Auto-update #planning
+                # Delete + recreate dans #planning
                 month_key = get_month_key(date_str)
-                await self.refresh_month_message(month_key)
-
-                # Ping dans #planning
-                planning_channel = self.bot.get_channel(PLANNING_CHANNEL_ID)
-                if planning_channel and role_mention:
-                    notif = discord.Embed(
-                        title=f"📅  Nouvelle(s) sortie(s) planifiée(s) !",
-                        color=CALENDAR_COLOR,
-                    )
-                    notif.description = f"{emoji} **{manga}** · Ch. **{chapters_display}**\n📆 {format_date_fr(date_str)}"
-                    notif.set_footer(text=f"Ajouté par {ctx.author.name}")
-                    await planning_channel.send(role_mention, embed=notif)
+                await self.refresh_manga_message(manga, month_key)
 
         except asyncio.TimeoutError:
             await ctx.send("⏰ Temps écoulé. Ajout annulé.", delete_after=10)
 
     async def _finalize_add(self, ctx, manga, chapter, date_str, notes=None, teaser=None):
         """Finalise l'ajout. Retourne True si ajouté."""
-        planning_id = f"{manga.lower().replace(' ', '_')}_{chapter}"
+        planning_id = f"{get_manga_key(manga)}_{chapter}"
 
         if planning_id in planning_data:
             return False
@@ -761,28 +763,9 @@ class PlanningSystem(commands.Cog):
         embed.set_footer(text=f"Par {ctx.author.name}")
         await ctx.send(embed=embed)
 
-        # Auto-update le message du mois
+        # Delete + recreate le message du manga/mois (avec ping)
         month_key = get_month_key(entry["date"])
-        await self.refresh_month_message(month_key)
-
-        # Si "sorti" → notification spéciale avec ping
-        if new_status == "sorti":
-            planning_channel = self.bot.get_channel(PLANNING_CHANNEL_ID)
-            if planning_channel:
-                role_id = resolve_manga_role(entry["manga"])
-                role_mention = f"<@&{role_id}>" if role_id else ""
-                notif = discord.Embed(
-                    title=f"📢  NOUVEAU CHAPITRE DISPONIBLE !",
-                    color=0xFFD700,
-                    timestamp=datetime.datetime.now(datetime.timezone.utc)
-                )
-                notif.description = (
-                    f"## {emoji} {entry['manga']}\n"
-                    f"### Chapitre {entry['chapter']}\n\n"
-                    "Bonne lecture à tous ! 🎉"
-                )
-                notif.set_footer(text="LanorTrad · Sortie")
-                await planning_channel.send(role_mention, embed=notif)
+        await self.refresh_manga_message(entry["manga"], month_key)
 
     # ─────────────────────────────────────────────────────────────────────────
     # COMMANDE ADMIN - MODIFIER LA DATE
@@ -806,6 +789,8 @@ class PlanningSystem(commands.Cog):
 
         old_date = entry["date"]
         old_month_key = get_month_key(old_date)
+        new_month_key = get_month_key(new_date)
+
         entry["date"] = new_date
         entry["last_updated"] = datetime.datetime.now().isoformat()
         sauvegarder_planning()
@@ -819,11 +804,10 @@ class PlanningSystem(commands.Cog):
         embed.set_footer(text=f"Par {ctx.author.name}")
         await ctx.send(embed=embed)
 
-        # Rafraîchir l'ancien ET le nouveau mois
-        new_month_key = get_month_key(new_date)
-        await self.refresh_month_message(old_month_key)
+        # Refresh les deux mois si changement
+        await self.refresh_manga_message(entry["manga"], old_month_key)
         if old_month_key != new_month_key:
-            await self.refresh_month_message(new_month_key)
+            await self.refresh_manga_message(entry["manga"], new_month_key)
 
     # ─────────────────────────────────────────────────────────────────────────
     # COMMANDE ADMIN - AJOUTER/MODIFIER UN TEASER
@@ -859,7 +843,6 @@ class PlanningSystem(commands.Cog):
 
         if teaser_text.lower() in ["supprimer", "delete", "remove", "none"]:
             entry["teaser"] = ""
-            entry["last_updated"] = datetime.datetime.now().isoformat()
             sauvegarder_planning()
             embed = discord.Embed(title="🗑️  Teaser supprimé",
                                   description=f"{emoji} **{entry['manga']}** · Ch. **{entry['chapter']}**",
@@ -867,15 +850,17 @@ class PlanningSystem(commands.Cog):
             await ctx.send(embed=embed)
         else:
             entry["teaser"] = teaser_text
-            entry["last_updated"] = datetime.datetime.now().isoformat()
             sauvegarder_planning()
             embed = discord.Embed(title="🔮  Teaser mis à jour !",
                                   description=f"{emoji} **{entry['manga']}** · Ch. **{entry['chapter']}**\n\n> ||{teaser_text}||",
                                   color=0x9B59B6)
             await ctx.send(embed=embed)
 
+        entry["last_updated"] = datetime.datetime.now().isoformat()
+        sauvegarder_planning()
+
         month_key = get_month_key(entry["date"])
-        await self.refresh_month_message(month_key)
+        await self.refresh_manga_message(entry["manga"], month_key)
 
     # ─────────────────────────────────────────────────────────────────────────
     # COMMANDE ADMIN - SUPPRIMER
@@ -891,44 +876,48 @@ class PlanningSystem(commands.Cog):
             await ctx.send(f"❌ Entrée `{planning_id}` introuvable.", delete_after=10)
             return
 
+        manga_name = entry["manga"]
         month_key = get_month_key(entry["date"])
         planning_data.pop(planning_id)
         sauvegarder_planning()
 
-        emoji = get_manga_emoji(entry["manga"])
+        emoji = get_manga_emoji(manga_name)
         embed = discord.Embed(
             title="🗑️  Entrée supprimée",
-            description=f"{emoji} **{entry['manga']}** · Ch. **{entry['chapter']}** retiré.",
+            description=f"{emoji} **{manga_name}** · Ch. **{entry['chapter']}** retiré.",
             color=COLORS["error"]
         )
         embed.set_footer(text=f"Par {ctx.author.name}")
         await ctx.send(embed=embed)
 
-        await self.refresh_month_message(month_key)
+        # Refresh (va supprimer le message si plus d'entrées pour ce manga/mois)
+        await self.refresh_manga_message(manga_name, month_key)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # COMMANDE ADMIN - POSTER/FORCER LE RAFRAÎCHISSEMENT
+    # COMMANDE ADMIN - FORCER LE RAFRAÎCHISSEMENT
     # ─────────────────────────────────────────────────────────────────────────
 
     @commands.command(name="planning_post", aliases=["planning_refresh"])
     @commands.has_any_role(*TASK_ROLES)
     @commands.cooldown(1, 30, commands.BucketType.user)
     async def post_planning(self, ctx):
-        """⚙️ Force le rafraîchissement de tous les messages planning."""
-        # Trouver tous les mois qui ont des entrées
-        month_keys = set()
+        """⚙️ Force la recréation de tous les messages planning."""
+        # Collecter tous les combos mois+manga
+        combos = set()
         for pdata in planning_data.values():
-            month_keys.add(get_month_key(pdata["date"]))
+            mk = get_month_key(pdata["date"])
+            combos.add((pdata["manga"], mk))
 
-        if not month_keys:
+        if not combos:
             await ctx.send("📅 Aucune donnée de planning.", delete_after=10)
             return
 
-        for mk in sorted(month_keys):
-            await self.refresh_month_message(mk)
+        for manga, mk in sorted(combos, key=lambda x: x[1]):
+            await self.refresh_manga_message(manga, mk, silent=True)
+            await asyncio.sleep(1)
 
         channel = self.bot.get_channel(PLANNING_CHANNEL_ID)
-        await ctx.send(f"✅ Planning rafraîchi dans {channel.mention} ! ({len(month_keys)} mois)")
+        await ctx.send(f"✅ Planning rafraîchi dans {channel.mention} ! ({len(combos)} message(s))")
 
     # ─────────────────────────────────────────────────────────────────────────
     # COMMANDE ADMIN - PLANNING COMPLET (liste avec IDs pour gestion)
