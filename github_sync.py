@@ -224,19 +224,100 @@ class GitHubSync(commands.Cog):
         self.auto_sync_loop.cancel()
 
     # ─────────────────────────────────────────────────────────────────────────
+    # FLUSH : Sauvegarde TOUTES les données en mémoire sur disque
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def _flush_all_data(self):
+        """Force la sauvegarde de tous les modules en mémoire. Retourne la liste des modules sauvés."""
+        saved = []
+
+        # Database export
+        try:
+            from database import db
+            db.export_to_json()
+            saved.append("database")
+        except Exception as e:
+            logging.warning(f"⚠️ Export BDD: {e}")
+
+        # Tâches (commands.py)
+        try:
+            from commands import sauvegarder_etat_taches
+            sauvegarder_etat_taches()
+            saved.append("tâches")
+        except Exception as e:
+            logging.warning(f"⚠️ Sauvegarde tâches: {e}")
+
+        # Community / XP (community.py)
+        try:
+            from community import sauvegarder_donnees
+            sauvegarder_donnees()
+            saved.append("community")
+        except Exception as e:
+            logging.warning(f"⚠️ Sauvegarde community: {e}")
+
+        # Planning (planning.py)
+        try:
+            from planning import sauvegarder_planning
+            sauvegarder_planning()
+            saved.append("planning")
+        except Exception as e:
+            logging.warning(f"⚠️ Sauvegarde planning: {e}")
+
+        # Rappels (rappels.py)
+        try:
+            from rappels import sauvegarder_rappels
+            sauvegarder_rappels()
+            saved.append("rappels")
+        except Exception as e:
+            logging.warning(f"⚠️ Sauvegarde rappels: {e}")
+
+        # Giveaways (giveaway.py)
+        try:
+            from giveaway import load_giveaways, save_giveaways
+            data = load_giveaways()
+            save_giveaways(data)
+            saved.append("giveaways")
+        except Exception as e:
+            logging.warning(f"⚠️ Sauvegarde giveaways: {e}")
+
+        # Badges (achievements.py)
+        try:
+            from achievements import save_badges_data, load_badges_data
+            data = load_badges_data()
+            save_badges_data(data)
+            saved.append("badges")
+        except Exception as e:
+            logging.warning(f"⚠️ Sauvegarde badges: {e}")
+
+        # Polls (polls.py)
+        try:
+            from polls import sauvegarder_polls
+            sauvegarder_polls()
+            saved.append("polls")
+        except Exception as e:
+            logging.warning(f"⚠️ Sauvegarde polls: {e}")
+
+        # Shop (shop.py)
+        try:
+            from shop import sauvegarder_shop
+            sauvegarder_shop()
+            saved.append("shop")
+        except Exception as e:
+            logging.warning(f"⚠️ Sauvegarde shop: {e}")
+
+        return saved
+
+    # ─────────────────────────────────────────────────────────────────────────
     # AUTO-SYNC (toutes les 30 minutes)
     # ─────────────────────────────────────────────────────────────────────────
 
     @tasks.loop(seconds=GITHUB_SYNC.get("auto_sync_interval", 1800))
     async def auto_sync_loop(self):
         """Vérifie et sync automatiquement toutes les 30 min"""
-        # Exporter la BDD en JSON avant la sync
-        try:
-            from database import db
-            db.export_to_json()
-            logging.info("📦 Export BDD → JSON effectué avant sync")
-        except Exception as e:
-            logging.warning(f"⚠️ Export BDD échoué (non bloquant): {e}")
+        # Flush toutes les données en mémoire vers le disque
+        saved = await self._flush_all_data()
+        if saved:
+            logging.info(f"💾 Auto-flush: {', '.join(saved)}")
 
         if not git_has_changes():
             return
@@ -300,10 +381,16 @@ class GitHubSync(commands.Cog):
 
         Usage: !sync [message de commit optionnel]
         """
+        # ── Forcer la sauvegarde de TOUTES les données en mémoire ──
+        saved_modules = await self._flush_all_data()
+        if saved_modules:
+            logging.info(f"💾 Données sauvegardées avant sync: {', '.join(saved_modules)}")
+
         if not git_has_changes():
+            modules_text = ", ".join(saved_modules) if saved_modules else "aucun"
             embed = discord.Embed(
                 title="✅ Tout est à jour",
-                description="Aucun changement à synchroniser.",
+                description=f"💾 Modules flushés : {modules_text}\nAucun changement à synchroniser.",
                 color=COLORS["info"]
             )
             last_commit = get_last_commit_info()
@@ -319,9 +406,10 @@ class GitHubSync(commands.Cog):
         changed_files = git_get_changed_files()
         nb_files = len(changed_files)
 
+        modules_text = ", ".join(saved_modules) if saved_modules else "aucun"
         loading_embed = discord.Embed(
             title="🔄 Synchronisation en cours...",
-            description=f"Envoi de **{nb_files}** fichier(s) vers GitHub...",
+            description=f"💾 Modules sauvegardés : {modules_text}\n📤 Envoi de **{nb_files}** fichier(s) vers GitHub...",
             color=COLORS["warning"]
         )
         loading_msg = await ctx.send(embed=loading_embed)

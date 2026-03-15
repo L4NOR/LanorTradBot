@@ -33,11 +33,12 @@ PLANNING_MESSAGES_FILE = f"{DATA_DIR}/planning_messages.json"
 planning_data = {}       # {"id": {manga, chapter, date, status, notes, teaser, ...}}
 planning_messages = {}   # {"2026-03_catenaccio": msg_id, "2026-03_tougen_anki": msg_id, ...}
 
-# Statuts
+# Statuts (ordre = workflow de production)
 STATUTS = {
     "prevu":      {"emoji": "📅", "label": "Prévu",           "color": 0x5865F2},
     "en_cours":   {"emoji": "🔄", "label": "En cours",        "color": 0xF39C12},
     "trad_done":  {"emoji": "🌍", "label": "Trad terminée",   "color": 0x9B59B6},
+    "edit_done":  {"emoji": "✏️", "label": "Edit terminé",    "color": 0xE67E22},
     "check_done": {"emoji": "✅", "label": "Check terminé",   "color": 0x57F287},
     "pret":       {"emoji": "🚀", "label": "Prêt à sortir",   "color": 0x1ABC9C},
     "sorti":      {"emoji": "📢", "label": "Sorti",           "color": 0x2ECC71},
@@ -133,7 +134,7 @@ def resolve_manga_role(manga_name):
 
 
 def get_progress_bar(status_key):
-    stages = ["prevu", "en_cours", "trad_done", "check_done", "pret", "sorti"]
+    stages = ["prevu", "en_cours", "trad_done", "edit_done", "check_done", "pret", "sorti"]
     if status_key == "retarde":
         return "⚠️ ░░░░░░░░ Retardé"
     try:
@@ -149,7 +150,7 @@ def get_progress_bar(status_key):
 
 def get_overall_progress(entries):
     """Calcule la progression globale de toutes les entrées d'un manga/mois."""
-    stages = ["prevu", "en_cours", "trad_done", "check_done", "pret", "sorti"]
+    stages = ["prevu", "en_cours", "trad_done", "edit_done", "check_done", "pret", "sorti"]
     if not entries:
         return 0
     total_pct = 0
@@ -454,7 +455,9 @@ class PlanningSystem(commands.Cog):
             await asyncio.sleep(1)  # Rate limit
 
     # ─────────────────────────────────────────────────────────────────────────
-    # LOOP - VÉRIFICATION QUOTIDIENNE (9h Paris)
+    # LOOP - VÉRIFICATION QUOTIDIENNE
+    #   - Minuit (0h) : refresh silencieux (changement de jour → "AUJOURD'HUI" se déplace)
+    #   - 9h : refresh + notifications des sorties du jour
     # ─────────────────────────────────────────────────────────────────────────
 
     @tasks.loop(hours=1)
@@ -462,6 +465,20 @@ class PlanningSystem(commands.Cog):
         tz_paris = pytz.timezone('Europe/Paris')
         now = datetime.datetime.now(tz_paris)
 
+        # À minuit → refresh silencieux pour mettre à jour les labels "AUJOURD'HUI"/"Hier"/"J-X"
+        if now.hour == 0:
+            if not planning_data:
+                return
+            current_month_key = now.date().isoformat()[:7]
+            await self.refresh_all_for_month(current_month_key, silent=True)
+            # Si on est le 1er du mois, refresh aussi le mois précédent
+            if now.day == 1:
+                prev = (now.date() - datetime.timedelta(days=1))
+                prev_key = prev.isoformat()[:7]
+                await self.refresh_all_for_month(prev_key, silent=True)
+            return
+
+        # À 9h → refresh + notifications
         if now.hour != 9:
             return
 
@@ -476,7 +493,7 @@ class PlanningSystem(commands.Cog):
         current_month_key = today_str[:7]
         await self.refresh_all_for_month(current_month_key, silent=True)
 
-        # Notifications sorties du jour (message séparé éphémère)
+        # Notifications sorties du jour (message séparé)
         today_releases = []
         for pid, pdata in planning_data.items():
             if pdata.get("status") == "sorti":

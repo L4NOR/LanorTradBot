@@ -312,7 +312,7 @@ HELP_CATEGORIES = {
         "admin": True,
         "commands": [
             {"name": "planning_add", "usage": "!planning_add [manga chap(s) AAAA-MM-JJ notes]", "desc": "Ajouter sortie(s) → auto-update #planning + ping rôle"},
-            {"name": "planning_status", "usage": "!planning_status <id> [statut]", "desc": "Changer le statut (prevu/en_cours/trad_done/check_done/pret/sorti/retarde)"},
+            {"name": "planning_status", "usage": "!planning_status <id> [statut]", "desc": "Changer le statut (prevu/en_cours/trad_done/edit_done/check_done/pret/sorti/retarde)"},
             {"name": "planning_date", "usage": "!planning_date <id> <AAAA-MM-JJ>", "desc": "Modifier la date de sortie"},
             {"name": "planning_teaser", "usage": "!planning_teaser <id> <texte>", "desc": "Ajouter/modifier un teaser spoil"},
             {"name": "planning_remove", "usage": "!planning_remove <id>", "desc": "Retirer une sortie du planning"},
