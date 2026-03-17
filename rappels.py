@@ -189,8 +189,8 @@ class RappelPrefView(View):
 # ENVOI DES RAPPELS
 # ===============================================================================
 
-async def envoyer_rappel(bot):
-    """Tache de rappel avec fuseau horaire francais."""
+async def envoyer_rappel(bot, force=False):
+    """Tache de rappel avec fuseau horaire francais. force=True pour ignorer la verification d'heure."""
     global last_rappel_time
 
     tz_paris = pytz.timezone('Europe/Paris')
@@ -199,10 +199,11 @@ async def envoyer_rappel(bot):
     # Verifier si c'est l'heure du rappel (21h) et qu'on n'a pas deja envoye aujourd'hui
     current_date = now.date()
 
-    # Ne s'executer qu'une seule fois par jour a 21h
-    if now.hour == 21 and (last_rappel_time is None or last_rappel_time != current_date):
-        logging.info(f"🔔 Déclenchement des rappels à {now.strftime('%Y-%m-%d %H:%M:%S')}")
-        last_rappel_time = current_date
+    # Ne s'executer qu'une seule fois par jour a 21h (sauf si force=True)
+    if force or (now.hour == 21 and (last_rappel_time is None or last_rappel_time != current_date)):
+        logging.info(f"🔔 Déclenchement des rappels à {now.strftime('%Y-%m-%d %H:%M:%S')}{' (FORCÉ)' if force else ''}")
+        if not force:
+            last_rappel_time = current_date
 
         rappels_envoyes = 0
         rappels_ignores = 0
@@ -627,9 +628,9 @@ class RappelTask(commands.Cog):
     @commands.command(name='test_rappel')
     @commands.has_any_role(*ADMIN_ROLES)
     async def test_rappel(self, ctx):
-        """Teste l'envoi d'un rappel immédiatement (pour debug)."""
+        """Teste l'envoi d'un rappel immédiatement (bypass la vérification d'heure)."""
         await ctx.send("🧪 Test de l'envoi des rappels en cours...")
-        await envoyer_rappel(self.bot)
+        await envoyer_rappel(self.bot, force=True)
         await ctx.send("✅ Test terminé ! Vérifiez si les rappels ont été envoyés.")
 
 
