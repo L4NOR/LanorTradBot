@@ -167,6 +167,7 @@ CHANNELS = {
     "logs": 1330221808753840159,
     "tickets": 1326357433588912179,
     "planning": 1332363693174034472,
+    "rappels": 1431607377882382396,
 }
 
 MANGA_CHANNELS = {
@@ -324,16 +325,6 @@ DM_REMINDER_CONFIG = {
     "role_channel_id": None,  # Sera auto-détecté
     "send_hour": 12,          # Heure d'envoi des DMs (midi)
     "timezone": "Europe/Paris",
-}
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# CONFIGURATION GITHUB SYNC
-# ═══════════════════════════════════════════════════════════════════════════════
-
-GITHUB_SYNC = {
-    "auto_sync_interval": 1800,     # Auto-sync toutes les 30 minutes (en secondes)
-    "sync_channel": CHANNELS.get("test"),  # Channel pour les notifications de sync
-    "commit_prefix": "🔄 sync:",    # Préfixe des messages de commit
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════

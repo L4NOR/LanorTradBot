@@ -165,9 +165,18 @@ HELP_CATEGORIES = {
             {"name": "actualiser", "usage": "!actualiser", "desc": "Sauvegarder/exporter les données"},
         ]
     },
+    "rappels_public": {
+        "emoji": "🔔",
+        "name": "Rappels",
+        "description": "Préférences de notification des rappels",
+        "color": 0xFF9800,
+        "commands": [
+            {"name": "rappel_pref", "usage": "!rappel_pref", "desc": "Choisir où recevoir tes rappels (channel ou DM)"},
+        ]
+    },
     "admin_rappels": {
         "emoji": "⏰",
-        "name": "Rappels",
+        "name": "Admin Rappels",
         "description": "Gestion des rappels de deadlines",
         "color": 0xFF9800,
         "admin": True,
@@ -175,7 +184,6 @@ HELP_CATEGORIES = {
             {"name": "add_rappel", "usage": "!add_rappel", "desc": "Créer un rappel (interactif)"},
             {"name": "list_rappels", "usage": "!list_rappels", "desc": "Liste des rappels actifs"},
             {"name": "delete_rappel", "usage": "!delete_rappel <id>", "desc": "Supprimer un rappel"},
-            {"name": "actualiser_rappels", "usage": "!actualiser_rappels <action>", "desc": "Save/reload rappels"},
             {"name": "test_rappel", "usage": "!test_rappel", "desc": "Tester l'envoi des rappels"},
         ]
     },
@@ -304,18 +312,29 @@ HELP_CATEGORIES = {
             {"name": "audit_test", "usage": "!audit_test", "desc": "Tester les logs d'audit"},
         ]
     },
-    "admin_planning": {
+    "planning_public": {
         "emoji": "📅",
         "name": "Planning",
+        "description": "Consulter le planning des sorties",
+        "color": 0x7c3aed,
+        "commands": [
+            {"name": "planning", "usage": "!planning [manga]", "desc": "Voir le planning du mois (filtrable par manga)"},
+        ]
+    },
+    "admin_planning": {
+        "emoji": "📅",
+        "name": "Admin Planning",
         "description": "Gestion du planning (auto-update dans #planning, ping rôle manga)",
         "color": 0x7c3aed,
         "admin": True,
         "commands": [
             {"name": "planning_add", "usage": "!planning_add [manga chap(s) AAAA-MM-JJ notes]", "desc": "Ajouter sortie(s) → auto-update #planning + ping rôle"},
             {"name": "planning_status", "usage": "!planning_status <id> [statut]", "desc": "Changer le statut (prevu/en_cours/trad_done/edit_done/check_done/pret/sorti/retarde)"},
+            {"name": "planning_batch_status", "usage": "!planning_batch_status <statut> <id1> <id2>...", "desc": "Changer le statut de plusieurs entrées d'un coup"},
             {"name": "planning_date", "usage": "!planning_date <id> <AAAA-MM-JJ>", "desc": "Modifier la date de sortie"},
             {"name": "planning_teaser", "usage": "!planning_teaser <id> <texte>", "desc": "Ajouter/modifier un teaser spoil"},
-            {"name": "planning_remove", "usage": "!planning_remove <id>", "desc": "Retirer une sortie du planning"},
+            {"name": "planning_notes", "usage": "!planning_notes <id> <texte>", "desc": "Ajouter/modifier les notes"},
+            {"name": "planning_remove", "usage": "!planning_remove <id>", "desc": "Retirer une sortie (avec confirmation)"},
             {"name": "planning_full", "usage": "!planning_full", "desc": "Liste toutes les entrées avec IDs"},
             {"name": "planning_post", "usage": "!planning_post", "desc": "Forcer le rafraîchissement des messages"},
         ]

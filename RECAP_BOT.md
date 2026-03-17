@@ -1,6 +1,6 @@
 # LANORTRAD BOT - DOCUMENTATION COMPLETE
 
-> Bot Discord pour la communauté de traduction manga LanorTrad
+> Bot Discord pour la communaute de traduction manga LanorTrad
 > `discord.py 2.4.0` | Prefix: `!` | Langue: Francais
 
 ---
@@ -19,30 +19,36 @@
 
 ## ARCHITECTURE & FICHIERS
 
-### Modules Python (16 fichiers)
+### Modules Python (17 fichiers)
 
 | Fichier | Cog/Classe | Description |
 |---------|-----------|-------------|
 | `main.py` | — | Point d'entree, charge tous les modules, serveur web health check (port 8080) |
 | `config.py` | — | Configuration centralisee (IDs, constantes, emojis) |
-| `commands.py` | — | Commandes de base (help, info, tasks, avancee) + menu help interactif |
-| `community.py` | `CommunityCog` | Systeme XP/niveaux, daily, mini-jeux (trivia, guess) |
+| `commands.py` | — | Commandes de base (help, info, tasks, moderation, bulk roles) + menu help interactif |
+| `community.py` | `CommunitySystem` | Systeme XP/niveaux, daily, mini-jeux (trivia, guess) |
 | `achievements.py` | `Achievements` | Badges et recompenses |
-| `planning.py` | `PlanningSystem` | Planning sorties chapitres (calendrier mensuel) |
+| `planning.py` | `PlanningSystem` | Planning sorties chapitres (calendrier mensuel, batch status, auto-nettoyage) |
 | `shop.py` | `Shop` | Boutique, inventaire, loterie hebdomadaire |
 | `giveaway.py` | `GiveawayCog` | Giveaways bases sur les invitations |
-| `stats.py` | `ServerStats` | Dashboard statistiques serveur |
+| `stats.py` | `StatsDisplay` | Dashboard statistiques serveur |
 | `announcements.py` | — | Annonces de chapitres |
-| `rappels.py` | `Rappels` | Rappels de deadlines pour les taches |
+| `rappels.py` | `RappelTask` | Rappels de deadlines (channel fixe ou DM selon preference utilisateur) |
 | `role_selector.py` | `RoleSelector` | Selection de roles par boutons |
 | `polls.py` | `Polls` | Systeme de sondages avance |
 | `tickets.py` | `Tickets` | Candidatures et tickets support |
-| `logs.py` | `AuditLog` | Logs d'audit (join/leave/edit/delete) |
-| `github_sync.py` | `GitHubSync` | Sync automatique des donnees vers GitHub |
-| `events.py` | — | Evenements (welcome, reglement) |
+| `logs.py` | `AuditLogs` | Logs d'audit (join/leave/edit/delete/ban/voice) |
+| `events.py` | — | Evenements (welcome, reglement, erreurs) |
 | `database.py` | `Database` | Couche SQLite + migration JSON |
-| `admin_data.py` | `AdminData` | Import/export des donnees |
+| `admin_data.py` | `DataManager` | Import/export/backup des donnees |
 | `utils.py` | — | Fonctions utilitaires (pagination, embeds, JSON) |
+
+### Ordre de chargement (main.py)
+
+1. events (sync)
+2. commands (sync)
+3. announcements (sync)
+4. rappels, giveaway, community, achievements, shop, admin_data, role_selector, logs, polls, tickets, stats, planning (async COGs)
 
 ### Dependances
 
@@ -64,9 +70,6 @@ aiohttp==3.11.11
 | `DISCORD_TOKEN` | Token du bot |
 | `COMMAND_PREFIX` | Prefix (defaut: `!`) |
 | `PORT` | Port health check (defaut: 8080) |
-| `GITHUB_TOKEN` | Token pour sync GitHub |
-| `GITHUB_REPO_URL` | URL du repo |
-| `GITHUB_BRANCH` | Branche (defaut: main) |
 
 ### IDs des Channels
 
@@ -77,9 +80,13 @@ aiohttp==3.11.11
 | General | 1326230396903362759 |
 | Annonces chapitres | 1326213946188890142 |
 | Planning | 1332363693174034472 |
+| Rappels | 1431607377882382396 |
 | Tickets | 1326357433588912179 |
 | Contact modo | 1332088539076104192 |
-| Logs | 1330221808753840159 |
+| Logs/Test | 1330221808753840159 |
+| Roles | 1326212401036529665 |
+| Boost | 1326212624504848394 |
+| Partenaires | 1326357401099702393 |
 
 ### Channels Manga
 
@@ -111,15 +118,6 @@ aiohttp==3.11.11
 | Tokyo Underworld | 1465027914050437184 |
 | Tougen Anki | 1465027911235928155 |
 
-### Roles Notification
-
-| Role | ID |
-|------|-----|
-| Annonces | 1465027871339708439 |
-| Evenements | 1465027869196423239 |
-| Giveaway | 1465027866826772785 |
-| Partenaires | 1465027864318447658 |
-
 ### Couleurs
 
 | Usage | Hex |
@@ -129,6 +127,7 @@ aiohttp==3.11.11
 | Info | `0x3498DB` |
 | Warning | `0xF1C40F` |
 | Boost | `0x9B59B6` |
+| Giveaway | `0xff6b6b` |
 
 ---
 
@@ -152,60 +151,67 @@ aiohttp==3.11.11
 | `!profile` | `!profil` | Profil complet avec stats |
 | `!leaderboard` | `!lb`, `!top` | Classement XP (paginable) |
 | `!daily` | — | Bonus quotidien (20-50 XP + streak) |
-| `!trivia` | — | Quiz manga (easy/medium/hard → 20/50/100 XP) |
+| `!trivia` | — | Quiz manga (easy/medium/hard) |
 | `!guess` | — | Jeu de devinette (30 XP) |
 
 ### Badges
 
-| Commande | Description |
-|----------|-------------|
-| `!badges [@membre]` | Voir les badges d'un membre |
-| `!all_badges` | Liste tous les badges disponibles |
-| `!badge_info <nom>` | Details d'un badge |
-| `!display_badge <nom>` | Afficher un badge (max 3) |
-| `!remove_badge <nom>` | Retirer un badge affiche |
-| `!leaderboard_badges` | Top collectionneurs |
+| Commande | Aliases | Description |
+|----------|---------|-------------|
+| `!badges` | `!achievements`, `!mes_badges` | Voir les badges d'un membre |
+| `!badge_info` | `!badgeinfo` | Details d'un badge |
+| `!all_badges` | `!listbadges`, `!badges_list` | Liste tous les badges |
+| `!badge_stats` | `!mystats` | Progression statistiques |
+| `!leaderboard_badges` | `!top_badges` | Top collectionneurs |
 
 ### Boutique
 
-| Commande | Description |
-|----------|-------------|
-| `!shop [categorie]` | Parcourir la boutique |
-| `!buy <item>` | Acheter un item |
-| `!inventory [@membre]` | Voir l'inventaire |
-| `!use <item>` | Utiliser un consommable |
+| Commande | Aliases | Description |
+|----------|---------|-------------|
+| `!shop` | `!boutique`, `!magasin` | Parcourir la boutique |
+| `!item_info` | `!shopinfo`, `!info_article` | Details d'un item |
+| `!buy` | `!acheter` | Acheter un item |
+| `!inventory` | `!inv`, `!inventaire` | Voir l'inventaire |
+| `!use` | `!utiliser` | Utiliser un consommable |
+| `!lottery` | `!loterie` | Infos loterie |
 
 ### Giveaways & Invitations
 
 | Commande | Aliases | Description |
 |----------|---------|-------------|
-| `!my_invites` | — | Stats d'invitations |
-| `!leaderboard_invites` | — | Classement invitations |
-| `!list_giveaways` | — | Giveaways actifs |
-| `!giveaway_info <id>` | — | Details d'un giveaway |
+| `!invites` | `!myinvites` | Stats d'invitations |
+| `!invites_leaderboard` | `!topinvites` | Classement invitations |
+| `!glist` | `!giveaways` | Giveaways actifs |
+| `!gstats` | `!giveaway_stats` | Statistiques giveaways |
 
 ### Planning
 
+| Commande | Description |
+|----------|-------------|
+| `!planning` | Planning du mois en cours (tous les mangas) |
+| `!planning [manga]` | Planning filtre par manga |
+
+### Rappels
+
 | Commande | Aliases | Description |
 |----------|---------|-------------|
-| `!planning [mois] [annee]` | — | Calendrier mensuel des sorties |
-| `!planning_full` | `!planning_all` | Planning complet (passe + futur) |
-| `!next_release` | `!prochaine_sortie`, `!next` | Prochaine sortie prevue |
+| `!rappel_pref` | `!rappel_preference`, `!pref_rappel` | Choisir ou recevoir ses rappels (channel ou DM) |
+
+### Sondages
+
+| Commande | Aliases | Description |
+|----------|---------|-------------|
+| `!poll` | — | Creer un sondage (rapide ou interactif) |
+| `!poll_list` | `!polls`, `!list_polls` | Sondages actifs |
+| `!poll_results` | `!poll_result` | Resultats d'un sondage |
 
 ### Statistiques
 
 | Commande | Aliases | Description |
 |----------|---------|-------------|
 | `!serverstats` | `!sstats`, `!server_stats`, `!dashboard` | Dashboard multi-pages |
-
-### Sondages
-
-| Commande | Description |
-|----------|-------------|
-| `!poll "question" "opt1" "opt2" ...` | Creer un sondage (2-10 options) |
-| `!poll_duration "question" <duree> ...` | Sondage avec timer |
-| `!poll_info <id>` | Details du sondage |
-| `!poll_results <id>` | Resultats finaux |
+| `!membercount` | `!mc` | Nombre de membres rapide |
+| `!topcontrib` | `!contributors`, `!top_contrib` | Top contributeurs |
 
 ---
 
@@ -216,8 +222,10 @@ aiohttp==3.11.11
 | Commande | Usage | Description |
 |----------|-------|-------------|
 | `!task` | `!task <action> <manga> <chap...>` | MAJ tache (clean/trad/check/edit) |
+| `!claim` | `!claim <manga> <chap> <tache>` | Prendre une tache |
+| `!unclaim` | `!unclaim <manga> <chap> <tache>` | Liberer une tache |
 | `!task_status` | `!task_status <manga> <chap>` | Etat des taches d'un chapitre |
-| `!task_all` | `!task_all [manga]` | Toutes les taches |
+| `!task_all` | `!task_all [manga]` | Toutes les taches (filtrable) |
 | `!delete_task` | `!delete_task <manga> <chap>` | Supprimer taches d'un chapitre |
 | `!fix_tasks` | `!fix_tasks` | Normaliser les cles |
 | `!actualiser` | `!actualiser` | Sauvegarder/exporter les donnees |
@@ -226,42 +234,41 @@ aiohttp==3.11.11
 
 | Commande | Aliases | Description |
 |----------|---------|-------------|
-| `!planning_add` | `!add_planning` | Ajouter sortie(s) — supporte multi-chapitres (`220-222`, `220,221`) |
-| `!planning_status` | `!planning_update` | Changer le statut (prevu/en_cours/trad_done/check_done/pret/sorti/retarde) |
+| `!planning_add` | `!add_planning` | Ajouter sortie(s) — multi-chapitres (`220-222`, `220,221`) |
+| `!planning_status` | `!planning_update` | Changer le statut (prevu/en_cours/trad_done/edit_done/check_done/pret/sorti/retarde) |
+| `!planning_batch_status` | `!batch_status` | Changer le statut de plusieurs entrees d'un coup |
 | `!planning_date` | `!planning_reschedule` | Modifier la date |
 | `!planning_teaser` | `!planning_spoil`, `!teaser` | Ajouter/modifier teaser (spoiler) |
-| `!planning_post` | `!planning_refresh` | Poster/rafraichir dans le channel planning |
+| `!planning_notes` | `!planning_note` | Ajouter/modifier les notes |
+| `!planning_full` | `!planning_all`, `!planning_list` | Liste admin avec IDs |
+| `!planning_post` | `!planning_refresh` | Forcer le rafraichissement des messages |
 
 ### Planning (ADMIN_ROLES)
 
 | Commande | Aliases | Description |
 |----------|---------|-------------|
-| `!planning_remove` | `!planning_delete`, `!del_planning` | Supprimer une entree |
+| `!planning_remove` | `!planning_delete`, `!del_planning` | Supprimer une entree (avec confirmation) |
 
 ### Rappels (ADMIN_ROLES)
 
 | Commande | Description |
 |----------|-------------|
 | `!add_rappel` | Creer un rappel (interactif: user, manga, chapitres, tache, deadline) |
-| `!list_rappels` | Liste des rappels actifs |
+| `!list_rappels` | Liste des rappels actifs (avec preference notif) |
 | `!delete_rappel <id>` | Supprimer un rappel |
-| `!actualiser_rappels <save/load>` | Sauvegarder/recharger |
-| `!test_rappel` | Tester l'envoi |
+| `!test_rappel` | Tester l'envoi immediat |
 
-### Giveaways (ADMIN_ROLES)
+### Giveaways (manage_guild / administrator)
 
-| Commande | Description |
-|----------|-------------|
-| `!create_giveaway` | Creer giveaway (interactif) |
-| `!giveaway <duree> <nb_gagnants> <prix>` | Creer giveaway rapide |
-| `!end_giveaway <id>` | Terminer et tirer gagnants |
-| `!delete_giveaway <id>` | Supprimer |
-| `!reroll <id> [nb]` | Retirer des gagnants |
-| `!giveaway_participants <id>` | Liste des participants |
-| `!add_invites @user <nb>` | Ajouter des invitations |
-| `!remove_invites @user <nb>` | Retirer des invitations |
-| `!reset_user_invites @user` | Reset invitations |
-| `!server_invite_stats` | Stats globales invitations |
+| Commande | Aliases | Description |
+|----------|---------|-------------|
+| `!giveaway` | `!gstart`, `!gcreate` | Creer giveaway rapide |
+| `!giveaway_advanced` | `!gadvanced` | Giveaway interactif avance |
+| `!gend` | `!gstop` | Terminer un giveaway |
+| `!greroll` | — | Retirer des gagnants |
+| `!gdelete` | `!gcancel` | Supprimer un giveaway |
+| `!addinvites` | — | Ajouter des invitations |
+| `!resetinvites` | — | Reset invitations |
 
 ### Boutique (ADMIN_ROLES)
 
@@ -271,7 +278,6 @@ aiohttp==3.11.11
 | `!shop_remove <item>` | Supprimer un item |
 | `!give_item @user <item>` | Donner un item |
 | `!set_points @user <montant>` | Definir les points |
-| `!add_points_admin @user <montant>` | Ajouter/retirer des points |
 
 ### Communaute (ADMIN_ROLES)
 
@@ -280,26 +286,80 @@ aiohttp==3.11.11
 | `!give_xp` | `!give_points`, `!addxp` | Donner de l'XP |
 | `!reset_xp` | `!reset_points` | Reset l'XP d'un membre |
 
+### Badges (administrator)
+
+| Commande | Description |
+|----------|-------------|
+| `!give_badge @user <nom>` | Attribuer un badge |
+| `!remove_badge @user <nom>` | Retirer un badge |
+| `!set_stat @user <stat> <valeur>` | Modifier une stat utilisateur |
+| `!check_badges @user` | Verifier et attribuer badges gagnes |
+
 ### Annonces (ADMIN_ROLES)
 
 | Commande | Description |
 |----------|-------------|
-| `!announce_chapter` | Annonce de chapitre (interactif: manga, chapitres, lien, description) |
+| `!announce_chapter` | Annonce de chapitre (interactif) |
 | `!test_announce` | Test dans channel de test |
 
 ### Sondages (ADMIN_ROLES)
 
-| Commande | Description |
-|----------|-------------|
-| `!close_poll <id>` | Fermer un sondage |
+| Commande | Aliases | Description |
+|----------|---------|-------------|
+| `!poll_close` | `!close_poll`, `!endpoll` | Fermer un sondage |
+| `!poll_delete` | `!delete_poll` | Supprimer un sondage |
+
+### Moderation (permissions Discord)
+
+| Commande | Permission | Description |
+|----------|-----------|-------------|
+| `!clear <nb>` | manage_messages | Supprimer des messages |
+| `!kick @user [raison]` | kick_members | Expulser |
+| `!ban @user [raison]` | ban_members | Bannir |
+| `!unban nom#tag` | ban_members | Debannir |
+| `!warn @user [raison]` | kick_members | Avertir |
+
+### Roles en masse (ADMIN_ROLES)
+
+| Commande | Aliases | Description |
+|----------|---------|-------------|
+| `!bulk_role` | `!assign_roles` | Assigner role a plusieurs |
+| `!multi_bulk_role` | `!assign_multi_roles` | Assigner plusieurs roles a plusieurs |
+| `!bulk_remove_role` | `!remove_roles` | Retirer role de plusieurs |
+| `!multi_bulk_remove_role` | `!remove_multi_roles` | Retirer plusieurs roles |
+| `!bulk_role_channel` | `!assign_role_channel` | Assigner role aux membres d'un channel |
+| `!multi_bulk_role_channel` | `!assign_multi_roles_channel` | Multi-roles aux membres d'un channel |
+| `!list_member_ids` | `!get_ids`, `!member_ids` | Lister IDs des membres |
 
 ### Donnees (ADMIN_ROLES)
 
 | Commande | Description |
 |----------|-------------|
-| `!export_data [module]` | Exporter les fichiers JSON |
-| `!reload_data [module]` | Recharger depuis fichiers |
-| `!data_stats` | Tailles et compteurs des donnees |
+| `!data [action] [cible]` | Gestionnaire interactif de donnees |
+| `!data_list` | Liste modules de donnees |
+| `!backup` | Sauvegarde + export complet |
+
+### Logs (ADMIN_ROLES)
+
+| Commande | Description |
+|----------|-------------|
+| `!set_logs [channel]` | Definir le channel d'audit |
+| `!audit_test` | Tester les logs d'audit |
+
+### Tickets (ADMIN_ROLES)
+
+| Commande | Description |
+|----------|-------------|
+| `!setup_tickets` | Configurer panneau tickets/candidatures |
+| `!close_ticket` | Fermer un ticket |
+
+### Roles (administrator)
+
+| Commande | Description |
+|----------|-------------|
+| `!setup_roles [channel]` | Configurer panneau de selection de roles |
+| `!sync_roles` | Verifier et lister roles manquants |
+| `!roles_stats` | Statistiques attributions de roles |
 
 ---
 
@@ -307,29 +367,38 @@ aiohttp==3.11.11
 
 ### Taches de fond (Background Tasks)
 
-| Tache | Intervalle | Description |
-|-------|-----------|-------------|
-| `daily_planning_check` | Toutes les heures (execute a 9h Paris) | Rappels sorties aujourd'hui/demain |
-| `send_reminders` | Toutes les heures | DM rappels de deadlines (J-1) |
-| `check_giveaways` | Toutes les minutes | Termine les giveaways expires |
-| `auto_sync_task` | Toutes les 30 min | Commit & push donnees vers GitHub |
-| `weekly_seniority` | Dimanche minuit UTC | Bonus XP anciennete |
-| `weekly_lottery` | Dimanche 18h UTC | Tirage loterie |
-| `check_deletions` | Toutes les 5 min | Surveillance messages supprimes |
+| Tache | Module | Intervalle | Description |
+|-------|--------|-----------|-------------|
+| `daily_planning_check` | planning.py | 1 heure | Refresh labels (minuit), notifs sorties (9h), auto-nettoyage entrees "sorti" > 30j |
+| `check_rappels` | rappels.py | 1 minute | Envoi rappels quotidiens a 21h (Paris) dans channel ou DM selon pref |
+| `check_giveaways` | giveaway.py | 30 secondes | Verifie et termine les giveaways expires |
+| `poll_expiry_loop` | polls.py | 1 minute | Ferme les sondages expires |
+| `weekly_lottery` | shop.py | 168 heures | Tirage loterie hebdomadaire |
+| `check_expirations` | shop.py | 1 heure | Retire roles/boosts expires |
 
 ### Evenements Discord
 
-| Evenement | Action |
-|-----------|--------|
-| `on_ready` | Status "!help pour les commandes" |
-| `on_member_join` | Message de bienvenue + log |
-| `on_member_remove` | Log de depart |
-| `on_raw_reaction_add` | Acceptation reglement (reaction check sur reglement → attribution roles member + access) |
-| `on_message` | Gain XP (1-3 XP, cooldown 60s) |
-| `on_voice_state_update` | Tracking temps vocal (5 XP / 15 min) |
-| `on_message_delete` | Log dans channel logs |
-| `on_message_edit` | Log dans channel logs |
-| `on_member_update` | Log changements roles/pseudo |
+| Evenement | Module | Action |
+|-----------|--------|--------|
+| `on_ready` | events.py | Status "!help pour les commandes" + webserver |
+| `on_ready` | giveaway.py | Restore views + init invitations |
+| `on_member_join` | events.py | Message de bienvenue + log |
+| `on_member_join` | giveaway.py | Tracking invitations |
+| `on_member_remove` | logs.py | Log de depart |
+| `on_member_remove` | giveaway.py | Tracking depart invites |
+| `on_member_ban` | logs.py | Log de ban |
+| `on_member_unban` | logs.py | Log de deban |
+| `on_member_update` | logs.py | Log changements roles |
+| `on_raw_reaction_add` | events.py | Acceptation reglement (reaction → roles member + access) |
+| `on_message` | community.py | Gain XP (1-3 XP, cooldown 60s, channels autorises) |
+| `on_message` | achievements.py | Tracking messages pour badges sociaux |
+| `on_message` | events.py | Gestion pings partenaires (cooldown) |
+| `on_message_delete` | logs.py | Log dans channel logs |
+| `on_bulk_message_delete` | logs.py | Log suppressions en masse |
+| `on_voice_state_update` | logs.py | Log mouvements vocaux |
+| `on_guild_channel_create` | logs.py | Log creation channels |
+| `on_guild_channel_delete` | logs.py | Log suppression channels |
+| `on_command_error` | events.py | Gestion globale des erreurs |
 
 ---
 
@@ -339,26 +408,22 @@ aiohttp==3.11.11
 
 | Source | XP | Conditions |
 |--------|-----|-----------|
-| Message | 1-3 | Cooldown 60s, channels autorises uniquement |
-| Daily bonus | 20-50 | 1x par jour, +5 par jour de streak (max +50) |
-| Vocal | 5 | Par tranche de 15 minutes |
-| Reaction chapitre | 10 | Sur les messages de chapitres |
+| Message | 1-3 | Cooldown 60s, channels autorises |
+| Daily bonus | 20-50 | 1x/jour, +5/jour de streak (max +50) |
+| Vocal | 5 | Par tranche de 15 min |
+| Reaction chapitre | 10 | Sur annonces |
 | Trivia (easy) | 20 | Bonne reponse |
 | Trivia (medium) | 50 | Bonne reponse |
 | Trivia (hard) | 100 | Bonne reponse |
 | Guess | 30 | Bonne reponse |
-| Anciennete | 50-200 | Bonus hebdomadaire automatique |
+| Anciennete | 50-200 | Bonus hebdomadaire |
 
 ### Calcul de niveau
 
-- Base: 100 XP pour le niveau 1
-- Facteur de croissance: 1.15x par niveau
-- Niveau max: 100
+- Base: 100 XP pour niveau 1
+- Croissance: 1.15x par niveau
+- Max: 100
 - Formule: `XP_requis(n) = 100 * 1.15^(n-1)`
-
-### Channels autorises pour l'XP
-
-General + les 5 channels manga
 
 ---
 
@@ -371,10 +436,22 @@ General + les 5 channels manga
 | `prevu` | 📅 | Prevu | Bleu |
 | `en_cours` | 🔄 | En cours | Orange |
 | `trad_done` | 🌍 | Trad terminee | Violet |
+| `edit_done` | ✏️ | Edit termine | Orange |
 | `check_done` | ✅ | Check termine | Vert |
 | `pret` | 🚀 | Pret a sortir | Turquoise |
 | `sorti` | 📢 | Sorti | Vert |
 | `retarde` | ⚠️ | Retarde | Rouge |
+
+### Fonctionnalites
+
+- **1 message par manga par mois** dans #planning (delete + recreate a chaque modif)
+- **Calendrier ASCII** avec marqueurs jour courant et jours de sortie
+- **Barre de progression** globale par manga/mois
+- **Batch status** : modifier plusieurs entrees d'un coup
+- **Auto-nettoyage** : entrees "sorti" > 30 jours supprimees automatiquement
+- **Multi-embeds** : si contenu > 4096 chars, split en plusieurs embeds
+- **Recherche fuzzy** : resolution ID par nom partiel, chapitre, tolerant accents/casse
+- **Confirmation suppression** : boutons Confirmer/Annuler avant suppression
 
 ### Format chapitres multiples
 
@@ -385,41 +462,23 @@ General + les 5 channels manga
 | Plage | `220-222` | [220, 221, 222] |
 | Mixte | `220,223,225-227` | [220, 223, 225, 226, 227] |
 
-### Affichage calendrier
+---
 
-```
- LUN   MAR   MER   JEU   VEN   SAM   DIM
----------------------------------------
-                                    1
-   2     3     4     5     6     7     8
-   9    10    11    12    13   [14]   15
-  16    17    18    19    20    21    22
-  23    24    25    26    27   *28*   29
- *30*   31
+## SYSTEME DE RAPPELS
 
-[XX] = Aujourd'hui  *XX* = Jour de sortie
-```
+### Fonctionnalites
+
+- **Preference par utilisateur** : chaque personne choisit channel fixe ou DM
+- **Channel fixe** : tous les rappels channel vont dans #rappels (1431607377882382396)
+- **Fallback** : si DMs fermes, fallback automatique vers le channel
+- **Bouton "Marquer comme fait"** : met a jour le statut de la tache directement
+- **Envoi quotidien** a 21h (heure de Paris)
+- **Indicateurs d'urgence** : rouge (J-1), jaune (J-3), vert (> J-3)
+- **Preferences stockees** dans `data/rappels_prefs.json`
 
 ---
 
 ## SYSTEME DE BADGES
-
-### Categories de badges
-
-| Badge | Categorie | Rarete |
-|-------|-----------|--------|
-| first_task | Contribution | Common |
-| task_master | Contribution | Rare |
-| speed_demon | Contribution | Epic |
-| perfectionist | Contribution | Legendary |
-| newcomer | Anciennete | Common |
-| veteran | Anciennete | Rare |
-| eternal_member | Anciennete | Epic |
-| sociable | Communaute | Common |
-| voice_enthusiast | Communaute | Uncommon |
-| theory_crafter | Communaute | Rare |
-| lucky_strike | Shop/Loterie | Uncommon |
-| generous_soul | Shop/Loterie | Rare |
 
 ### Raretes
 
@@ -444,14 +503,6 @@ General + les 5 channels manga
 | Ticket loterie | Pour participer au tirage hebdomadaire |
 | Mystery box | Boite aleatoire (loot tables) |
 
-### Loot Tables (Mystery Box)
-
-| Rarete | Contenu |
-|--------|---------|
-| Common | 50-100 points, 1 ticket loterie |
-| Uncommon | 150-250 points, 2 tickets |
-| Rare | 500-750 points, boosters |
-
 ---
 
 ## DONNEES & STOCKAGE
@@ -464,6 +515,7 @@ General + les 5 channels manga
 | `etat_taches_meta.json` | Metadata des taches |
 | `rappels_tasks.json` | Rappels de deadlines |
 | `rappels_tasks_meta.json` | Metadata des rappels |
+| `rappels_prefs.json` | Preferences notification rappels (channel/dm) |
 | `user_stats.json` | XP, niveaux, activite des membres |
 | `chapters_community.json` | Suivi reactions chapitres |
 | `shop_items.json` | Items de la boutique |
@@ -472,13 +524,13 @@ General + les 5 channels manga
 | `lottery.json` | Donnees loterie hebdomadaire |
 | `user_badges.json` | Badges des utilisateurs |
 | `badges_config.json` | Configuration des badges |
-| `user_inventory.json` | Items des utilisateurs |
 | `giveaways.json` | Giveaways actifs et termines |
 | `invites_tracker.json` | Suivi des invitations |
 | `polls.json` | Sondages actifs |
 | `planning.json` | Planning des sorties |
 | `planning_meta.json` | Metadata du planning |
-| `dm_reminder_notified.json` | Suivi DM rappels |
+| `planning_messages.json` | IDs messages planning Discord |
+| `dm_reminder_notified.json` | Suivi DM rappels roles |
 
 ### Base de donnees SQLite
 
@@ -554,41 +606,21 @@ Acces aux commandes de taches et planning.
 
 ---
 
-## HELP - CATEGORIES
-
-| Categorie | Emoji | Type | Nb cmds |
-|-----------|-------|------|---------|
-| General | 🎮 | Public | 5 |
-| Communaute | 🌟 | Public | 6 |
-| Badges | 🏆 | Public | 6 |
-| Shop | 🛒 | Public | 4 |
-| Giveaways | 🎁 | Public | 4 |
-| Planning | 📅 | Public | 2 |
-| Taches | 📋 | Admin | 6 |
-| Rappels | ⏰ | Admin | 5 |
-| Giveaways Admin | 🎁 | Admin | — |
-| Planning Admin | 📅 | Admin | — |
-| Shop Admin | 🛒 | Admin | — |
-| Annonces | 📢 | Admin | — |
-| Donnees | 💾 | Admin | — |
-
----
-
 ## RESUME DES NOMBRES
 
 | Element | Nombre |
 |---------|--------|
-| Fichiers Python | 16+ |
-| Commandes publiques | ~25 |
-| Commandes admin | ~35 |
-| Background tasks | 7 |
-| Event listeners | 8+ |
-| Fichiers de donnees | 17 JSON + 1 SQLite |
+| Fichiers Python | 17 |
+| Commandes publiques | ~35 |
+| Commandes admin | ~45 |
+| Background tasks | 6 |
+| Event listeners | 18+ |
+| Fichiers de donnees | 20 JSON + 1 SQLite |
 | Mangas geres | 5 |
 | Roles selectionnables | 17 |
 | Statuts de badge | 5 (Common → Legendary) |
-| Statuts de planning | 7 |
+| Statuts de planning | 8 |
 
 ---
 
-*Derniere mise a jour: 14 Mars 2026*
+*Derniere mise a jour: 17 Mars 2026*

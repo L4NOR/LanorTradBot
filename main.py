@@ -104,11 +104,6 @@ async def main():
     await role_selector.setup(bot)
     logging.info("✅ Module Role Selector chargé")
 
-    # Charger le système de synchronisation GitHub
-    import github_sync
-    await github_sync.setup(bot)
-    logging.info("✅ Module GitHub Sync chargé")
-
     # Charger le système d'audit/logs
     import logs
     await logs.setup(bot)

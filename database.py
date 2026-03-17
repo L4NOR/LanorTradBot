@@ -372,7 +372,7 @@ class Database:
         return {"tables": stats, "size": size_str}
 
     # ─────────────────────────────────────────────────────────────────────────
-    # EXPORT SQLITE → JSON (pour github_sync)
+    # EXPORT SQLITE → JSON (backup)
     # ─────────────────────────────────────────────────────────────────────────
 
     def export_to_json(self):
