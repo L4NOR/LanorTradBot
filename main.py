@@ -30,20 +30,23 @@ async def main():
     # SERVEUR WEB INTERNE (pour les health checks)
     # ═══════════════════════════════════════════════════════════════════════════
     
+    bot._web_runner = None
+
     async def setup_webserver():
         """Configure et démarre le serveur web pour les health checks."""
         app = web.Application()
-        
+
         async def health_check(request):
             return web.Response(text="OK", status=200)
-        
+
         app.router.add_get('/', health_check)
         runner = web.AppRunner(app)
         await runner.setup()
+        bot._web_runner = runner
         site = web.TCPSite(runner, '0.0.0.0', PORT)
         await site.start()
         logging.info(f"Serveur web démarré sur le port {PORT}")
-    
+
     bot.setup_webserver = setup_webserver
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -144,6 +147,11 @@ async def main():
         logging.error("Token Discord invalide. Vérifiez votre fichier .env")
     except Exception as e:
         logging.error(f"Erreur lors du démarrage du bot: {e}")
+    finally:
+        if bot._web_runner:
+            await bot._web_runner.cleanup()
+        if not bot.is_closed():
+            await bot.close()
 
 
 if __name__ == "__main__":
