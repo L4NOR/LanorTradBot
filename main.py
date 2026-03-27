@@ -140,18 +140,40 @@ async def main():
     # DÉMARRAGE DU BOT
     # ═══════════════════════════════════════════════════════════════════════════
 
-    try:
-        logging.info("Démarrage du bot...")
-        await bot.start(TOKEN)
-    except discord.LoginFailure:
-        logging.error("Token Discord invalide. Vérifiez votre fichier .env")
-    except Exception as e:
-        logging.error(f"Erreur lors du démarrage du bot: {e}")
-    finally:
-        if bot._web_runner:
-            await bot._web_runner.cleanup()
-        if not bot.is_closed():
-            await bot.close()
+    max_retries = 5
+    retry_delay = 60  # secondes
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            logging.info(f"Démarrage du bot... (tentative {attempt}/{max_retries})")
+            await bot.start(TOKEN)
+            break  # Connexion réussie puis déconnexion normale
+        except discord.LoginFailure:
+            logging.error("Token Discord invalide. Vérifiez votre fichier .env")
+            break  # Inutile de réessayer avec un mauvais token
+        except discord.HTTPException as e:
+            if e.status == 429:
+                wait = retry_delay * attempt
+                logging.warning(f"⚠️ Rate limited par Discord (429). Nouvelle tentative dans {wait}s...")
+                await asyncio.sleep(wait)
+                # Recréer le bot car la session est corrompue après un 429
+                if not bot.is_closed():
+                    await bot.close()
+                bot = commands.Bot(command_prefix=PREFIX, intents=INTENTS)
+                bot._web_runner = None
+                bot.setup_webserver = setup_webserver
+            else:
+                logging.error(f"Erreur HTTP Discord: {e}")
+                break
+        except Exception as e:
+            logging.error(f"Erreur lors du démarrage du bot: {e}")
+            break
+
+    # Nettoyage final
+    if bot._web_runner:
+        await bot._web_runner.cleanup()
+    if not bot.is_closed():
+        await bot.close()
 
 
 if __name__ == "__main__":
