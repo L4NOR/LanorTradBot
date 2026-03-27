@@ -253,6 +253,7 @@ class PollSystem(commands.Cog):
                             )
                             result_embed.set_footer(text=f"ID: {poll_id}")
                             await channel.send(embed=result_embed)
+                    await asyncio.sleep(2)
                 except Exception as e:
                     logger.error(f"Erreur fermeture poll {poll_id}: {e}")
 

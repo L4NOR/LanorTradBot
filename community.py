@@ -518,6 +518,7 @@ class CommunitySystem(commands.Cog):
 
                 if level_up:
                     await self.announce_level_up(user_id, new_level)
+                    await asyncio.sleep(1.5)
 
         sauvegarder_donnees()
 
@@ -570,6 +571,10 @@ class CommunitySystem(commands.Cog):
                 stats["last_seniority_bonus"] = datetime.now().isoformat()
 
                 logging.info(f"🏅 {member.name} a reçu {final_xp} XP (ancienneté: {days_on_server} jours)")
+
+                if level_up:
+                    await self.announce_level_up(member.id, new_level)
+                    await asyncio.sleep(1.5)
 
         sauvegarder_donnees()
 

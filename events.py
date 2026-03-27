@@ -7,6 +7,7 @@ import discord
 from discord.ext import commands
 import datetime
 import logging
+import asyncio
 from config import CHANNELS, MESSAGES, ROLES, COLORS, PING_COOLDOWN_SECONDS
 
 # Dictionnaire pour stocker le dernier ping par canal (cooldown)
@@ -176,6 +177,13 @@ def setup(bot):
                 color=discord.Color.orange()
             )
             await ctx.send(embed=embed, delete_after=5)
+        elif isinstance(error, commands.CommandInvokeError) and isinstance(error.original, discord.HTTPException):
+            if error.original.status == 429:
+                retry_after = getattr(error.original, 'retry_after', 5)
+                logging.warning(f"Rate limited ! Attente de {retry_after}s avant de réessayer.")
+                await asyncio.sleep(retry_after if retry_after else 5)
+            else:
+                logging.error(f"HTTPException {error.original.status}: {error.original}")
         else:
             # Log l'erreur pour débogage
             logging.error(f"Erreur non gérée: {type(error).__name__}: {error}")

@@ -511,7 +511,7 @@ class PlanningSystem(commands.Cog):
 
         for manga in sorted(mangas_in_month):
             await self.refresh_manga_message(manga, month_key, silent=silent)
-            await asyncio.sleep(1)  # Rate limit
+            await asyncio.sleep(2)  # Rate limit
 
     # -------------------------------------------------------------------------
     # AUTO-NETTOYAGE : Supprimer les entrees "sorti" depuis > 30 jours
@@ -546,7 +546,7 @@ class PlanningSystem(commands.Cog):
         # Refresh les messages affectes
         for manga, mk in affected_months:
             await self.refresh_manga_message(manga, mk, silent=True)
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
 
         return len(to_remove)
 
@@ -938,15 +938,31 @@ class PlanningSystem(commands.Cog):
     @commands.command(name="planning_batch_status", aliases=["batch_status"])
     @commands.has_any_role(*TASK_ROLES)
     @commands.cooldown(1, 10, commands.BucketType.user)
-    async def batch_status(self, ctx, new_status: str, *planning_ids: str):
+    async def batch_status(self, ctx, new_status: str, manga_or_id: str = None, *, rest: str = None):
         """
         ⚙️ Change le statut de plusieurs entrées d'un coup.
 
-        Usage: !planning_batch_status <statut> <id1> <id2> ...
-        Exemple: !planning_batch_status sorti tougen_anki_220 tougen_anki_221 tougen_anki_222
+        Usage par manga + chapitres :
+          !planning_batch_status <statut> "Manga" <chapitres>
+          Ex: !planning_batch_status en_cours "Catenaccio" 47-54
+          Ex: !planning_batch_status sorti "Catenaccio" 47,48,50
+
+        Usage par IDs :
+          !planning_batch_status <statut> <id1> <id2> ...
+          Ex: !planning_batch_status sorti catenaccio_47 catenaccio_48
+
+        Statuts: prevu, en_cours, trad_done, edit_done, check_done, pret, sorti, retarde
         """
-        if not planning_ids:
-            await ctx.send("❌ Usage : `!planning_batch_status <statut> <id1> <id2> ...`", delete_after=10)
+        if not manga_or_id:
+            await ctx.send(
+                "❌ Usage :\n"
+                "> `!planning_batch_status <statut> \"Manga\" <chapitres>`\n"
+                "> `!planning_batch_status <statut> <id1> <id2> ...`\n\n"
+                "Exemples :\n"
+                "> `!planning_batch_status en_cours \"Catenaccio\" 47-54`\n"
+                "> `!planning_batch_status sorti catenaccio_47 catenaccio_48`",
+                delete_after=20
+            )
             return
 
         new_status = new_status.lower()
@@ -954,6 +970,24 @@ class PlanningSystem(commands.Cog):
             statuts_list = ", ".join([f"`{k}`" for k in STATUTS.keys()])
             await ctx.send(f"❌ Statut invalide. Choix : {statuts_list}", delete_after=15)
             return
+
+        # Determine si c'est le mode "manga + chapitres" ou le mode "IDs"
+        planning_ids = []
+        chapters_input = rest.strip() if rest else ""
+
+        # Tente de parser comme chapitres (ex: "47-54", "47,48,50")
+        parsed_chapters = parse_chapters(chapters_input) if chapters_input else []
+
+        if parsed_chapters:
+            # Mode manga + chapitres : construire les IDs a partir du nom manga
+            manga_key = get_manga_key(manga_or_id)
+            for ch in parsed_chapters:
+                planning_ids.append(f"{manga_key}_{ch}")
+        else:
+            # Mode IDs classique : tous les args sont des IDs
+            planning_ids.append(manga_or_id)
+            if rest:
+                planning_ids.extend(rest.split())
 
         updated = []
         not_found = []
@@ -965,7 +999,6 @@ class PlanningSystem(commands.Cog):
                 not_found.append(pid)
                 continue
 
-            old_status = entry.get("status", "prevu")
             entry["status"] = new_status
             entry["last_updated"] = datetime.datetime.now().isoformat()
             entry["updated_by"] = ctx.author.id
@@ -976,16 +1009,26 @@ class PlanningSystem(commands.Cog):
             sauvegarder_planning()
 
         status_info = STATUTS[new_status]
+        emoji = get_manga_emoji(manga_or_id) if parsed_chapters else ""
         embed = discord.Embed(
-            title=f"{status_info['emoji']}  Batch — {len(updated)} entrée(s) mises à jour",
+            title=f"{status_info['emoji']}  Batch — {len(updated)} entrée(s) → {status_info['label']}",
             color=status_info["color"]
         )
-        desc = f"**Nouveau statut :** {status_info['emoji']} **{status_info['label']}**\n\n"
+        desc = ""
         if updated:
-            desc += "**Mis à jour :**\n"
-            desc += "\n".join([f"> ✅ {u}" for u in updated]) + "\n"
+            # Regrouper par manga pour un affichage compact
+            chapters_by_manga = {}
+            for u in updated:
+                parts = u.rsplit(" Ch.", 1)
+                m = parts[0]
+                ch = parts[1] if len(parts) > 1 else "?"
+                chapters_by_manga.setdefault(m, []).append(ch)
+            for m, chs in chapters_by_manga.items():
+                m_emoji = get_manga_emoji(m)
+                desc += f"> {m_emoji} **{m}** — Ch. {', '.join(chs)}\n"
+            desc += f"\n{status_info['emoji']} **{status_info['label']}**  `{get_progress_bar(new_status)}`\n"
         if not_found:
-            desc += "\n**Non trouvé(s) :**\n"
+            desc += f"\n**Non trouvé(s) ({len(not_found)}) :**\n"
             desc += "\n".join([f"> ❌ `{nf}`" for nf in not_found]) + "\n"
         embed.description = desc
         embed.set_footer(text=f"Par {ctx.author.name}")
@@ -994,7 +1037,7 @@ class PlanningSystem(commands.Cog):
         # Refresh les messages affectes
         for manga, mk in months_to_refresh:
             await self.refresh_manga_message(manga, mk)
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(2)
 
     # -------------------------------------------------------------------------
     # COMMANDE ADMIN - MODIFIER LA DATE
@@ -1227,7 +1270,7 @@ class PlanningSystem(commands.Cog):
 
         for manga, mk in sorted(combos, key=lambda x: x[1]):
             await self.refresh_manga_message(manga, mk, silent=True)
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
 
         channel = self.bot.get_channel(PLANNING_CHANNEL_ID)
         await ctx.send(f"✅ Planning rafraîchi dans {channel.mention} ! ({len(combos)} message(s))")

@@ -2025,7 +2025,7 @@ def setup(bot):
                 success_list.append(member)
                 
                 # Petit délai pour éviter le rate limiting
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(1.5)
                 
             except ValueError:
                 not_found.append(user_identifier)
@@ -2255,7 +2255,7 @@ def setup(bot):
                     success_list.append(member)
                 
                 # Petit délai pour éviter le rate limiting
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(1.5)
                 
             except ValueError:
                 not_found.append(user_identifier)
@@ -2426,7 +2426,7 @@ def setup(bot):
                 success_list.append(member)
                 
                 # Petit délai pour éviter le rate limiting
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(1.5)
                 
             except ValueError:
                 not_found.append(user_identifier)
@@ -2629,7 +2629,7 @@ def setup(bot):
             try:
                 await member.add_roles(role)
                 success_list.append(member)
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(1.5)
             except discord.Forbidden:
                 errors.append(f"{member.mention} (permissions insuffisantes)")
             except Exception as e:
@@ -3145,7 +3145,7 @@ def setup(bot):
                     success_list.append(member)
                 
                 # Petit délai pour éviter le rate limiting
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(1.5)
                 
             except ValueError:
                 not_found.append(user_identifier)
@@ -3418,7 +3418,7 @@ def setup(bot):
                 else:
                     success_list.append(member)
                 
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(1.5)
                 
             except discord.Forbidden:
                 errors.append(f"{member.mention} (permissions insuffisantes)")

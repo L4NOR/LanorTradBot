@@ -536,6 +536,7 @@ class Giveaways(commands.Cog):
                 member = guild.get_member(uid)
                 if not member:
                     member = await guild.fetch_member(uid)
+                    await asyncio.sleep(1)
                 if member:
                     entries = calculate_entries(member, guild)
                     for _ in range(entries):

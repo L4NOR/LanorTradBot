@@ -236,7 +236,7 @@ aiohttp==3.11.11
 |----------|---------|-------------|
 | `!planning_add` | `!add_planning` | Ajouter sortie(s) — multi-chapitres (`220-222`, `220,221`) |
 | `!planning_status` | `!planning_update` | Changer le statut (prevu/en_cours/trad_done/edit_done/check_done/pret/sorti/retarde) |
-| `!planning_batch_status` | `!batch_status` | Changer le statut de plusieurs entrees d'un coup |
+| `!planning_batch_status` | `!batch_status` | Changer le statut de plusieurs entrees d'un coup (par manga+chapitres ou par IDs) |
 | `!planning_date` | `!planning_reschedule` | Modifier la date |
 | `!planning_teaser` | `!planning_spoil`, `!teaser` | Ajouter/modifier teaser (spoiler) |
 | `!planning_notes` | `!planning_note` | Ajouter/modifier les notes |
@@ -375,6 +375,23 @@ aiohttp==3.11.11
 | `poll_expiry_loop` | polls.py | 1 minute | Ferme les sondages expires |
 | `weekly_lottery` | shop.py | 168 heures | Tirage loterie hebdomadaire |
 | `check_expirations` | shop.py | 1 heure | Retire roles/boosts expires |
+| `voice_check_loop` | community.py | 15 minutes | XP vocal (5 XP / 15 min en vocal) |
+| `seniority_bonus_loop` | community.py | 24 heures | Bonus XP anciennete hebdomadaire (lundi) |
+
+### Protection anti Rate-Limit Discord
+
+Tous les modules respectent des delais entre appels API Discord pour eviter le Cloudflare Error 1015 (rate limit / ban temporaire IP) :
+
+| Module | Operation | Delai entre appels |
+|--------|-----------|--------------------|
+| `planning.py` | Refresh messages (batch, cleanup, refresh) | 2s |
+| `commands.py` | Bulk add/remove roles | 1.5s |
+| `role_selector.py` | Envoi messages de selection | 1.5s |
+| `shop.py` | Retrait roles expires + DM notification | 1.5s + 1s |
+| `giveaway.py` | Fetch participants (fetch_member) | 1s |
+| `community.py` | Annonce level-up (voice + anciennete) | 1.5s |
+| `polls.py` | Traitement polls expires | 2s |
+| `events.py` | Erreur 429 (rate limit) : attente automatique | retry_after |
 
 ### Evenements Discord
 
@@ -398,7 +415,7 @@ aiohttp==3.11.11
 | `on_voice_state_update` | logs.py | Log mouvements vocaux |
 | `on_guild_channel_create` | logs.py | Log creation channels |
 | `on_guild_channel_delete` | logs.py | Log suppression channels |
-| `on_command_error` | events.py | Gestion globale des erreurs |
+| `on_command_error` | events.py | Gestion globale des erreurs + handling 429 rate limit |
 
 ---
 
@@ -447,7 +464,7 @@ aiohttp==3.11.11
 - **1 message par manga par mois** dans #planning (delete + recreate a chaque modif)
 - **Calendrier ASCII** avec marqueurs jour courant et jours de sortie
 - **Barre de progression** globale par manga/mois
-- **Batch status** : modifier plusieurs entrees d'un coup
+- **Batch status** : modifier plusieurs entrees d'un coup (par manga + chapitres `47-54` ou par IDs)
 - **Auto-nettoyage** : entrees "sorti" > 30 jours supprimees automatiquement
 - **Multi-embeds** : si contenu > 4096 chars, split en plusieurs embeds
 - **Recherche fuzzy** : resolution ID par nom partiel, chapitre, tolerant accents/casse
@@ -613,7 +630,7 @@ Acces aux commandes de taches et planning.
 | Fichiers Python | 17 |
 | Commandes publiques | ~35 |
 | Commandes admin | ~45 |
-| Background tasks | 6 |
+| Background tasks | 8 |
 | Event listeners | 18+ |
 | Fichiers de donnees | 20 JSON + 1 SQLite |
 | Mangas geres | 5 |
@@ -623,4 +640,4 @@ Acces aux commandes de taches et planning.
 
 ---
 
-*Derniere mise a jour: 17 Mars 2026*
+*Derniere mise a jour: 27 Mars 2026*

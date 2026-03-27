@@ -324,7 +324,7 @@ class RoleSelector(commands.Cog):
                 msg = await target_channel.send(embed=embed, view=view)
                 message_links.append(msg.jump_url)
                 
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(1.5)
             
             # Footer avec le bouton Mes Rôles
             footer_embed = discord.Embed(

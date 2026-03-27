@@ -5,6 +5,7 @@ from discord.ext import commands, tasks
 import json
 import os
 import random
+import asyncio
 from datetime import datetime, timedelta
 from config import COLORS, ADMIN_ROLES, DATA_FILES, SHOP_ROLES
 from utils import load_json, save_json
@@ -339,11 +340,13 @@ class ShopSystem(commands.Cog):
                             if role and role in member.roles:
                                 try:
                                     await member.remove_roles(role, reason="Rôle temporaire expiré")
+                                    await asyncio.sleep(1.5)
                                     try:
                                         await member.send(
                                             f"⏰ Votre rôle temporaire **{role.name}** a expiré. "
                                             f"Vous pouvez le racheter dans la boutique avec `!shop`"
                                         )
+                                        await asyncio.sleep(1)
                                     except:
                                         pass
                                 except:
