@@ -180,8 +180,26 @@ def setup(bot):
         elif isinstance(error, commands.CommandInvokeError) and isinstance(error.original, discord.HTTPException):
             if error.original.status == 429:
                 retry_after = getattr(error.original, 'retry_after', 5)
-                logging.warning(f"Rate limited ! Attente de {retry_after}s avant de réessayer.")
-                await asyncio.sleep(retry_after if retry_after else 5)
+                # Ajouter un buffer de sécurité au retry_after
+                wait_time = (retry_after if retry_after else 5) + 2
+                logging.warning(
+                    f"⚠️ RATE LIMITED 429 ! Commande: {ctx.command}, "
+                    f"User: {ctx.author}, Attente de {wait_time:.1f}s"
+                )
+                await asyncio.sleep(wait_time)
+                # Informer l'utilisateur
+                try:
+                    embed = discord.Embed(
+                        title="⚠️ Rate Limit Discord",
+                        description=(
+                            f"Le bot a été temporairement limité par Discord.\n"
+                            f"Réessayez dans **{int(wait_time)}** secondes."
+                        ),
+                        color=discord.Color.orange()
+                    )
+                    await ctx.send(embed=embed, delete_after=10)
+                except:
+                    pass
             else:
                 logging.error(f"HTTPException {error.original.status}: {error.original}")
         else:

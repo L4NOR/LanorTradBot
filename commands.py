@@ -8,6 +8,7 @@ import asyncio
 import json
 import os
 import random
+from utils import safe_api_call, batch_api_calls
 
 bot_instance = None
 
@@ -2021,19 +2022,19 @@ def setup(bot):
                     continue
                 
                 # Ajouter le rôle
-                await member.add_roles(role)
+                await safe_api_call(member.add_roles, role)
                 success_list.append(member)
-                
-                # Petit délai pour éviter le rate limiting
-                await asyncio.sleep(1.5)
-                
+
+                # Délai anti-rate-limit
+                await asyncio.sleep(2)
+
             except ValueError:
                 not_found.append(user_identifier)
             except discord.Forbidden:
                 errors.append(f"{user_identifier} (permissions insuffisantes)")
             except Exception as e:
                 errors.append(f"{user_identifier} ({str(e)})")
-        
+
         # Créer l'embed de résultat
         result_embed = discord.Embed(
             color=THEME_COLORS["success"] if success_list else THEME_COLORS["warning"],
@@ -2247,15 +2248,15 @@ def setup(bot):
                     continue
                 
                 # Ajouter les rôles manquants
-                await member.add_roles(*roles_to_add)
-                
+                await safe_api_call(member.add_roles, *roles_to_add)
+
                 if roles_already_had:
                     partial_success.append((member, len(roles_to_add), len(roles_already_had)))
                 else:
                     success_list.append(member)
-                
-                # Petit délai pour éviter le rate limiting
-                await asyncio.sleep(1.5)
+
+                # Délai anti-rate-limit
+                await asyncio.sleep(2)
                 
             except ValueError:
                 not_found.append(user_identifier)
@@ -2422,11 +2423,11 @@ def setup(bot):
                     continue
                 
                 # Retirer le rôle
-                await member.remove_roles(role)
+                await safe_api_call(member.remove_roles, role)
                 success_list.append(member)
-                
-                # Petit délai pour éviter le rate limiting
-                await asyncio.sleep(1.5)
+
+                # Délai anti-rate-limit
+                await asyncio.sleep(2)
                 
             except ValueError:
                 not_found.append(user_identifier)
@@ -2625,15 +2626,20 @@ def setup(bot):
         success_list = []
         errors = []
         
-        for member in members_without_role:
-            try:
-                await member.add_roles(role)
+        # Attribution par lots pour éviter le rate limit
+        results = await batch_api_calls(
+            members_without_role,
+            lambda m: m.add_roles(role),
+            batch_size=5,
+            delay_between=3.0
+        )
+        for member, result, error in results:
+            if error is None:
                 success_list.append(member)
-                await asyncio.sleep(1.5)
-            except discord.Forbidden:
+            elif isinstance(error, discord.Forbidden):
                 errors.append(f"{member.mention} (permissions insuffisantes)")
-            except Exception as e:
-                errors.append(f"{member.mention} ({str(e)})")
+            else:
+                errors.append(f"{member.mention} ({str(error)})")
         
         # Créer l'embed de résultat
         result_embed = discord.Embed(
@@ -3137,15 +3143,15 @@ def setup(bot):
                     continue
                 
                 # Retirer les rôles
-                await member.remove_roles(*roles_to_remove)
-                
+                await safe_api_call(member.remove_roles, *roles_to_remove)
+
                 if roles_didnt_have:
                     partial_success.append((member, len(roles_to_remove), len(roles_didnt_have)))
                 else:
                     success_list.append(member)
-                
-                # Petit délai pour éviter le rate limiting
-                await asyncio.sleep(1.5)
+
+                # Délai anti-rate-limit
+                await asyncio.sleep(2)
                 
             except ValueError:
                 not_found.append(user_identifier)
@@ -3411,26 +3417,26 @@ def setup(bot):
                     continue
                 
                 # Ajouter les rôles manquants
-                await member.add_roles(*roles_to_add)
-                
+                await safe_api_call(member.add_roles, *roles_to_add)
+
                 if roles_already_had:
                     partial_success.append((member, len(roles_to_add), len(roles_already_had)))
                 else:
                     success_list.append(member)
-                
-                await asyncio.sleep(1.5)
-                
+
+                await asyncio.sleep(2)
+
             except discord.Forbidden:
                 errors.append(f"{member.mention} (permissions insuffisantes)")
             except Exception as e:
                 errors.append(f"{member.mention} ({str(e)})")
-        
+
         # Créer l'embed de résultat
         result_embed = discord.Embed(
             color=THEME_COLORS["success"] if (success_list or partial_success) else THEME_COLORS["warning"],
             timestamp=datetime.now()
         )
-        
+
         result_embed.description = (
             "```ansi\n"
             "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"

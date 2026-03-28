@@ -8,7 +8,7 @@ import random
 import asyncio
 from datetime import datetime, timedelta
 from config import COLORS, ADMIN_ROLES, DATA_FILES, SHOP_ROLES
-from utils import load_json, save_json
+from utils import load_json, save_json, safe_api_call
 
 # Fichiers de données (depuis config.py)
 SHOP_FILE = DATA_FILES["shop_inventory"]
@@ -314,64 +314,86 @@ class ShopSystem(commands.Cog):
     
     @tasks.loop(hours=1)
     async def check_expirations(self):
-        """Vérifie et retire les rôles/boosts expirés"""
+        """Vérifie et retire les rôles/boosts expirés - optimisé anti-rate-limit"""
         now = datetime.now()
-        
+        guild = self.bot.guilds[0] if self.bot.guilds else None
+        if not guild:
+            return
+
+        # Phase 1 : collecter TOUTES les expirations d'abord (aucun appel API)
+        all_expired_roles = []  # (user_id, role_key, role_data)
+        all_expired_boosts = []  # (user_id, boost_id)
+
         for user_id, inv in list(shop_inventory.items()):
-            # Vérifier les rôles temporaires
-            expired_roles = []
             for role_key, role_data in list(inv.get("active_roles", {}).items()):
                 if "expires" in role_data:
                     try:
                         expires = datetime.fromisoformat(role_data["expires"])
                         if now >= expires:
-                            expired_roles.append((role_key, role_data))
+                            all_expired_roles.append((user_id, role_key, role_data))
                     except:
                         pass
-            
-            # Retirer les rôles expirés
-            for role_key, role_data in expired_roles:
-                role_id = role_data.get("role_id")
-                if role_id:
-                    for guild in self.bot.guilds:
-                        member = guild.get_member(int(user_id))
-                        if member:
-                            role = guild.get_role(role_id)
-                            if role and role in member.roles:
-                                try:
-                                    await member.remove_roles(role, reason="Rôle temporaire expiré")
-                                    await asyncio.sleep(1.5)
-                                    try:
-                                        await member.send(
-                                            f"⏰ Votre rôle temporaire **{role.name}** a expiré. "
-                                            f"Vous pouvez le racheter dans la boutique avec `!shop`"
-                                        )
-                                        await asyncio.sleep(1)
-                                    except:
-                                        pass
-                                except:
-                                    pass
-                
-                if role_key in inv.get("active_roles", {}):
-                    del inv["active_roles"][role_key]
-            
-            # Vérifier les boosts expirés
-            expired_boosts = []
+
             for boost_id, boost_data in list(inv.get("active_boosts", {}).items()):
                 if "expires" in boost_data:
                     try:
                         expires = datetime.fromisoformat(boost_data["expires"])
                         if now >= expires:
-                            expired_boosts.append(boost_id)
+                            all_expired_boosts.append((user_id, boost_id))
                     except:
                         pass
-            
-            for boost_id in expired_boosts:
-                if boost_id in inv.get("active_boosts", {}):
-                    del inv["active_boosts"][boost_id]
-            
-            if expired_roles or expired_boosts:
-                sauvegarder_shop()
+
+        if not all_expired_roles and not all_expired_boosts:
+            return
+
+        # Phase 2 : retirer les rôles par lots (API calls contrôlés)
+        dm_queue = []  # DMs à envoyer après les rôles
+        for user_id, role_key, role_data in all_expired_roles:
+            role_id = role_data.get("role_id")
+            if role_id:
+                member = guild.get_member(int(user_id))
+                if member:
+                    role = guild.get_role(role_id)
+                    if role and role in member.roles:
+                        await safe_api_call(
+                            member.remove_roles, role,
+                            reason="Rôle temporaire expiré"
+                        )
+                        dm_queue.append((member, role.name))
+                        await asyncio.sleep(1)  # 1s entre chaque remove_roles
+
+            # Supprimer du dict immédiatement
+            inv = shop_inventory.get(user_id, {})
+            if role_key in inv.get("active_roles", {}):
+                del inv["active_roles"][role_key]
+
+        # Phase 3 : retirer les boosts (pas d'appel API, juste du data)
+        for user_id, boost_id in all_expired_boosts:
+            inv = shop_inventory.get(user_id, {})
+            if boost_id in inv.get("active_boosts", {}):
+                del inv["active_boosts"][boost_id]
+
+        # Sauvegarder une seule fois
+        sauvegarder_shop()
+
+        # Phase 4 : envoyer les DMs groupés par utilisateur avec délai
+        notified_users = set()
+        for member, role_name in dm_queue:
+            if member.id in notified_users:
+                continue
+            notified_users.add(member.id)
+            # Regrouper tous les rôles expirés de ce membre
+            expired_names = [rn for m, rn in dm_queue if m.id == member.id]
+            roles_text = ", ".join(f"**{n}**" for n in expired_names)
+            try:
+                await safe_api_call(
+                    member.send,
+                    f"⏰ Vos rôles temporaires {roles_text} ont expiré. "
+                    f"Vous pouvez les racheter dans la boutique avec `!shop`"
+                )
+            except:
+                pass
+            await asyncio.sleep(2)  # 2s entre chaque DM
     
     @check_expirations.before_loop
     async def before_check(self):

@@ -8,11 +8,87 @@ import datetime
 import logging
 import json
 import os
+import asyncio
 from discord.ext import commands
 from config import (
-    COLORS, CHANNELS, ROLES, MANGA_EMOJIS, TASK_EMOJIS, 
+    COLORS, CHANNELS, ROLES, MANGA_EMOJIS, TASK_EMOJIS,
     MANGA_ROLES, DATA_DIR
 )
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ANTI-RATE-LIMIT : appel API sécurisé avec retry exponentiel
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def safe_api_call(coro_func, *args, max_retries=3, base_delay=1.0, **kwargs):
+    """Exécute un appel API Discord avec retry automatique en cas de 429.
+
+    Args:
+        coro_func: La coroutine à appeler (ex: member.add_roles)
+        *args: Arguments positionnels pour la coroutine
+        max_retries: Nombre max de tentatives
+        base_delay: Délai de base entre les tentatives (exponentiel)
+        **kwargs: Arguments nommés pour la coroutine
+
+    Returns:
+        Le résultat de l'appel API, ou None en cas d'échec
+    """
+    for attempt in range(max_retries):
+        try:
+            return await coro_func(*args, **kwargs)
+        except discord.HTTPException as e:
+            if e.status == 429:
+                retry_after = getattr(e, 'retry_after', base_delay * (2 ** attempt))
+                logging.warning(
+                    f"⚠️ Rate limit 429 (tentative {attempt+1}/{max_retries}). "
+                    f"Attente de {retry_after:.1f}s..."
+                )
+                await asyncio.sleep(retry_after + 0.5)
+            else:
+                logging.error(f"HTTPException {e.status}: {e}")
+                raise
+        except Exception:
+            raise
+    logging.error(f"safe_api_call: échec après {max_retries} tentatives")
+    return None
+
+
+async def batch_api_calls(items, coro_factory, batch_size=5, delay_between=2.0):
+    """Exécute des appels API par lots avec délai entre chaque lot.
+
+    Args:
+        items: Liste d'éléments à traiter
+        coro_factory: Fonction qui prend un item et retourne une coroutine
+        batch_size: Nombre d'appels par lot
+        delay_between: Délai en secondes entre chaque lot
+
+    Returns:
+        Liste de tuples (item, result, error)
+    """
+    results = []
+    for i in range(0, len(items), batch_size):
+        batch = items[i:i + batch_size]
+        for item in batch:
+            try:
+                result = await coro_factory(item)
+                results.append((item, result, None))
+            except discord.HTTPException as e:
+                if e.status == 429:
+                    retry_after = getattr(e, 'retry_after', delay_between * 2)
+                    logging.warning(f"⚠️ Rate limit 429 dans batch. Attente de {retry_after:.1f}s...")
+                    await asyncio.sleep(retry_after + 0.5)
+                    try:
+                        result = await coro_factory(item)
+                        results.append((item, result, None))
+                    except Exception as e2:
+                        results.append((item, None, e2))
+                else:
+                    results.append((item, None, e))
+            except Exception as e:
+                results.append((item, None, e))
+            await asyncio.sleep(0.3)  # petit délai entre chaque appel dans un lot
+        if i + batch_size < len(items):
+            await asyncio.sleep(delay_between)
+    return results
 
 # Créer le dossier data au démarrage
 os.makedirs(DATA_DIR, exist_ok=True)

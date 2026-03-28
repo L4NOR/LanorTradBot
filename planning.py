@@ -16,7 +16,7 @@ import pytz
 import calendar as cal_module
 
 from config import ADMIN_ROLES, COLORS, MANGA_EMOJIS, MANGA_ROLES, TASK_ROLES, DATA_DIR
-from utils import load_json, save_json, save_with_meta, paginate, get_manga_emoji
+from utils import load_json, save_json, save_with_meta, paginate, get_manga_emoji, safe_api_call
 
 logger = logging.getLogger(__name__)
 
@@ -469,13 +469,14 @@ class PlanningSystem(commands.Cog):
         if old_msg_id:
             try:
                 old_msg = await channel.fetch_message(old_msg_id)
-                await old_msg.delete()
+                await safe_api_call(old_msg.delete)
                 logger.info(f"📅 Ancien message supprimé pour {msg_key}")
             except discord.NotFound:
                 pass
             except Exception as e:
                 logger.error(f"Erreur suppression message {msg_key}: {e}")
             del planning_messages[msg_key]
+            await asyncio.sleep(1)  # Pause entre delete et send
 
         # Plus d'entrees -> on ne recree rien
         if not manga_entries:
@@ -490,13 +491,15 @@ class PlanningSystem(commands.Cog):
         role_mention = f"<@&{role_id}>" if role_id and not silent else ""
 
         # -- Envoyer (nouveau message -> remonte en bas du channel) --
-        msg = await channel.send(
+        msg = await safe_api_call(
+            channel.send,
             role_mention, embeds=embeds,
             allowed_mentions=discord.AllowedMentions(roles=True)
         )
-        planning_messages[msg_key] = msg.id
+        if msg:
+            planning_messages[msg_key] = msg.id
         sauvegarder_planning()
-        logger.info(f"📅 Nouveau message planning pour {msg_key} (ID: {msg.id})")
+        logger.info(f"📅 Nouveau message planning pour {msg_key} (ID: {msg.id if msg else 'ECHEC'})")
 
     # -------------------------------------------------------------------------
     # RAFRAICHIR TOUS LES MESSAGES D'UN MOIS
@@ -511,7 +514,7 @@ class PlanningSystem(commands.Cog):
 
         for manga in sorted(mangas_in_month):
             await self.refresh_manga_message(manga, month_key, silent=silent)
-            await asyncio.sleep(2)  # Rate limit
+            await asyncio.sleep(3)  # Rate limit - 3s entre chaque manga
 
     # -------------------------------------------------------------------------
     # AUTO-NETTOYAGE : Supprimer les entrees "sorti" depuis > 30 jours
@@ -546,7 +549,7 @@ class PlanningSystem(commands.Cog):
         # Refresh les messages affectes
         for manga, mk in affected_months:
             await self.refresh_manga_message(manga, mk, silent=True)
-            await asyncio.sleep(2)
+            await asyncio.sleep(3)
 
         return len(to_remove)
 
@@ -615,7 +618,8 @@ class PlanningSystem(commands.Cog):
                     desc += f"> {status['emoji']} `{status['label']}`\n\n"
                 embed.description = desc
                 embed.set_footer(text="LanorTrad · Planning")
-                await channel.send(mention, embed=embed)
+                await safe_api_call(channel.send, mention, embed=embed)
+                await asyncio.sleep(2)  # Délai entre chaque notification manga
 
     @daily_planning_check.before_loop
     async def before_daily_check(self):

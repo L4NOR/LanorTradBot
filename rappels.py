@@ -315,6 +315,7 @@ async def envoyer_rappel(bot, force=False):
 
                 logging.info(f"✅ Rappel envoyé pour {user.name} ({pref}) - {rappel['manga']} ch.{chapitres_str}")
                 rappels_envoyes += 1
+                await asyncio.sleep(1.5)  # Délai anti-rate-limit entre chaque rappel
 
             except Exception as e:
                 logging.error(f"❌ Erreur lors de l'envoi du rappel {rappel_id}: {e}")

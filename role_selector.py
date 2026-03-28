@@ -145,19 +145,19 @@ class RoleSelect(Select):
         removed = []
         
         try:
-            # Ajouter les nouveaux rôles
-            for role_id in roles_to_add:
-                role = category_roles_by_id.get(role_id)
-                if role:
-                    await member.add_roles(role)
-                    added.append(role.name)
-            
-            # Retirer les rôles non sélectionnés
-            for role_id in roles_to_remove:
-                role = category_roles_by_id.get(role_id)
-                if role:
-                    await member.remove_roles(role)
-                    removed.append(role.name)
+            # Ajouter les nouveaux rôles en un seul appel API (au lieu d'un par rôle)
+            roles_add_objects = [category_roles_by_id[rid] for rid in roles_to_add if rid in category_roles_by_id]
+            if roles_add_objects:
+                await member.add_roles(*roles_add_objects)
+                added = [r.name for r in roles_add_objects]
+
+            # Retirer les rôles non sélectionnés en un seul appel API
+            roles_remove_objects = [category_roles_by_id[rid] for rid in roles_to_remove if rid in category_roles_by_id]
+            if roles_remove_objects:
+                if roles_add_objects:
+                    await asyncio.sleep(0.5)  # Petit délai entre add et remove
+                await member.remove_roles(*roles_remove_objects)
+                removed = [r.name for r in roles_remove_objects]
             
             # Gérer le rôle parent
             parent_role = interaction.guild.get_role(self.category_data["parent_role_id"])

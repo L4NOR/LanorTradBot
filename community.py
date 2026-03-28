@@ -15,7 +15,7 @@ from config import (
     COLORS, ADMIN_ROLES, DATA_FILES, XP_GAINS, CHANNELS,
     POINTS_ALLOWED_CHANNELS, MANGA_EMOJIS, LEVELS
 )
-from utils import load_json, save_json
+from utils import load_json, save_json, safe_api_call
 import logging
 
 # Alias pour compatibilité
@@ -33,6 +33,10 @@ message_cooldowns = {}
 
 # Tracking temps vocal
 voice_tracking = {}
+
+# Cache des réactions déjà comptées (message_id -> set(user_id))
+# Évite de refaire des appels API pour vérifier si un user a déjà réagi
+reaction_xp_cache = {}
 
 # Questions trivia
 TRIVIA_QUESTIONS = {
@@ -327,10 +331,7 @@ class CommunitySystem(commands.Cog):
                 role_id = level_roles[new_level]
                 role = guild.get_role(role_id)
                 if role and role not in member.roles:
-                    try:
-                        await member.add_roles(role)
-                    except:
-                        pass
+                    await safe_api_call(member.add_roles, role)
 
             # Envoyer l'annonce
             announce_channel_id = LEVELS.get("announce_channel")
@@ -376,7 +377,7 @@ class CommunitySystem(commands.Cog):
             embed.set_thumbnail(url=member.display_avatar.url)
             embed.set_footer(text="Continue comme ça !")
 
-            await announce_channel.send(embed=embed)
+            await safe_api_call(announce_channel.send, embed=embed)
 
         except Exception as e:
             logging.error(f"Erreur announce_level_up: {e}")
@@ -436,30 +437,41 @@ class CommunitySystem(commands.Cog):
             return
 
         try:
-            channel = self.bot.get_channel(payload.channel_id)
-            message = await channel.fetch_message(payload.message_id)
+            # Utiliser un cache en mémoire pour éviter fetch_message + itération des users
+            msg_id = payload.message_id
+            user_id = payload.user_id
 
-            user_reaction_count = 0
-            for reaction in message.reactions:
-                async for user in reaction.users():
-                    if user.id == payload.user_id:
-                        user_reaction_count += 1
+            # Si l'user a déjà eu de l'XP pour ce message, on skip (0 appel API)
+            if msg_id in reaction_xp_cache and user_id in reaction_xp_cache[msg_id]:
+                return
 
-            if user_reaction_count == 1:
-                final_xp, multiplier, level_up, new_level = add_xp(
-                    payload.user_id,
-                    XP_GAINS["chapter_reaction"],
-                    "chapter_reaction"
-                )
+            # Marquer comme traité
+            if msg_id not in reaction_xp_cache:
+                reaction_xp_cache[msg_id] = set()
+            reaction_xp_cache[msg_id].add(user_id)
 
-                stats = get_user_stats(payload.user_id)
-                stats["chapter_reactions"] += 1
-                sauvegarder_donnees()
+            # Nettoyer le cache si trop gros (garder les 500 derniers messages)
+            if len(reaction_xp_cache) > 500:
+                oldest_keys = sorted(reaction_xp_cache.keys())[:250]
+                for k in oldest_keys:
+                    del reaction_xp_cache[k]
 
-                logging.info(f"✅ {payload.user_id} a gagné {final_xp} XP (réaction chapitre)")
+            final_xp, multiplier, level_up, new_level = add_xp(
+                user_id,
+                XP_GAINS["chapter_reaction"],
+                "chapter_reaction"
+            )
 
-                if level_up:
-                    await self.announce_level_up(payload.user_id, new_level, channel)
+            stats = get_user_stats(user_id)
+            stats["chapter_reactions"] += 1
+            sauvegarder_donnees()
+
+            logging.info(f"✅ {user_id} a gagné {final_xp} XP (réaction chapitre)")
+
+            if level_up:
+                channel = self.bot.get_channel(payload.channel_id)
+                if channel:
+                    await self.announce_level_up(user_id, new_level, channel)
 
         except Exception as e:
             logging.error(f"Erreur réaction annonce: {e}")
@@ -532,7 +544,7 @@ class CommunitySystem(commands.Cog):
 
     @tasks.loop(hours=24)
     async def seniority_bonus_loop(self):
-        """Donne le bonus d'ancienneté hebdomadaire"""
+        """Donne le bonus d'ancienneté hebdomadaire - optimisé anti-rate-limit"""
         today = datetime.now().date()
 
         if today.weekday() != 0:
@@ -541,6 +553,9 @@ class CommunitySystem(commands.Cog):
         guild = self.bot.guilds[0] if self.bot.guilds else None
         if not guild:
             return
+
+        # Phase 1 : calculer tous les bonus XP (aucun appel API)
+        level_ups = []  # (member_id, new_level)
 
         for member in guild.members:
             if member.bot:
@@ -573,10 +588,15 @@ class CommunitySystem(commands.Cog):
                 logging.info(f"🏅 {member.name} a reçu {final_xp} XP (ancienneté: {days_on_server} jours)")
 
                 if level_up:
-                    await self.announce_level_up(member.id, new_level)
-                    await asyncio.sleep(1.5)
+                    level_ups.append((member.id, new_level))
 
+        # Sauvegarder toutes les données XP d'abord
         sauvegarder_donnees()
+
+        # Phase 2 : envoyer les annonces de level-up avec délais contrôlés
+        for member_id, new_level in level_ups:
+            await self.announce_level_up(member_id, new_level)
+            await asyncio.sleep(3)  # 3s entre chaque annonce de level-up
 
     @seniority_bonus_loop.before_loop
     async def before_seniority_check(self):

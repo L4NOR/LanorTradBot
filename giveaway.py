@@ -8,7 +8,7 @@ from discord.ext import commands, tasks
 from config import (
     ADMIN_ROLES, DATA_FILES, GIVEAWAY_ROLES, GIVEAWAY_EMOJI, GIVEAWAY_COLOR, COLORS
 )
-from utils import load_json, save_json
+from utils import load_json, save_json, safe_api_call
 import json
 import os
 import random
@@ -529,14 +529,20 @@ class Giveaways(commands.Cog):
         # Récupérer les participants depuis les données (boutons)
         participant_ids = giveaway.get("participants", [])
 
-        # Construire la liste avec entrées bonus
+        # Construire la liste avec entrées bonus - optimisé anti-rate-limit
         participants = []
+        fetch_count = 0
         for uid in participant_ids:
             try:
                 member = guild.get_member(uid)
                 if not member:
-                    member = await guild.fetch_member(uid)
-                    await asyncio.sleep(1)
+                    # Limiter les fetch API : max 10 fetch par giveaway, skip le reste
+                    if fetch_count >= 10:
+                        continue
+                    member = await safe_api_call(guild.fetch_member, uid)
+                    fetch_count += 1
+                    if fetch_count % 3 == 0:
+                        await asyncio.sleep(2)  # Pause tous les 3 fetch
                 if member:
                     entries = calculate_entries(member, guild)
                     for _ in range(entries):
