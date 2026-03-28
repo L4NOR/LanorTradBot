@@ -134,38 +134,18 @@ async def main():
 
     bot = await create_bot()
 
-    max_retries = 5
-    retry_delay = 60  # secondes
-
-    for attempt in range(1, max_retries + 1):
-        try:
-            logging.info(f"Démarrage du bot... (tentative {attempt}/{max_retries})")
-            await bot.start(TOKEN)
-            break  # Connexion réussie puis déconnexion normale
-        except discord.LoginFailure:
-            logging.error("Token Discord invalide. Vérifiez votre fichier .env")
-            break  # Inutile de réessayer avec un mauvais token
-        except discord.HTTPException as e:
-            if e.status == 429:
-                wait = retry_delay * attempt
-                logging.warning(f"⚠️ Rate limited par Discord (429). Nouvelle tentative dans {wait}s...")
-                await asyncio.sleep(wait)
-                # Recréer le bot avec tous les modules
-                if not bot.is_closed():
-                    await bot.close()
-                bot = await create_bot()
-            else:
-                logging.error(f"Erreur HTTP Discord: {e}")
-                break
-        except Exception as e:
-            logging.error(f"Erreur lors du démarrage du bot: {e}")
-            break
-
-    # Nettoyage final
-    if web_runner:
-        await web_runner.cleanup()
-    if not bot.is_closed():
-        await bot.close()
+    try:
+        logging.info("Démarrage du bot...")
+        await bot.start(TOKEN)
+    except discord.LoginFailure:
+        logging.error("Token Discord invalide. Vérifiez votre fichier .env")
+    except Exception as e:
+        logging.error(f"Erreur lors du démarrage du bot: {e}")
+    finally:
+        if web_runner:
+            await web_runner.cleanup()
+        if not bot.is_closed():
+            await bot.close()
 
 
 if __name__ == "__main__":
