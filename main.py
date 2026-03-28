@@ -21,19 +21,94 @@ logging.basicConfig(
 os.makedirs(DATA_DIR, exist_ok=True)
 
 
+async def setup_modules(bot):
+    """Charge tous les modules sur l'instance du bot."""
+    import events
+    events.setup(bot)
+    logging.info("✅ Module Events chargé")
+
+    import commands as cmd
+    cmd.setup(bot)
+    logging.info("✅ Module Commands chargé")
+
+    import announcements
+    announcements.setup(bot)
+    logging.info("✅ Module Announcements chargé")
+
+    import rappels
+    await rappels.setup(bot)
+    logging.info("✅ Module Rappels chargé")
+
+    import giveaway
+    await giveaway.setup(bot)
+    logging.info("✅ Module Giveaway chargé")
+
+    import community
+    await community.setup(bot)
+    logging.info("✅ Module Community chargé")
+
+    import achievements
+    await achievements.setup(bot)
+    logging.info("✅ Module Achievements chargé")
+
+    import shop
+    await shop.setup(bot)
+    logging.info("✅ Module Shop chargé")
+
+    import admin_data
+    await admin_data.setup(bot)
+    logging.info("✅ Module Admin Data chargé")
+
+    import role_selector
+    await role_selector.setup(bot)
+    logging.info("✅ Module Role Selector chargé")
+
+    import logs
+    await logs.setup(bot)
+    logging.info("✅ Module Audit Logs chargé")
+
+    import polls
+    await polls.setup(bot)
+    logging.info("✅ Module Polls chargé")
+
+    import tickets
+    await tickets.setup(bot)
+    logging.info("✅ Module Tickets chargé")
+
+    import stats
+    await stats.setup(bot)
+    logging.info("✅ Module Stats chargé")
+
+    import database
+    logging.info("✅ Module Database initialisé")
+
+    import planning
+    await planning.setup(bot)
+    logging.info("✅ Module Planning chargé")
+
+
+async def create_bot():
+    """Crée et configure une nouvelle instance du bot avec tous les modules."""
+    bot = commands.Bot(command_prefix=PREFIX, intents=INTENTS)
+    bot._web_runner = None
+    await setup_modules(bot)
+    return bot
+
+
 async def main():
     """Fonction principale pour démarrer le bot."""
-    
-    bot = commands.Bot(command_prefix=PREFIX, intents=INTENTS)
-    
+
     # ═══════════════════════════════════════════════════════════════════════════
     # SERVEUR WEB INTERNE (pour les health checks)
     # ═══════════════════════════════════════════════════════════════════════════
-    
-    bot._web_runner = None
+
+    web_runner = None
 
     async def setup_webserver():
         """Configure et démarre le serveur web pour les health checks."""
+        nonlocal web_runner
+        if web_runner is not None:
+            return  # Déjà démarré
         app = web.Application()
 
         async def health_check(request):
@@ -42,99 +117,10 @@ async def main():
         app.router.add_get('/', health_check)
         runner = web.AppRunner(app)
         await runner.setup()
-        bot._web_runner = runner
+        web_runner = runner
         site = web.TCPSite(runner, '0.0.0.0', PORT)
         await site.start()
         logging.info(f"Serveur web démarré sur le port {PORT}")
-
-    bot.setup_webserver = setup_webserver
-
-    # ═══════════════════════════════════════════════════════════════════════════
-    # CHARGEMENT DES MODULES
-    # ═══════════════════════════════════════════════════════════════════════════
-    
-    # Charger les événements (synchrone)
-    import events
-    events.setup(bot)
-    logging.info("✅ Module Events chargé")
-
-    # Charger les commandes principales (synchrone)
-    import commands as cmd
-    cmd.setup(bot)
-    logging.info("✅ Module Commands chargé")
-
-    # Charger le module d'annonces (synchrone)
-    import announcements
-    announcements.setup(bot)
-    logging.info("✅ Module Announcements chargé")
-
-    # ═══════════════════════════════════════════════════════════════════════════
-    # MODULES ASYNCHRONES (COGS)
-    # ═══════════════════════════════════════════════════════════════════════════
-
-    # Charger les rappels
-    import rappels
-    await rappels.setup(bot)
-    logging.info("✅ Module Rappels chargé")
-
-    # Charger le système de giveaway
-    import giveaway
-    await giveaway.setup(bot)
-    logging.info("✅ Module Giveaway chargé")
-    
-    # Charger le système communautaire
-    import community
-    await community.setup(bot)
-    logging.info("✅ Module Community chargé")
-    
-    # Charger le système de badges/achievements
-    import achievements
-    await achievements.setup(bot)
-    logging.info("✅ Module Achievements chargé")
-    
-    # Charger le système de shop
-    import shop
-    await shop.setup(bot)
-    logging.info("✅ Module Shop chargé")
-    
-    # Charger le gestionnaire de données admin
-    import admin_data
-    await admin_data.setup(bot)
-    logging.info("✅ Module Admin Data chargé")
-
-    # Charger le système de role selector
-    import role_selector
-    await role_selector.setup(bot)
-    logging.info("✅ Module Role Selector chargé")
-
-    # Charger le système d'audit/logs
-    import logs
-    await logs.setup(bot)
-    logging.info("✅ Module Audit Logs chargé")
-
-    # Charger le système de sondages
-    import polls
-    await polls.setup(bot)
-    logging.info("✅ Module Polls chargé")
-
-    # Charger le système de tickets et candidatures
-    import tickets
-    await tickets.setup(bot)
-    logging.info("✅ Module Tickets chargé")
-
-    # Charger les statistiques du serveur
-    import stats
-    await stats.setup(bot)
-    logging.info("✅ Module Stats chargé")
-
-    # Initialiser la base de données
-    import database
-    logging.info("✅ Module Database initialisé")
-
-    # Charger le système de planning
-    import planning
-    await planning.setup(bot)
-    logging.info("✅ Module Planning chargé")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # DÉMARRAGE DU SERVEUR WEB (avant le bot pour satisfaire Render)
@@ -143,8 +129,10 @@ async def main():
     await setup_webserver()
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # DÉMARRAGE DU BOT
+    # CRÉER ET DÉMARRER LE BOT
     # ═══════════════════════════════════════════════════════════════════════════
+
+    bot = await create_bot()
 
     max_retries = 5
     retry_delay = 60  # secondes
@@ -162,12 +150,10 @@ async def main():
                 wait = retry_delay * attempt
                 logging.warning(f"⚠️ Rate limited par Discord (429). Nouvelle tentative dans {wait}s...")
                 await asyncio.sleep(wait)
-                # Recréer le bot car la session est corrompue après un 429
+                # Recréer le bot avec tous les modules
                 if not bot.is_closed():
                     await bot.close()
-                bot = commands.Bot(command_prefix=PREFIX, intents=INTENTS)
-                bot._web_runner = None
-                bot.setup_webserver = setup_webserver
+                bot = await create_bot()
             else:
                 logging.error(f"Erreur HTTP Discord: {e}")
                 break
@@ -176,8 +162,8 @@ async def main():
             break
 
     # Nettoyage final
-    if bot._web_runner:
-        await bot._web_runner.cleanup()
+    if web_runner:
+        await web_runner.cleanup()
     if not bot.is_closed():
         await bot.close()
 
