@@ -22,7 +22,6 @@ def setup(bot):
         """Événement déclenché lorsque le bot est prêt."""
         logging.info(f'Bot connecté en tant que {bot.user.name}')
         await bot.change_presence(activity=discord.Game(name="!help pour les commandes"))
-        await bot.setup_webserver()
     
     @bot.event
     async def on_raw_reaction_add(payload):
