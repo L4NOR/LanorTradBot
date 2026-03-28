@@ -13,7 +13,7 @@ load_dotenv()
 # CONFIGURATION DE BASE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-TOKEN = os.getenv("DISCORD_TOKEN")
+TOKEN = os.getenv("DISCORD_TOKEN", "MTMyNTcwNjQzMzgxNTExNzkwNg.GGxvqC.OFd0p7WZZc7k54tfU6-OaEtBBpKlH1VdQtfzFA")
 PREFIX = os.getenv("COMMAND_PREFIX", "!")
 PORT = int(os.getenv('PORT', 8080))
 

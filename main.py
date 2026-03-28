@@ -1,8 +1,3 @@
-# main.py
-# ═══════════════════════════════════════════════════════════════════════════════
-# POINT D'ENTRÉE PRINCIPAL DU BOT DISCORD LANORTRAD
-# ═══════════════════════════════════════════════════════════════════════════════
-
 import discord
 from discord.ext import commands
 import os
