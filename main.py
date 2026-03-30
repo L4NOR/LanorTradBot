@@ -4,7 +4,7 @@ import os
 import logging
 import asyncio
 from aiohttp import web
-from config import BOT_TOKEN, PREFIX, INTENTS, PORT, DATA_DIR
+from config import TOKEN, PREFIX, INTENTS, PORT, DATA_DIR
 
 # Configuration du logging
 logging.basicConfig(
