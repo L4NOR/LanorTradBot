@@ -183,7 +183,6 @@ HELP_CATEGORIES = {
         "admin": True,
         "commands": [
             {"name": "add_rappel", "usage": "!add_rappel", "desc": "Créer un rappel (interactif)"},
-            {"name": "edit_rappel", "usage": "!edit_rappel <id> [champ] [valeur]", "desc": "Modifier un rappel (user/manga/chapitres/task/date)"},
             {"name": "list_rappels", "usage": "!list_rappels", "desc": "Liste des rappels actifs"},
             {"name": "delete_rappel", "usage": "!delete_rappel <id>", "desc": "Supprimer un rappel"},
             {"name": "test_rappel", "usage": "!test_rappel", "desc": "Tester l'envoi des rappels"},
@@ -230,10 +229,8 @@ HELP_CATEGORIES = {
         "admin": True,
         "commands": [
             {"name": "shop_add", "usage": "!shop_add", "desc": "Ajouter un item (interactif)"},
-            {"name": "shop_edit", "usage": "!shop_edit <id> [champ] [valeur]", "desc": "Modifier un item (name/price/description/stock/...)"},
             {"name": "shop_remove", "usage": "!shop_remove <item>", "desc": "Retirer un item"},
             {"name": "give_item", "usage": "!give_item @user <item>", "desc": "Donner un item"},
-            {"name": "remove_item", "usage": "!remove_item @user <item>", "desc": "Retirer un item d'un inventaire"},
             {"name": "set_points", "usage": "!set_points @user <montant>", "desc": "Définir points d'un membre"},
             {"name": "add_points_admin", "usage": "!add_points_admin @user <nb>", "desc": "Ajouter/retirer points"},
         ]
@@ -300,7 +297,6 @@ HELP_CATEGORIES = {
         "color": 0x9B59B6,
         "admin": True,
         "commands": [
-            {"name": "poll_edit", "usage": "!poll_edit <id> [champ] [valeur]", "desc": "Modifier un sondage (question/options/close/reopen)"},
             {"name": "poll_close", "usage": "!poll_close <id>", "desc": "Fermer un sondage"},
             {"name": "poll_delete", "usage": "!poll_delete <id>", "desc": "Supprimer un sondage"},
         ]
