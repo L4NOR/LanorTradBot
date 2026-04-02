@@ -1,1 +1,24 @@
-{}
+{
+  "608234789564186644": {
+    "badges": [],
+    "badge_dates": {},
+    "stats": {
+      "tasks_completed": 0,
+      "tasks_today": 0,
+      "last_task_date": null,
+      "chapters_translated": 0,
+      "chapters_cleaned": 0,
+      "chapters_edited": 0,
+      "chapters_checked": 0,
+      "roles_contributed": [],
+      "manga_contributions": {},
+      "messages_count": 39,
+      "members_helped": 0,
+      "members_mentored": 0,
+      "events_participated": 0,
+      "consecutive_weeks": 0,
+      "last_contribution_week": null,
+      "join_date": null
+    }
+  }
+}
