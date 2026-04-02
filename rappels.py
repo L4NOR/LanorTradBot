@@ -584,6 +584,124 @@ class RappelTask(commands.Cog):
         await paginate(ctx, pages)
 
     # -------------------------------------------------------------------------
+    # COMMANDE ADMIN - MODIFIER UN RAPPEL
+    # -------------------------------------------------------------------------
+
+    @commands.command(name='edit_rappel')
+    @commands.has_any_role(*ADMIN_ROLES)
+    async def edit_rappel(self, ctx, rappel_id: str = None, field: str = None, *, value: str = None):
+        """Modifie un rappel existant.
+        Usage: !edit_rappel <id> <champ> <valeur>
+        Champs: user, manga, chapitres, task, date
+        Sans champ: affiche les infos du rappel.
+        """
+        if not rappel_id:
+            await ctx.send("❌ Usage: `!edit_rappel <id> [champ] [valeur]`\nUtilisez `!list_rappels` pour voir les IDs.")
+            return
+
+        if rappel_id not in rappels_actifs:
+            await ctx.send(f"❌ Rappel `{rappel_id}` introuvable. Utilisez `!list_rappels` pour voir les IDs.")
+            return
+
+        rappel = rappels_actifs[rappel_id]
+
+        # Sans champ : afficher les infos modifiables
+        if not field:
+            user = ctx.guild.get_member(rappel["user_id"])
+            user_display = user.mention if user else f"<@{rappel['user_id']}>"
+            chapitres_str = ", ".join([f"#{c}" for c in rappel.get("chapitres", [])])
+
+            embed = discord.Embed(
+                title=f"✏️ Modifier Rappel",
+                description=f"**ID:** `{rappel_id}`\n\nUtilisez `!edit_rappel {rappel_id} <champ> <valeur>`",
+                color=discord.Color.blue(),
+                timestamp=datetime.datetime.now()
+            )
+            embed.add_field(name="`user`", value=user_display, inline=True)
+            embed.add_field(name=f"`manga`", value=rappel.get("manga", "N/A"), inline=True)
+            embed.add_field(name="`chapitres`", value=chapitres_str or "N/A", inline=True)
+            embed.add_field(name="`task`", value=rappel.get("task", "N/A").capitalize(), inline=True)
+            embed.add_field(name="`date`", value=rappel.get("date_limite", "N/A"), inline=True)
+            await ctx.send(embed=embed)
+            return
+
+        field = field.lower()
+        editable = ["user", "manga", "chapitres", "task", "date"]
+
+        if field not in editable:
+            await ctx.send(f"❌ Champ invalide. Champs: `{'`, `'.join(editable)}`")
+            return
+
+        if not value:
+            await ctx.send(f"❌ Veuillez fournir une valeur. Ex: `!edit_rappel {rappel_id} {field} valeur`")
+            return
+
+        old_value = None
+
+        if field == "user":
+            # Accepte une mention ou un ID
+            if ctx.message.mentions:
+                new_user = ctx.message.mentions[0]
+            else:
+                try:
+                    new_user = ctx.guild.get_member(int(value.strip("<@!>")))
+                except ValueError:
+                    await ctx.send("❌ Mentionnez un utilisateur ou donnez son ID.")
+                    return
+            if not new_user:
+                await ctx.send("❌ Utilisateur introuvable.")
+                return
+            old_value = f"<@{rappel['user_id']}>"
+            rappel["user_id"] = new_user.id
+            value = new_user.mention
+
+        elif field == "manga":
+            old_value = rappel.get("manga", "N/A")
+            rappel["manga"] = value
+
+        elif field == "chapitres":
+            old_chapitres = rappel.get("chapitres", [])
+            old_value = ", ".join([f"#{c}" for c in old_chapitres])
+            chapitres_raw = value.replace(",", " ").split()
+            chapitres = [int(c) for c in chapitres_raw if c.isdigit()]
+            if not chapitres:
+                await ctx.send("❌ Aucun numéro de chapitre valide trouvé.")
+                return
+            rappel["chapitres"] = chapitres
+            value = ", ".join([f"#{c}" for c in chapitres])
+
+        elif field == "task":
+            valid_tasks = ["clean", "traduire", "trad", "qcheck", "check", "edit"]
+            if value.lower() not in valid_tasks:
+                await ctx.send(f"❌ Tâche invalide. Valeurs: `{'`, `'.join(valid_tasks)}`")
+                return
+            old_value = rappel.get("task", "N/A")
+            rappel["task"] = value.lower()
+
+        elif field == "date":
+            try:
+                datetime.datetime.strptime(value, "%Y-%m-%d")
+            except ValueError:
+                await ctx.send("❌ Format de date invalide. Utilisez `AAAA-MM-JJ`.")
+                return
+            old_value = rappel.get("date_limite", "N/A")
+            rappel["date_limite"] = value
+
+        sauvegarder_rappels()
+
+        embed = discord.Embed(
+            title="✅ Rappel Modifié",
+            description=f"Le rappel `{rappel_id}` a été mis à jour.",
+            color=discord.Color.green(),
+            timestamp=datetime.datetime.now()
+        )
+        embed.add_field(name="Champ", value=f"`{field}`", inline=True)
+        embed.add_field(name="Avant", value=str(old_value), inline=True)
+        embed.add_field(name="Après", value=str(value), inline=True)
+        embed.set_footer(text=f"Modifié par {ctx.author.name}")
+        await ctx.send(embed=embed)
+
+    # -------------------------------------------------------------------------
     # COMMANDE ADMIN - SUPPRIMER UN RAPPEL
     # -------------------------------------------------------------------------
 

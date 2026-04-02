@@ -501,6 +501,133 @@ class PollSystem(commands.Cog):
         else:
             await ctx.send("❌ Sondage introuvable.", delete_after=10)
 
+    @commands.command(name="poll_edit", aliases=["edit_poll"])
+    @commands.has_any_role(*ADMIN_ROLES)
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    async def edit_poll(self, ctx, poll_id: str = None, field: str = None, *, value: str = None):
+        """Modifie un sondage existant.
+        Usage: !poll_edit <id> <champ> <valeur>
+        Champs: question, add_option, remove_option, close, reopen
+        Sans champ: affiche les infos du sondage.
+        """
+        if not poll_id:
+            await ctx.send("❌ Usage: `!poll_edit <id> [champ] [valeur]`\nUtilisez `!polls` pour voir les IDs.")
+            return
+
+        if poll_id not in active_polls:
+            await ctx.send(f"❌ Sondage `{poll_id}` introuvable.")
+            return
+
+        poll = active_polls[poll_id]
+
+        # Sans champ : afficher les infos modifiables
+        if not field:
+            options_str = "\n".join([f"{OPTION_EMOJIS[i]} {opt}" for i, opt in enumerate(poll["options"]) if i < len(OPTION_EMOJIS)])
+            status = "🔒 Fermé" if poll.get("closed") else "🟢 Ouvert"
+            total = sum(len(v) for v in poll["votes"].values())
+
+            embed = discord.Embed(
+                title=f"✏️ Modifier Sondage",
+                description=f"**ID:** `{poll_id}`\n\nUtilisez `!poll_edit {poll_id} <champ> <valeur>`",
+                color=COLORS["info"]
+            )
+            embed.add_field(name="`question`", value=poll["question"], inline=False)
+            embed.add_field(name="Options", value=options_str or "Aucune", inline=False)
+            embed.add_field(name="Status", value=status, inline=True)
+            embed.add_field(name="Votes", value=str(total), inline=True)
+            embed.add_field(
+                name="Commandes",
+                value=(
+                    f"`!poll_edit {poll_id} question <texte>` — Changer la question\n"
+                    f"`!poll_edit {poll_id} add_option <texte>` — Ajouter une option\n"
+                    f"`!poll_edit {poll_id} remove_option <numéro>` — Supprimer une option (1-based)\n"
+                    f"`!poll_edit {poll_id} close` — Fermer le sondage\n"
+                    f"`!poll_edit {poll_id} reopen` — Rouvrir le sondage"
+                ),
+                inline=False
+            )
+            await ctx.send(embed=embed)
+            return
+
+        field = field.lower()
+
+        if field == "question":
+            if not value:
+                await ctx.send("❌ Fournissez la nouvelle question.")
+                return
+            old_question = poll["question"]
+            poll["question"] = value
+            sauvegarder_polls()
+            await self._update_poll_message(poll)
+            await ctx.send(f"✅ Question modifiée :\n**Avant:** {old_question}\n**Après:** {value}")
+
+        elif field == "add_option":
+            if not value:
+                await ctx.send("❌ Fournissez le texte de l'option.")
+                return
+            if len(poll["options"]) >= 10:
+                await ctx.send("❌ Maximum 10 options par sondage.")
+                return
+            poll["options"].append(value)
+            poll["votes"][str(len(poll["options"]) - 1)] = []
+            sauvegarder_polls()
+            await self._update_poll_message(poll)
+            await ctx.send(f"✅ Option ajoutée : **{value}** (option #{len(poll['options'])})")
+
+        elif field == "remove_option":
+            if not value or not value.isdigit():
+                await ctx.send("❌ Indiquez le numéro de l'option (1, 2, 3...).")
+                return
+            idx = int(value) - 1
+            if idx < 0 or idx >= len(poll["options"]):
+                await ctx.send(f"❌ Option #{value} inexistante. Il y a {len(poll['options'])} options.")
+                return
+            if len(poll["options"]) <= 2:
+                await ctx.send("❌ Un sondage doit avoir au minimum 2 options.")
+                return
+            removed = poll["options"].pop(idx)
+            # Réorganiser les votes
+            new_votes = {}
+            for i in range(len(poll["options"])):
+                old_key = str(i) if i < idx else str(i + 1)
+                new_votes[str(i)] = poll["votes"].get(old_key, [])
+            poll["votes"] = new_votes
+            sauvegarder_polls()
+            await self._update_poll_message(poll)
+            await ctx.send(f"✅ Option supprimée : **{removed}**")
+
+        elif field == "close":
+            if poll.get("closed"):
+                await ctx.send("⚠️ Ce sondage est déjà fermé.")
+                return
+            poll["closed"] = True
+            sauvegarder_polls()
+            await self._update_poll_message(poll)
+            await ctx.send(f"✅ Sondage `{poll_id}` fermé.")
+
+        elif field == "reopen":
+            if not poll.get("closed"):
+                await ctx.send("⚠️ Ce sondage est déjà ouvert.")
+                return
+            poll["closed"] = False
+            sauvegarder_polls()
+            await self._update_poll_message(poll)
+            await ctx.send(f"✅ Sondage `{poll_id}` rouvert.")
+
+        else:
+            await ctx.send(f"❌ Champ invalide. Champs: `question`, `add_option`, `remove_option`, `close`, `reopen`")
+
+    async def _update_poll_message(self, poll):
+        """Met à jour le message Discord du sondage si possible."""
+        try:
+            channel = self.bot.get_channel(poll.get("channel_id"))
+            if channel:
+                msg = await channel.fetch_message(poll.get("message_id"))
+                embed = build_poll_embed(poll)
+                await msg.edit(embed=embed)
+        except Exception:
+            pass
+
     @commands.command(name="poll_list", aliases=["polls", "list_polls"])
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def list_polls(self, ctx):
