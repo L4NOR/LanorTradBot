@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 import os
 import logging
-import asyncio
 from aiohttp import web
 from config import TOKEN, PREFIX, INTENTS, PORT, DATA_DIR
 
@@ -88,7 +87,7 @@ class LanorBot(commands.Bot):
         self.web_runner = None
 
     async def setup_hook(self):
-        """Chargement async au démarrage (remplace asyncio.run)"""
+        """Chargement async au démarrage"""
         await setup_modules(self)
         await self.start_webserver()
 
@@ -102,6 +101,7 @@ class LanorBot(commands.Bot):
         async def health_check(request):
             return web.Response(text="OK", status=200)
 
+        # Route simple (PAS de webhook ici ⚠️)
         app.router.add_get('/', health_check)
 
         self.web_runner = web.AppRunner(app)
@@ -110,14 +110,23 @@ class LanorBot(commands.Bot):
         site = web.TCPSite(self.web_runner, '0.0.0.0', PORT)
         await site.start()
 
-        logging.info(f"Serveur web démarré sur le port {PORT}")
+        logging.info(f"🌐 Serveur web démarré sur le port {PORT}")
+
+    async def close(self):
+        """Fermeture propre du bot"""
+        if self.web_runner:
+            await self.web_runner.cleanup()
+        await super().close()
 
 
 # ═══════════════════════════════════════════════════════════════
-# LANCEMENT PROPRE DU BOT (FIX FINAL)
+# LANCEMENT DU BOT
 # ═══════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    bot = LanorBot()
-    logging.info("Démarrage du bot...")
-    bot.run(TOKEN)
+    try:
+        bot = LanorBot()
+        logging.info("🚀 Démarrage du bot...")
+        bot.run(TOKEN)
+    except Exception as e:
+        logging.error(f"❌ Erreur fatale: {e}")
