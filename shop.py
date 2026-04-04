@@ -252,59 +252,62 @@ class ShopSystem(commands.Cog):
     @tasks.loop(hours=168)  # Chaque semaine
     async def weekly_lottery(self):
         """Tirage automatique de la loterie chaque semaine"""
-        if not lottery_data["participants"]:
-            return
-        
-        winner_id = random.choice(lottery_data["participants"])
-        jackpot = lottery_data.get("current_jackpot", 500)
-        
-        # Donner les points au gagnant
         try:
-            from community import add_points
-            add_points(int(winner_id), jackpot, "lottery_win")
-        except:
-            pass
-        
-        # Enregistrer le gagnant
-        lottery_data["winner_history"].append({
-            "user_id": winner_id,
-            "jackpot": jackpot,
-            "date": datetime.now().isoformat(),
-            "participants_count": len(lottery_data["participants"])
-        })
-        
-        # Reset
-        old_participants = len(lottery_data["participants"])
-        lottery_data["participants"] = []
-        lottery_data["current_jackpot"] = 500
-        lottery_data["last_draw"] = datetime.now().isoformat()
-        
-        sauvegarder_shop()
-        
-        # Annoncer (chercher un salon approprié)
-        for guild in self.bot.guilds:
-            channel = discord.utils.find(
-                lambda c: "general" in c.name.lower() or "annonce" in c.name.lower(),
-                guild.text_channels
-            )
-            if channel:
-                winner = guild.get_member(int(winner_id))
-                winner_name = winner.mention if winner else f"User {winner_id}"
-                
-                embed = discord.Embed(
-                    title="🎰 TIRAGE DE LA LOTERIE ! 🎰",
-                    description=f"**{winner_name}** remporte le jackpot !",
-                    color=discord.Color.gold(),
-                    timestamp=datetime.now()
+            if not lottery_data["participants"]:
+                return
+
+            winner_id = random.choice(lottery_data["participants"])
+            jackpot = lottery_data.get("current_jackpot", 500)
+
+            # Donner les points au gagnant
+            try:
+                from community import add_points
+                add_points(int(winner_id), jackpot, "lottery_win")
+            except:
+                pass
+
+            # Enregistrer le gagnant
+            lottery_data["winner_history"].append({
+                "user_id": winner_id,
+                "jackpot": jackpot,
+                "date": datetime.now().isoformat(),
+                "participants_count": len(lottery_data["participants"])
+            })
+
+            # Reset
+            old_participants = len(lottery_data["participants"])
+            lottery_data["participants"] = []
+            lottery_data["current_jackpot"] = 500
+            lottery_data["last_draw"] = datetime.now().isoformat()
+
+            sauvegarder_shop()
+
+            # Annoncer (chercher un salon approprié)
+            for guild in self.bot.guilds:
+                channel = discord.utils.find(
+                    lambda c: "general" in c.name.lower() or "annonce" in c.name.lower(),
+                    guild.text_channels
                 )
-                embed.add_field(name="💰 Gains", value=f"**{jackpot:,}** points !", inline=True)
-                embed.add_field(name="👥 Participants", value=str(old_participants), inline=True)
-                embed.set_footer(text="Prochain tirage dans 7 jours !")
-                
-                try:
-                    await channel.send("@here 🎰 **TIRAGE DE LA LOTERIE !**", embed=embed)
-                except:
-                    pass
+                if channel:
+                    winner = guild.get_member(int(winner_id))
+                    winner_name = winner.mention if winner else f"User {winner_id}"
+
+                    embed = discord.Embed(
+                        title="🎰 TIRAGE DE LA LOTERIE ! 🎰",
+                        description=f"**{winner_name}** remporte le jackpot !",
+                        color=discord.Color.gold(),
+                        timestamp=datetime.now()
+                    )
+                    embed.add_field(name="💰 Gains", value=f"**{jackpot:,}** points !", inline=True)
+                    embed.add_field(name="👥 Participants", value=str(old_participants), inline=True)
+                    embed.set_footer(text="Prochain tirage dans 7 jours !")
+
+                    try:
+                        await channel.send("@here 🎰 **TIRAGE DE LA LOTERIE !**", embed=embed)
+                    except:
+                        pass
+        except Exception as e:
+            logging.error(f"Erreur dans weekly_lottery: {e}")
     
     @weekly_lottery.before_loop
     async def before_lottery(self):
@@ -315,85 +318,88 @@ class ShopSystem(commands.Cog):
     @tasks.loop(hours=1)
     async def check_expirations(self):
         """Vérifie et retire les rôles/boosts expirés - optimisé anti-rate-limit"""
-        now = datetime.now()
-        guild = self.bot.guilds[0] if self.bot.guilds else None
-        if not guild:
-            return
+        try:
+            now = datetime.now()
+            guild = self.bot.guilds[0] if self.bot.guilds else None
+            if not guild:
+                return
 
-        # Phase 1 : collecter TOUTES les expirations d'abord (aucun appel API)
-        all_expired_roles = []  # (user_id, role_key, role_data)
-        all_expired_boosts = []  # (user_id, boost_id)
+            # Phase 1 : collecter TOUTES les expirations d'abord (aucun appel API)
+            all_expired_roles = []  # (user_id, role_key, role_data)
+            all_expired_boosts = []  # (user_id, boost_id)
 
-        for user_id, inv in list(shop_inventory.items()):
-            for role_key, role_data in list(inv.get("active_roles", {}).items()):
-                if "expires" in role_data:
-                    try:
-                        expires = datetime.fromisoformat(role_data["expires"])
-                        if now >= expires:
-                            all_expired_roles.append((user_id, role_key, role_data))
-                    except:
-                        pass
+            for user_id, inv in list(shop_inventory.items()):
+                for role_key, role_data in list(inv.get("active_roles", {}).items()):
+                    if "expires" in role_data:
+                        try:
+                            expires = datetime.fromisoformat(role_data["expires"])
+                            if now >= expires:
+                                all_expired_roles.append((user_id, role_key, role_data))
+                        except:
+                            pass
 
-            for boost_id, boost_data in list(inv.get("active_boosts", {}).items()):
-                if "expires" in boost_data:
-                    try:
-                        expires = datetime.fromisoformat(boost_data["expires"])
-                        if now >= expires:
-                            all_expired_boosts.append((user_id, boost_id))
-                    except:
-                        pass
+                for boost_id, boost_data in list(inv.get("active_boosts", {}).items()):
+                    if "expires" in boost_data:
+                        try:
+                            expires = datetime.fromisoformat(boost_data["expires"])
+                            if now >= expires:
+                                all_expired_boosts.append((user_id, boost_id))
+                        except:
+                            pass
 
-        if not all_expired_roles and not all_expired_boosts:
-            return
+            if not all_expired_roles and not all_expired_boosts:
+                return
 
-        # Phase 2 : retirer les rôles par lots (API calls contrôlés)
-        dm_queue = []  # DMs à envoyer après les rôles
-        for user_id, role_key, role_data in all_expired_roles:
-            role_id = role_data.get("role_id")
-            if role_id:
-                member = guild.get_member(int(user_id))
-                if member:
-                    role = guild.get_role(role_id)
-                    if role and role in member.roles:
-                        await safe_api_call(
-                            member.remove_roles, role,
-                            reason="Rôle temporaire expiré"
-                        )
-                        dm_queue.append((member, role.name))
-                        await asyncio.sleep(1)  # 1s entre chaque remove_roles
+            # Phase 2 : retirer les rôles par lots (API calls contrôlés)
+            dm_queue = []  # DMs à envoyer après les rôles
+            for user_id, role_key, role_data in all_expired_roles:
+                role_id = role_data.get("role_id")
+                if role_id:
+                    member = guild.get_member(int(user_id))
+                    if member:
+                        role = guild.get_role(role_id)
+                        if role and role in member.roles:
+                            await safe_api_call(
+                                member.remove_roles, role,
+                                reason="Rôle temporaire expiré"
+                            )
+                            dm_queue.append((member, role.name))
+                            await asyncio.sleep(1)  # 1s entre chaque remove_roles
 
-            # Supprimer du dict immédiatement
-            inv = shop_inventory.get(user_id, {})
-            if role_key in inv.get("active_roles", {}):
-                del inv["active_roles"][role_key]
+                # Supprimer du dict immédiatement
+                inv = shop_inventory.get(user_id, {})
+                if role_key in inv.get("active_roles", {}):
+                    del inv["active_roles"][role_key]
 
-        # Phase 3 : retirer les boosts (pas d'appel API, juste du data)
-        for user_id, boost_id in all_expired_boosts:
-            inv = shop_inventory.get(user_id, {})
-            if boost_id in inv.get("active_boosts", {}):
-                del inv["active_boosts"][boost_id]
+            # Phase 3 : retirer les boosts (pas d'appel API, juste du data)
+            for user_id, boost_id in all_expired_boosts:
+                inv = shop_inventory.get(user_id, {})
+                if boost_id in inv.get("active_boosts", {}):
+                    del inv["active_boosts"][boost_id]
 
-        # Sauvegarder une seule fois
-        sauvegarder_shop()
+            # Sauvegarder une seule fois
+            sauvegarder_shop()
 
-        # Phase 4 : envoyer les DMs groupés par utilisateur avec délai
-        notified_users = set()
-        for member, role_name in dm_queue:
-            if member.id in notified_users:
-                continue
-            notified_users.add(member.id)
-            # Regrouper tous les rôles expirés de ce membre
-            expired_names = [rn for m, rn in dm_queue if m.id == member.id]
-            roles_text = ", ".join(f"**{n}**" for n in expired_names)
-            try:
-                await safe_api_call(
-                    member.send,
-                    f"⏰ Vos rôles temporaires {roles_text} ont expiré. "
-                    f"Vous pouvez les racheter dans la boutique avec `!shop`"
-                )
-            except:
-                pass
-            await asyncio.sleep(2)  # 2s entre chaque DM
+            # Phase 4 : envoyer les DMs groupés par utilisateur avec délai
+            notified_users = set()
+            for member, role_name in dm_queue:
+                if member.id in notified_users:
+                    continue
+                notified_users.add(member.id)
+                # Regrouper tous les rôles expirés de ce membre
+                expired_names = [rn for m, rn in dm_queue if m.id == member.id]
+                roles_text = ", ".join(f"**{n}**" for n in expired_names)
+                try:
+                    await safe_api_call(
+                        member.send,
+                        f"⏰ Vos rôles temporaires {roles_text} ont expiré. "
+                        f"Vous pouvez les racheter dans la boutique avec `!shop`"
+                    )
+                except:
+                    pass
+                await asyncio.sleep(2)  # 2s entre chaque DM
+        except Exception as e:
+            logging.error(f"Erreur dans check_expirations: {e}")
     
     @check_expirations.before_loop
     async def before_check(self):

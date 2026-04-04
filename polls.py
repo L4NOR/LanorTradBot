@@ -212,50 +212,58 @@ class PollSystem(commands.Cog):
     @tasks.loop(minutes=1)
     async def poll_expiry_loop(self):
         """Vérifie et ferme les sondages expirés."""
-        now = datetime.datetime.now(datetime.timezone.utc)
-        for poll_id, poll_data in list(active_polls.items()):
-            if poll_data.get("closed", False):
-                continue
-            if not poll_data.get("ends_at"):
-                continue
+        try:
+            now = datetime.datetime.now(datetime.timezone.utc)
+            for poll_id, poll_data in list(active_polls.items()):
+                if poll_data.get("closed", False):
+                    continue
+                if not poll_data.get("ends_at"):
+                    continue
 
-            ends_at = datetime.datetime.fromisoformat(poll_data["ends_at"])
-            if now >= ends_at:
-                poll_data["closed"] = True
-                sauvegarder_polls()
-
-                # Mettre à jour le message
                 try:
-                    channel = self.bot.get_channel(poll_data["channel_id"])
-                    if channel:
-                        msg = await channel.fetch_message(poll_data["message_id"])
-                        embed = build_poll_embed(poll_data)
-                        # Désactiver les boutons
-                        view = View()
-                        await msg.edit(embed=embed, view=view)
+                    ends_at = datetime.datetime.fromisoformat(poll_data["ends_at"])
+                except (ValueError, KeyError) as e:
+                    logging.error(f"Poll {poll_id} date invalide: {e}")
+                    continue
 
-                        # Annoncer la fin
-                        total_votes = sum(len(v) for v in poll_data["votes"].values())
-                        if total_votes > 0:
-                            # Trouver le gagnant
-                            winner_idx = max(poll_data["votes"], key=lambda k: len(poll_data["votes"][k]))
-                            winner_option = poll_data["options"][int(winner_idx)]
-                            winner_votes = len(poll_data["votes"][winner_idx])
+                if now >= ends_at:
+                    poll_data["closed"] = True
+                    sauvegarder_polls()
 
-                            result_embed = discord.Embed(
-                                title="📊 Sondage terminé !",
-                                description=(
-                                    f"**{poll_data['question']}**\n\n"
-                                    f"🏆 **Gagnant:** {winner_option}\n"
-                                    f"📈 Avec **{winner_votes}** vote(s) sur **{total_votes}**"
-                                ),
-                                color=COLORS["success"]
-                            )
-                            result_embed.set_footer(text=f"ID: {poll_id}")
-                            await channel.send(embed=result_embed)
-                    await asyncio.sleep(2)
-                except Exception as e:
-                    logger.error(f"Erreur fermeture poll {poll_id}: {e}")
+                    # Mettre à jour le message
+                    try:
+                        channel = self.bot.get_channel(poll_data["channel_id"])
+                        if channel:
+                            msg = await channel.fetch_message(poll_data["message_id"])
+                            embed = build_poll_embed(poll_data)
+                            # Désactiver les boutons
+                            view = View()
+                            await msg.edit(embed=embed, view=view)
+
+                            # Annoncer la fin
+                            total_votes = sum(len(v) for v in poll_data["votes"].values())
+                            if total_votes > 0:
+                                # Trouver le gagnant
+                                winner_idx = max(poll_data["votes"], key=lambda k: len(poll_data["votes"][k]))
+                                winner_option = poll_data["options"][int(winner_idx)]
+                                winner_votes = len(poll_data["votes"][winner_idx])
+
+                                result_embed = discord.Embed(
+                                    title="📊 Sondage terminé !",
+                                    description=(
+                                        f"**{poll_data['question']}**\n\n"
+                                        f"🏆 **Gagnant:** {winner_option}\n"
+                                        f"📈 Avec **{winner_votes}** vote(s) sur **{total_votes}**"
+                                    ),
+                                    color=COLORS["success"]
+                                )
+                                result_embed.set_footer(text=f"ID: {poll_id}")
+                                await channel.send(embed=result_embed)
+                        await asyncio.sleep(2)
+                    except Exception as e:
+                        logger.error(f"Erreur fermeture poll {poll_id}: {e}")
+        except Exception as e:
+            logging.error(f"Erreur dans poll_expiry_loop: {e}")
 
     @poll_expiry_loop.before_loop
     async def before_poll_expiry(self):

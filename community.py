@@ -516,23 +516,29 @@ class CommunitySystem(commands.Cog):
     @tasks.loop(minutes=15)
     async def voice_check_loop(self):
         """Donne de l'XP toutes les 15 min aux users en vocal"""
-        for user_id, start_time in list(voice_tracking.items()):
-            duration = (datetime.now() - start_time).total_seconds() / 60
-            if duration >= 15:
-                final_xp, multiplier, level_up, new_level = add_xp(user_id, XP_GAINS["voice_per_15min"], "vocal_interval")
+        try:
+            for user_id, start_time in list(voice_tracking.items()):
+                try:
+                    duration = (datetime.now() - start_time).total_seconds() / 60
+                    if duration >= 15:
+                        final_xp, multiplier, level_up, new_level = add_xp(user_id, XP_GAINS["voice_per_15min"], "vocal_interval")
 
-                stats = get_user_stats(user_id)
-                stats["voice_minutes"] += 15
+                        stats = get_user_stats(user_id)
+                        stats["voice_minutes"] += 15
 
-                voice_tracking[user_id] = datetime.now()
+                        voice_tracking[user_id] = datetime.now()
 
-                logging.info(f"🎤 User {user_id} a gagné {final_xp} XP (15 min vocal)")
+                        logging.info(f"🎤 User {user_id} a gagné {final_xp} XP (15 min vocal)")
 
-                if level_up:
-                    await self.announce_level_up(user_id, new_level)
-                    await asyncio.sleep(1.5)
+                        if level_up:
+                            await self.announce_level_up(user_id, new_level)
+                            await asyncio.sleep(1.5)
+                except Exception as e:
+                    logging.error(f"Erreur voice_check pour user {user_id}: {e}")
 
-        sauvegarder_donnees()
+            sauvegarder_donnees()
+        except Exception as e:
+            logging.error(f"Erreur dans voice_check_loop: {e}")
 
     @voice_check_loop.before_loop
     async def before_voice_check(self):
@@ -545,58 +551,64 @@ class CommunitySystem(commands.Cog):
     @tasks.loop(hours=24)
     async def seniority_bonus_loop(self):
         """Donne le bonus d'ancienneté hebdomadaire - optimisé anti-rate-limit"""
-        today = datetime.now().date()
+        try:
+            today = datetime.now().date()
 
-        if today.weekday() != 0:
-            return
+            if today.weekday() != 0:
+                return
 
-        guild = self.bot.guilds[0] if self.bot.guilds else None
-        if not guild:
-            return
+            guild = self.bot.guilds[0] if self.bot.guilds else None
+            if not guild:
+                return
 
-        # Phase 1 : calculer tous les bonus XP (aucun appel API)
-        level_ups = []  # (member_id, new_level)
+            # Phase 1 : calculer tous les bonus XP (aucun appel API)
+            level_ups = []  # (member_id, new_level)
 
-        for member in guild.members:
-            if member.bot:
-                continue
-
-            stats = get_user_stats(member.id)
-            last_bonus = stats.get("last_seniority_bonus")
-
-            if last_bonus:
-                last_date = datetime.fromisoformat(last_bonus).date()
-                if (today - last_date).days < 7:
+            for member in guild.members:
+                if member.bot:
                     continue
 
-            joined_at = member.joined_at
-            if joined_at:
-                days_on_server = (datetime.now(joined_at.tzinfo) - joined_at).days
+                try:
+                    stats = get_user_stats(member.id)
+                    last_bonus = stats.get("last_seniority_bonus")
 
-                if days_on_server < 30:
-                    bonus = XP_GAINS["seniority_base"]
-                elif days_on_server < 90:
-                    bonus = 100
-                elif days_on_server < 180:
-                    bonus = 150
-                else:
-                    bonus = XP_GAINS["seniority_max"]
+                    if last_bonus:
+                        last_date = datetime.fromisoformat(last_bonus).date()
+                        if (today - last_date).days < 7:
+                            continue
 
-                final_xp, multiplier, level_up, new_level = add_xp(member.id, bonus, "seniority")
-                stats["last_seniority_bonus"] = datetime.now().isoformat()
+                    joined_at = member.joined_at
+                    if joined_at:
+                        days_on_server = (datetime.now(joined_at.tzinfo) - joined_at).days
 
-                logging.info(f"🏅 {member.name} a reçu {final_xp} XP (ancienneté: {days_on_server} jours)")
+                        if days_on_server < 30:
+                            bonus = XP_GAINS["seniority_base"]
+                        elif days_on_server < 90:
+                            bonus = 100
+                        elif days_on_server < 180:
+                            bonus = 150
+                        else:
+                            bonus = XP_GAINS["seniority_max"]
 
-                if level_up:
-                    level_ups.append((member.id, new_level))
+                        final_xp, multiplier, level_up, new_level = add_xp(member.id, bonus, "seniority")
+                        stats["last_seniority_bonus"] = datetime.now().isoformat()
 
-        # Sauvegarder toutes les données XP d'abord
-        sauvegarder_donnees()
+                        logging.info(f"🏅 {member.name} a reçu {final_xp} XP (ancienneté: {days_on_server} jours)")
 
-        # Phase 2 : envoyer les annonces de level-up avec délais contrôlés
-        for member_id, new_level in level_ups:
-            await self.announce_level_up(member_id, new_level)
-            await asyncio.sleep(3)  # 3s entre chaque annonce de level-up
+                        if level_up:
+                            level_ups.append((member.id, new_level))
+                except Exception as e:
+                    logging.error(f"Erreur seniority pour {member.name}: {e}")
+
+            # Sauvegarder toutes les données XP d'abord
+            sauvegarder_donnees()
+
+            # Phase 2 : envoyer les annonces de level-up avec délais contrôlés
+            for member_id, new_level in level_ups:
+                await self.announce_level_up(member_id, new_level)
+                await asyncio.sleep(3)  # 3s entre chaque annonce de level-up
+        except Exception as e:
+            logging.error(f"Erreur dans seniority_bonus_loop: {e}")
 
     @seniority_bonus_loop.before_loop
     async def before_seniority_check(self):

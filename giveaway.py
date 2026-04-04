@@ -489,17 +489,23 @@ class Giveaways(commands.Cog):
     @tasks.loop(seconds=30)
     async def check_giveaways(self):
         """Vérifie les giveaways terminés"""
-        data = load_giveaways()
-        now = datetime.now()
+        try:
+            data = load_giveaways()
+            now = datetime.now()
 
-        ended_giveaways = []
-        for giveaway_id, giveaway in list(data.get("active", {}).items()):
-            end_time = datetime.fromisoformat(giveaway["end_time"])
-            if now >= end_time:
-                ended_giveaways.append((giveaway_id, giveaway))
+            ended_giveaways = []
+            for giveaway_id, giveaway in list(data.get("active", {}).items()):
+                try:
+                    end_time = datetime.fromisoformat(giveaway["end_time"])
+                    if now >= end_time:
+                        ended_giveaways.append((giveaway_id, giveaway))
+                except (ValueError, KeyError) as e:
+                    logging.error(f"Giveaway {giveaway_id} date invalide: {e}")
 
-        for giveaway_id, giveaway in ended_giveaways:
-            await self.end_giveaway(giveaway_id, giveaway)
+            for giveaway_id, giveaway in ended_giveaways:
+                await self.end_giveaway(giveaway_id, giveaway)
+        except Exception as e:
+            logging.error(f"Erreur dans check_giveaways: {e}")
 
     @check_giveaways.before_loop
     async def before_check(self):

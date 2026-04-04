@@ -351,7 +351,10 @@ class RappelTask(commands.Cog):
     @tasks.loop(minutes=1)
     async def check_rappels(self):
         """Verifie les rappels a envoyer."""
-        await envoyer_rappel(self.bot)
+        try:
+            await envoyer_rappel(self.bot)
+        except Exception as e:
+            logging.error(f"Erreur dans check_rappels: {e}")
 
     @check_rappels.before_loop
     async def before_check(self):

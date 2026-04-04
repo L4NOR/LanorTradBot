@@ -559,67 +559,70 @@ class PlanningSystem(commands.Cog):
 
     @tasks.loop(hours=1)
     async def daily_planning_check(self):
-        tz_paris = pytz.timezone('Europe/Paris')
-        now = datetime.datetime.now(tz_paris)
+        try:
+            tz_paris = pytz.timezone('Europe/Paris')
+            now = datetime.datetime.now(tz_paris)
 
-        # A minuit -> refresh silencieux + auto-nettoyage
-        if now.hour == 0:
-            if not planning_data:
+            # A minuit -> refresh silencieux + auto-nettoyage
+            if now.hour == 0:
+                if not planning_data:
+                    return
+                current_month_key = now.date().isoformat()[:7]
+                await self.refresh_all_for_month(current_month_key, silent=True)
+                # Si on est le 1er du mois, refresh aussi le mois precedent
+                if now.day == 1:
+                    prev = (now.date() - datetime.timedelta(days=1))
+                    prev_key = prev.isoformat()[:7]
+                    await self.refresh_all_for_month(prev_key, silent=True)
+                # Auto-nettoyage des vieilles entrees
+                await self._auto_cleanup()
                 return
-            current_month_key = now.date().isoformat()[:7]
+
+            # A 9h -> refresh + notifications
+            if now.hour != 9:
+                return
+
+            today_str = now.date().isoformat()
+
+            channel = self.bot.get_channel(PLANNING_CHANNEL_ID)
+            if not channel:
+                return
+
+            # Rafraichir les messages du mois courant (silencieux, pas de ping)
+            current_month_key = today_str[:7]
             await self.refresh_all_for_month(current_month_key, silent=True)
-            # Si on est le 1er du mois, refresh aussi le mois precedent
-            if now.day == 1:
-                prev = (now.date() - datetime.timedelta(days=1))
-                prev_key = prev.isoformat()[:7]
-                await self.refresh_all_for_month(prev_key, silent=True)
-            # Auto-nettoyage des vieilles entrees
-            await self._auto_cleanup()
-            return
 
-        # A 9h -> refresh + notifications
-        if now.hour != 9:
-            return
+            # Notifications sorties du jour (message separe)
+            today_releases = []
+            for pid, pdata in planning_data.items():
+                if pdata.get("status") == "sorti":
+                    continue
+                if pdata["date"] == today_str:
+                    today_releases.append(pdata)
 
-        today_str = now.date().isoformat()
+            if today_releases:
+                # Grouper par manga
+                by_manga = {}
+                for r in today_releases:
+                    by_manga.setdefault(r["manga"], []).append(r)
 
-        channel = self.bot.get_channel(PLANNING_CHANNEL_ID)
-        if not channel:
-            return
+                for manga, releases in by_manga.items():
+                    emoji = get_manga_emoji(manga)
+                    role_id = resolve_manga_role(manga)
+                    mention = f"<@&{role_id}>" if role_id else ""
 
-        # Rafraichir les messages du mois courant (silencieux, pas de ping)
-        current_month_key = today_str[:7]
-        await self.refresh_all_for_month(current_month_key, silent=True)
-
-        # Notifications sorties du jour (message separe)
-        today_releases = []
-        for pid, pdata in planning_data.items():
-            if pdata.get("status") == "sorti":
-                continue
-            if pdata["date"] == today_str:
-                today_releases.append(pdata)
-
-        if today_releases:
-            # Grouper par manga
-            by_manga = {}
-            for r in today_releases:
-                by_manga.setdefault(r["manga"], []).append(r)
-
-            for manga, releases in by_manga.items():
-                emoji = get_manga_emoji(manga)
-                role_id = resolve_manga_role(manga)
-                mention = f"<@&{role_id}>" if role_id else ""
-
-                embed = discord.Embed(title="🔥  SORTIE(S) DU JOUR", color=0xFF6B6B, timestamp=now)
-                desc = ""
-                for r in releases:
-                    status = STATUTS.get(r.get("status", "prevu"), STATUTS["prevu"])
-                    desc += f"> {emoji} **{manga}** · Ch. **{r['chapter']}**\n"
-                    desc += f"> {status['emoji']} `{status['label']}`\n\n"
-                embed.description = desc
-                embed.set_footer(text="LanorTrad · Planning")
-                await safe_api_call(channel.send, mention, embed=embed)
-                await asyncio.sleep(2)  # Délai entre chaque notification manga
+                    embed = discord.Embed(title="🔥  SORTIE(S) DU JOUR", color=0xFF6B6B, timestamp=now)
+                    desc = ""
+                    for r in releases:
+                        status = STATUTS.get(r.get("status", "prevu"), STATUTS["prevu"])
+                        desc += f"> {emoji} **{manga}** · Ch. **{r['chapter']}**\n"
+                        desc += f"> {status['emoji']} `{status['label']}`\n\n"
+                    embed.description = desc
+                    embed.set_footer(text="LanorTrad · Planning")
+                    await safe_api_call(channel.send, mention, embed=embed)
+                    await asyncio.sleep(2)  # Délai entre chaque notification manga
+        except Exception as e:
+            logging.error(f"Erreur dans daily_planning_check: {e}")
 
     @daily_planning_check.before_loop
     async def before_daily_check(self):
