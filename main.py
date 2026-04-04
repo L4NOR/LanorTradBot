@@ -82,66 +82,42 @@ async def setup_modules(bot):
     logging.info("✅ Module Planning chargé")
 
 
-async def create_bot():
-    """Crée et configure une nouvelle instance du bot avec tous les modules."""
-    bot = commands.Bot(command_prefix=PREFIX, intents=INTENTS)
-    bot._web_runner = None
-    await setup_modules(bot)
-    return bot
+class LanorBot(commands.Bot):
+    def __init__(self):
+        super().__init__(command_prefix=PREFIX, intents=INTENTS)
+        self.web_runner = None
 
+    async def setup_hook(self):
+        """Chargement async au démarrage (remplace asyncio.run)"""
+        await setup_modules(self)
+        await self.start_webserver()
 
-async def main():
-    """Fonction principale pour démarrer le bot."""
+    async def start_webserver(self):
+        """Serveur web interne (health check VPS)"""
+        if self.web_runner is not None:
+            return
 
-    # ═══════════════════════════════════════════════════════════════════════════
-    # SERVEUR WEB INTERNE (pour les health checks)
-    # ═══════════════════════════════════════════════════════════════════════════
-
-    web_runner = None
-
-    async def setup_webserver():
-        """Configure et démarre le serveur web pour les health checks."""
-        nonlocal web_runner
-        if web_runner is not None:
-            return  # Déjà démarré
         app = web.Application()
 
         async def health_check(request):
             return web.Response(text="OK", status=200)
 
         app.router.add_get('/', health_check)
-        runner = web.AppRunner(app)
-        await runner.setup()
-        web_runner = runner
-        site = web.TCPSite(runner, '0.0.0.0', PORT)
+
+        self.web_runner = web.AppRunner(app)
+        await self.web_runner.setup()
+
+        site = web.TCPSite(self.web_runner, '0.0.0.0', PORT)
         await site.start()
+
         logging.info(f"Serveur web démarré sur le port {PORT}")
 
-    # ═══════════════════════════════════════════════════════════════════════════
-    # DÉMARRAGE DU SERVEUR WEB (avant le bot pour satisfaire Render)
-    # ═══════════════════════════════════════════════════════════════════════════
 
-    await setup_webserver()
-
-    # ═══════════════════════════════════════════════════════════════════════════
-    # CRÉER ET DÉMARRER LE BOT
-    # ═══════════════════════════════════════════════════════════════════════════
-
-    bot = await create_bot()
-
-    try:
-        logging.info("Démarrage du bot...")
-        await bot.start(TOKEN)
-    except discord.LoginFailure:
-        logging.error("Token Discord invalide. Vérifiez votre fichier .env")
-    except Exception as e:
-        logging.error(f"Erreur lors du démarrage du bot: {e}")
-    finally:
-        if web_runner:
-            await web_runner.cleanup()
-        if not bot.is_closed():
-            await bot.close()
-
+# ═══════════════════════════════════════════════════════════════
+# LANCEMENT PROPRE DU BOT (FIX FINAL)
+# ═══════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    bot = LanorBot()
+    logging.info("Démarrage du bot...")
+    bot.run(TOKEN)
