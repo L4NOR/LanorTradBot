@@ -1,7 +1,9 @@
 import discord
 from discord.ext import commands
 import os
+import signal
 import logging
+import traceback
 from aiohttp import web
 from config import TOKEN, PREFIX, INTENTS, PORT, DATA_DIR
 
@@ -10,6 +12,15 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
+# Capturer les signaux pour savoir pourquoi le process s'arrête
+def signal_handler(signum, frame):
+    sig_name = signal.Signals(signum).name
+    logging.warning(f"⚠️ SIGNAL REÇU: {sig_name} ({signum})")
+    logging.warning(f"⚠️ Stack trace au moment du signal:\n{''.join(traceback.format_stack(frame))}")
+
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
 
 # Créer le dossier data au démarrage
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -114,6 +125,8 @@ class LanorBot(commands.Bot):
 
     async def close(self):
         """Fermeture propre du bot"""
+        logging.warning(f"⚠️ bot.close() APPELÉ - Stack trace:")
+        logging.warning(''.join(traceback.format_stack()))
         if self.web_runner:
             await self.web_runner.cleanup()
         await super().close()
@@ -128,5 +141,11 @@ if __name__ == "__main__":
         bot = LanorBot()
         logging.info("🚀 Démarrage du bot...")
         bot.run(TOKEN)
+        logging.warning("⚠️ bot.run() A RETOURNÉ NORMALEMENT - le bot s'est arrêté sans erreur")
+    except SystemExit as e:
+        logging.error(f"❌ SystemExit reçu: code={e.code}")
+    except KeyboardInterrupt:
+        logging.warning("⚠️ KeyboardInterrupt reçu")
     except Exception as e:
-        logging.error(f"❌ Erreur fatale: {e}")
+        logging.error(f"❌ Erreur fatale: {type(e).__name__}: {e}")
+        logging.error(traceback.format_exc())
