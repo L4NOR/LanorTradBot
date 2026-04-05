@@ -105,7 +105,7 @@ class RoleSelect(Select):
             )
         
         super().__init__(
-            placeholder="🎯 Sélectionnez vos rôles...",
+            placeholder="⚠️ Resélectionnez TOUS vos rôles souhaités (sinon perdus)",
             min_values=0,
             max_values=len(options),
             options=options,
@@ -316,7 +316,18 @@ class RoleSelector(commands.Cog):
                     value="\n".join(roles_text),
                     inline=False
                 )
-                
+
+                embed.add_field(
+                    name="⚠️ Important",
+                    value=(
+                        "Le menu remplace **toute ta sélection** de cette catégorie à chaque validation.\n"
+                        "Pour ajouter un nouveau rôle **sans perdre les autres**, "
+                        "resélectionne aussi tous ceux que tu as déjà.\n"
+                        "Si tu ne coches que le nouveau, les anciens rôles de cette catégorie seront retirés."
+                    ),
+                    inline=False
+                )
+
                 # Créer la vue avec le menu déroulant
                 view = RoleSelectView(category_key, category_data)
                 

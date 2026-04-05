@@ -1494,22 +1494,24 @@ def setup(bot):
             "🩸 Satsudou\n"
             "🗼 Tokyo Underworld\n"
             "😈 Tougen Anki\n"
-            "⚽ Catenaccio"
+            "⚽ Catenaccio\n"
+            "🌀 Uzugami"
         )
         embed.set_footer(text="Cliquez sur une réaction pour voir l'avancée", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
         
         message = await ctx.send(embed=embed)
         
-        reactions = ['👹', '🩸', '🗼', '😈', '⚽']
+        reactions = ['👹', '🩸', '🗼', '😈', '⚽', '🌀']
         for r in reactions:
             await message.add_reaction(r)
-        
+
         manga_map = {
             '👹': 'Ao No Exorcist',
             '🩸': 'Satsudou',
             '🗼': 'Tokyo Underworld',
             '😈': 'Tougen Anki',
-            '⚽': 'Catenaccio'
+            '⚽': 'Catenaccio',
+            '🌀': 'Uzugami'
         }
         
         def check(reaction, user):
@@ -1674,7 +1676,8 @@ def setup(bot):
             "Satsudou": "🩸",
             "Tokyo Underworld": "🗼",
             "Tougen Anki": "😈",
-            "Catenaccio": "⚽"
+            "Catenaccio": "⚽",
+            "Uzugami": "🌀"
         }
         
         for chapitre_key, tasks in etat_taches_global.items():
