@@ -224,23 +224,39 @@ class MyRolesButton(Button):
             color=member.color if member.color != discord.Color.default() else discord.Color.blue()
         )
         
+        category_role_ids = set()
+
         for category_key, category_data in ROLE_CATEGORIES.items():
             user_roles_in_category = []
-            
+
             for role_info in category_data["roles"]:
+                category_role_ids.add(role_info["id"])
                 role = interaction.guild.get_role(role_info["id"])
                 if role and role in member.roles:
-                    user_roles_in_category.append(f"{role_info['emoji']} {role.name}")
-            
+                    user_roles_in_category.append(f"{role_info['emoji']} {role_info['name']}")
+
             if user_roles_in_category:
                 embed.add_field(
-                    name=f"{category_data['emoji']} {category_data['title']}",
+                    name=category_data['title'],
                     value="\n".join(user_roles_in_category),
                     inline=False
                 )
-        
+
+        # Autres rôles (en dehors des catégories de role_selector)
+        other_roles = [
+            r for r in member.roles
+            if not r.is_default() and r.id not in category_role_ids
+        ]
+        if other_roles:
+            other_roles.sort(key=lambda r: r.position, reverse=True)
+            embed.add_field(
+                name="🏷️ Autres rôles",
+                value="\n".join(f"• {r.mention}" for r in other_roles),
+                inline=False
+            )
+
         if not embed.fields:
-            embed.description = "Vous n'avez sélectionné aucun rôle pour le moment."
+            embed.description = "Vous n'avez aucun rôle pour le moment."
         
         embed.set_thumbnail(url=member.avatar.url if member.avatar else None)
         await interaction.followup.send(embed=embed, ephemeral=True)
