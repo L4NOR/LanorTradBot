@@ -307,7 +307,7 @@ class RoleSelector(commands.Cog):
                 for role_info in category_data["roles"]:
                     role = ctx.guild.get_role(role_info["id"])
                     if role:
-                        roles_text.append(f"{role_info['emoji']} **{role.name}**")
+                        roles_text.append(f"{role_info['emoji']} **{role_info['name']}**")
                     else:
                         roles_text.append(f"{role_info['emoji']} ~~{role_info['name']}~~ (Non trouvé)")
                 
