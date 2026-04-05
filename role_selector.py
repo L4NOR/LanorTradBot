@@ -95,6 +95,8 @@ class RoleSelect(Select):
         options = []
         
         for role_info in category_data["roles"]:
+            if role_info.get("coming_soon"):
+                continue
             options.append(
                 discord.SelectOption(
                     label=role_info["name"],
@@ -297,7 +299,7 @@ class RoleSelector(commands.Cog):
             # Poster chaque catégorie
             for category_key, category_data in ROLE_CATEGORIES.items():
                 embed = discord.Embed(
-                    title=f"{category_data['emoji']} {category_data['title']}",
+                    title=category_data['title'],
                     description=category_data['description'],
                     color=category_data['color']
                 )
@@ -306,7 +308,9 @@ class RoleSelector(commands.Cog):
                 roles_text = []
                 for role_info in category_data["roles"]:
                     role = ctx.guild.get_role(role_info["id"])
-                    if role:
+                    if role_info.get("coming_soon"):
+                        roles_text.append(f"{role_info['emoji']} **{role_info['name']}** 🔒 *(bientôt disponible)*")
+                    elif role:
                         roles_text.append(f"{role_info['emoji']} **{role_info['name']}**")
                     else:
                         roles_text.append(f"{role_info['emoji']} ~~{role_info['name']}~~ (Non trouvé)")

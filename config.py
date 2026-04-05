@@ -117,7 +117,7 @@ ROLE_CATEGORIES = {
             {"name": "Tokyo Underworld", "emoji": "🏙️", "id": ROLES["tokyo_underworld"]},
             {"name": "Tougen Anki", "emoji": "👹", "id": ROLES["tougen_anki"]},
             {"name": "Catenaccio", "emoji": "⚽", "id": ROLES["catenaccio"]},
-            {"name": "Uzugami", "emoji": "🌀", "id": ROLES["uzugami"]},
+            {"name": "Uzugami", "emoji": "🌀", "id": ROLES["uzugami"], "coming_soon": True},
         ]
     },
     "notifications": {
