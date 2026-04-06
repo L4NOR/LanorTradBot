@@ -595,7 +595,7 @@ class CommunitySystem(commands.Cog):
 
                         logging.info(f"🏅 {member.name} a reçu {final_xp} XP (ancienneté: {days_on_server} jours)")
 
-                        if level_up:
+                        if level_up and new_level >= 5:
                             level_ups.append((member.id, new_level))
                 except Exception as e:
                     logging.error(f"Erreur seniority pour {member.name}: {e}")
@@ -603,10 +603,43 @@ class CommunitySystem(commands.Cog):
             # Sauvegarder toutes les données XP d'abord
             sauvegarder_donnees()
 
-            # Phase 2 : envoyer les annonces de level-up avec délais contrôlés
-            for member_id, new_level in level_ups:
-                await self.announce_level_up(member_id, new_level)
-                await asyncio.sleep(3)  # 3s entre chaque annonce de level-up
+            # Phase 2 : envoyer un récap hebdomadaire dans le channel dédié
+            if level_ups:
+                recap_channel = self.bot.get_channel(1329829847014572155)
+                if recap_channel:
+                    embed = discord.Embed(
+                        title="📊 Update hebdomadaire d'XP",
+                        description="Voici les membres qui ont gagné un niveau grâce au bonus d'ancienneté cette semaine !",
+                        color=0xFFD700
+                    )
+
+                    lines = []
+                    for member_id, new_level in level_ups:
+                        member = guild.get_member(member_id)
+                        if member:
+                            stats = get_user_stats(member_id)
+                            level, xp_in, xp_needed = xp_progress(stats.get("total_xp", 0))
+                            bar = generate_xp_bar(xp_in, xp_needed)
+                            lines.append(f"**{member.display_name}** → Niveau **{new_level}**\n```{bar}```")
+
+                    # Découper en plusieurs embeds si trop long
+                    chunk = []
+                    for line in lines:
+                        chunk.append(line)
+                        if len(chunk) >= 10:
+                            embed.description += "\n\n" + "\n".join(chunk)
+                            await safe_api_call(recap_channel.send, embed=embed)
+                            embed = discord.Embed(
+                                title="📊 Update hebdomadaire d'XP (suite)",
+                                color=0xFFD700
+                            )
+                            chunk = []
+                            await asyncio.sleep(2)
+
+                    if chunk:
+                        embed.add_field(name="\u200b", value="\n".join(chunk), inline=False)
+                        embed.set_footer(text="Continue comme ça tout le monde ! 🎉")
+                        await safe_api_call(recap_channel.send, embed=embed)
         except Exception as e:
             logging.error(f"Erreur dans seniority_bonus_loop: {e}")
 

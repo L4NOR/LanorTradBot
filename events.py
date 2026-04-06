@@ -34,16 +34,20 @@ def setup(bot):
                 
                 if member is None or member.bot:
                     return
-                
+
                 # Rôles à ajouter
                 first_role = guild.get_role(ROLES["member"])
                 second_role = guild.get_role(ROLES["access"])
-                
+
                 if first_role and second_role:
+                    # Ne rien faire si le membre a déjà les rôles (évite les doublons)
+                    if first_role in member.roles and second_role in member.roles:
+                        return
+
                     try:
                         # Ajouter les deux rôles
                         await member.add_roles(first_role, second_role)
-                        
+
                         general_channel = bot.get_channel(CHANNELS["general"])
                         if general_channel:
                             embed = discord.Embed(
