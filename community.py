@@ -390,7 +390,7 @@ class CommunitySystem(commands.Cog):
             embed.set_thumbnail(url=member.display_avatar.url)
             embed.set_footer(text="Continue comme ça !")
 
-            await safe_api_call(announce_channel.send, embed=embed)
+            await safe_api_call(announce_channel.send, content=member.mention, embed=embed)
 
         except Exception as e:
             logging.error(f"Erreur announce_level_up: {e}")

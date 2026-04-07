@@ -301,7 +301,7 @@ LEVELS = {
     "xp_per_level_base": 100,       # XP pour atteindre le niveau 1
     "xp_growth_factor": 1.15,       # Multiplicateur XP par niveau
     "max_level": 100,               # Niveau maximum
-    "announce_channel": CHANNELS.get("general"),  # Channel pour les annonces de level-up
+    "announce_channel": 1329829847014572155,  # Channel pour les annonces de level-up
     "level_roles": {
         # niveau: role_id (rôles attribués automatiquement)
         # 5: ROLE_ID,
