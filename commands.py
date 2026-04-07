@@ -113,6 +113,25 @@ HELP_CATEGORIES = {
             {"name": "guess", "usage": "!guess", "desc": "Jeu de devinette"},
         ]
     },
+    "minigames": {
+        "emoji": "🎲",
+        "name": "Mini-Jeux",
+        "description": "Jeux pour gagner de l'XP",
+        "color": 0xE91E63,
+        "commands": [
+            {"name": "reaction", "usage": "!reaction", "desc": "Sois le premier à réagir avec le bon emoji (15 XP)"},
+            {"name": "unscramble", "usage": "!unscramble", "desc": "Remets les lettres dans le bon ordre (25 XP)"},
+            {"name": "wordle", "usage": "!wordle", "desc": "Devine le mot en 6 essais (50-100 XP)"},
+            {"name": "hangman", "usage": "!hangman", "desc": "Jeu du pendu collaboratif (30 XP)"},
+            {"name": "chain", "usage": "!chain", "desc": "Chaîne de mots — dernier debout gagne (20 XP)"},
+            {"name": "coinflip", "usage": "!coinflip <mise>", "desc": "Pile ou face — x2 ou perdu"},
+            {"name": "slots", "usage": "!slots <mise>", "desc": "Machine à sous — jackpot x15 !"},
+            {"name": "roulette", "usage": "!roulette <mise> <choix>", "desc": "Rouge/noir/vert/numéro"},
+            {"name": "duel", "usage": "!duel @user <mise>", "desc": "Défie un membre en duel d'XP"},
+            {"name": "boss", "usage": "!boss", "desc": "Voir l'état du boss actuel"},
+            {"name": "attack", "usage": "!attack", "desc": "Attaquer le boss (5 XP/hit, 100 XP coup fatal)"},
+        ]
+    },
     "badges": {
         "emoji": "🏆",
         "name": "Badges",

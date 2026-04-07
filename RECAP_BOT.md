@@ -19,14 +19,15 @@
 
 ## ARCHITECTURE & FICHIERS
 
-### Modules Python (17 fichiers)
+### Modules Python (18 fichiers)
 
 | Fichier | Cog/Classe | Description |
 |---------|-----------|-------------|
 | `main.py` | — | Point d'entree, charge tous les modules, serveur web health check (port 8080) |
 | `config.py` | — | Configuration centralisee (IDs, constantes, emojis) |
 | `commands.py` | — | Commandes de base (help, info, tasks, moderation, bulk roles) + menu help interactif |
-| `community.py` | `CommunitySystem` | Systeme XP/niveaux, daily, mini-jeux (trivia, guess) |
+| `community.py` | `CommunitySystem` | Systeme XP/niveaux, daily, trivia, guess, tracking mensuel/hebdo |
+| `minigames.py` | `MiniGames` | Mini-jeux communautaires (reaction, unscramble, wordle, pendu, chain, coinflip, slots, roulette, duel, boss) |
 | `achievements.py` | `Achievements` | Badges et recompenses |
 | `planning.py` | `PlanningSystem` | Planning sorties chapitres (calendrier mensuel, batch status, auto-nettoyage) |
 | `shop.py` | `Shop` | Boutique, inventaire, loterie hebdomadaire |
@@ -48,7 +49,7 @@
 1. events (sync)
 2. commands (sync)
 3. announcements (sync)
-4. rappels, giveaway, community, achievements, shop, admin_data, role_selector, logs, polls, tickets, stats, planning (async COGs)
+4. rappels, giveaway, community, achievements, shop, admin_data, role_selector, logs, polls, tickets, stats, planning, minigames (async COGs)
 
 ### Dependances
 
@@ -87,6 +88,8 @@ aiohttp==3.11.11
 | Roles | 1326212401036529665 |
 | Boost | 1326212624504848394 |
 | Partenaires | 1326357401099702393 |
+| Level-up | 1329829847014572155 |
+| Recap mensuel | `None` (a configurer) |
 
 ### Channels Manga
 
@@ -107,6 +110,7 @@ aiohttp==3.11.11
 | Tougen Anki | 😈 |
 | Catenaccio | ⚽ |
 | Tokyo Underworld | 🗼 |
+| Uzugami | 🌀 |
 
 ### Roles Manga (pour ping)
 
@@ -117,6 +121,7 @@ aiohttp==3.11.11
 | Ao No Exorcist | 1465027919951958220 |
 | Tokyo Underworld | 1465027914050437184 |
 | Tougen Anki | 1465027911235928155 |
+| Uzugami | 1490301634490794104 |
 
 ### Couleurs
 
@@ -148,11 +153,52 @@ aiohttp==3.11.11
 | Commande | Aliases | Description |
 |----------|---------|-------------|
 | `!xp` | `!points`, `!pts`, `!balance`, `!niveau`, `!level` | Voir son XP et niveau |
-| `!profile` | `!profil` | Profil complet avec stats |
-| `!leaderboard` | `!lb`, `!top` | Classement XP (paginable) |
+| `!profile` | `!profil` | Profil complet avec stats (weekly + monthly XP) |
+| `!leaderboard` | `!lb`, `!top` | Classement XP (paginable, affiche weekly + monthly) |
 | `!daily` | — | Bonus quotidien (20-50 XP + streak) |
 | `!trivia` | — | Quiz manga (easy/medium/hard) |
 | `!guess` | — | Jeu de devinette (30 XP) |
+
+### Mini-Jeux
+
+#### Rapidite
+
+| Commande | Description | XP | Cooldown |
+|----------|-------------|-----|---------|
+| `!reaction` | Premier a reagir avec le bon emoji | 15 XP | 30s/channel |
+| `!unscramble` | Remettre un mot melange en ordre | 25 XP | 15s/channel |
+
+#### Mots
+
+| Commande | Aliases | Description | XP | Cooldown |
+|----------|---------|-------------|-----|---------|
+| `!wordle` | — | Devine le mot en 6 essais (🟩🟨⬛) | 50-100 XP | 30s/user |
+| `!hangman` | `!pendu` | Jeu du pendu collaboratif | 30 XP | 15s/channel |
+| `!chain` | `!chaine` | Chaine de mots (derniere lettre) | 20 XP | 30s/channel |
+
+#### Paris d'XP
+
+| Commande | Aliases | Description | Gains | Cooldown |
+|----------|---------|-------------|-------|---------|
+| `!coinflip` | `!cf` | Pile ou face | x2 ou perdu | 10s/user |
+| `!slots` | — | Machine a sous | 2 identiques: x2, 3: x5/x10/x15 | 10s/user |
+| `!roulette` | — | Rouge/noir (x2), vert (x14), numero (x10) | variable | 10s/user |
+
+#### PvP
+
+| Commande | Description | XP | Cooldown |
+|----------|-------------|-----|---------|
+| `!duel @user <mise>` | Duel de des, le gagnant prend la mise | mise adverse | 30s/user |
+
+#### Boss communautaire
+
+| Commande | Aliases | Description |
+|----------|---------|-------------|
+| `!boss` | — | Voir l'etat du boss actuel |
+| `!attack` | `!attaque`, `!atk` | Attaquer le boss (10-50 degats, 10% crit x3, 5 XP/hit) |
+
+> Les paris (coinflip, slots, roulette, duel) ne font perdre que le **solde XP**, pas le total_xp/niveau.
+> Mise minimum : 5 XP (10 XP pour les duels).
 
 ### Badges
 
@@ -286,6 +332,13 @@ aiohttp==3.11.11
 | `!give_xp` | `!give_points`, `!addxp` | Donner de l'XP |
 | `!reset_xp` | `!reset_points` | Reset l'XP d'un membre |
 
+### Boss (ADMIN_ROLES)
+
+| Commande | Aliases | Description |
+|----------|---------|-------------|
+| `!boss_spawn` | `!spawn_boss` | Invoquer un boss (optionnel: HP et nom) |
+| `!boss_end` | — | Terminer le boss de force |
+
 ### Badges (administrator)
 
 | Commande | Description |
@@ -377,10 +430,11 @@ aiohttp==3.11.11
 | `check_expirations` | shop.py | 1 heure | Retire roles/boosts expires |
 | `voice_check_loop` | community.py | 15 minutes | XP vocal (5 XP / 15 min en vocal) |
 | `seniority_bonus_loop` | community.py | 24 heures | Bonus XP anciennete hebdomadaire (lundi) |
+| `monthly_recap_loop` | community.py | 24 heures | Annonce top 3 XP mensuel (1er du mois) |
 
 ### Protection anti Rate-Limit Discord
 
-Tous les modules respectent des delais entre appels API Discord pour eviter le Cloudflare Error 1015 (rate limit / ban temporaire IP) :
+Tous les modules respectent des delais entre appels API Discord pour eviter la Cloudflare Error 1015 (rate limit / ban temporaire IP) :
 
 | Module | Operation | Delai entre appels |
 |--------|-----------|--------------------|
@@ -433,7 +487,18 @@ Tous les modules respectent des delais entre appels API Discord pour eviter le C
 | Trivia (medium) | 50 | Bonne reponse |
 | Trivia (hard) | 100 | Bonne reponse |
 | Guess | 30 | Bonne reponse |
-| Anciennete | 50-200 | Bonus hebdomadaire |
+| Anciennete | 50-200 | Bonus hebdomadaire (lundi) |
+| Reaction game | 15 | Premier a reagir |
+| Unscramble | 25 | Mot trouve |
+| Wordle | 50-100 | Mot devine (bonus si moins d'essais) |
+| Hangman | 30 | Mot complete |
+| Chain | 20 | Gagnant de la chaine |
+| Coinflip | mise x2 | 50/50 |
+| Slots | mise x2/x5/x10/x15 | 2 ou 3 identiques |
+| Roulette | mise x2/x10/x14 | Rouge/noir, numero, vert |
+| Duel | mise adverse | Jet de des |
+| Boss (hit) | 5 | Par attaque |
+| Boss (kill) | 100 | Coup fatal |
 
 ### Calcul de niveau
 
@@ -441,6 +506,65 @@ Tous les modules respectent des delais entre appels API Discord pour eviter le C
 - Croissance: 1.15x par niveau
 - Max: 100
 - Formule: `XP_requis(n) = 100 * 1.15^(n-1)`
+
+### Tracking XP
+
+| Tracking | Reset | Description |
+|----------|-------|-------------|
+| `total_xp` | Jamais | XP cumule total (determine le niveau) |
+| `xp` | Depenses shop/paris | Solde depensable |
+| `weekly_xp` | Changement de semaine ISO | XP gagne cette semaine |
+| `monthly_xp` | Changement de mois | XP gagne ce mois |
+
+### Annonces
+
+- **Level-up** : mention du membre dans le channel `1329829847014572155`
+- **Recap hebdo** : embed dans le channel `1329829847014572155` (lundi, anciennete)
+- **Recap mensuel** : top 3 XP du mois dans le channel `monthly_recap` (1er du mois)
+
+---
+
+## MINI-JEUX (minigames.py)
+
+### Jeux de rapidite
+
+| Jeu | Mecanique |
+|-----|-----------|
+| `!reaction` | Bot affiche un emoji apres un delai aleatoire (2-6s), premier a reagir gagne |
+| `!unscramble` | Mot melange a remettre en ordre, 30s pour repondre |
+
+### Jeux de mots
+
+| Jeu | Mecanique |
+|-----|-----------|
+| `!wordle` | Deviner un mot de 5 lettres en 6 essais, feedback 🟩🟨⬛ |
+| `!hangman` / `!pendu` | Pendu classique, 6 erreurs max, collaboratif |
+| `!chain` / `!chaine` | Chaine de mots (derniere lettre), 15s par tour, dernier debout gagne |
+
+### Jeux de paris
+
+| Jeu | Mecanique |
+|-----|-----------|
+| `!coinflip <mise>` | Pile ou face, 50/50, x2 ou perdu |
+| `!slots <mise>` | 3 rouleaux, 2 identiques = x2, 3 identiques = x5/x10/x15 (💎=x10, 7️⃣=x15) |
+| `!roulette <mise> <choix>` | Rouge/noir = x2, vert (0) = x14, numero = x10 |
+| `!duel @user <mise>` | Defi accepte par reaction, jet de d20, plus haut gagne |
+
+> Les pertes ne retirent que le solde `xp`, jamais le `total_xp` (pas de perte de niveau).
+
+### Boss communautaire
+
+| Commande | Description |
+|----------|-------------|
+| `!boss_spawn [hp] [nom]` | (Admin) Invoquer un boss (defaut: 500 HP, nom aleatoire) |
+| `!attack` | Degats 10-50 (10% chance crit x3), cooldown 30s, 5 XP/hit |
+| `!boss` | Voir HP + top attaquants |
+| `!boss_end` | (Admin) Terminer le boss de force |
+
+Quand le boss meurt :
+- Coup fatal : **100 XP** bonus
+- Tous les participants : bonus XP proportionnel aux degats
+- Podium affiche avec les 3 meilleurs attaquants
 
 ---
 
@@ -533,7 +657,7 @@ Tous les modules respectent des delais entre appels API Discord pour eviter le C
 | `rappels_tasks.json` | Rappels de deadlines |
 | `rappels_tasks_meta.json` | Metadata des rappels |
 | `rappels_prefs.json` | Preferences notification rappels (channel/dm) |
-| `user_stats.json` | XP, niveaux, activite des membres |
+| `user_stats.json` | XP, niveaux, activite des membres (weekly_xp, monthly_xp) |
 | `chapters_community.json` | Suivi reactions chapitres |
 | `shop_items.json` | Items de la boutique |
 | `shop_inventory.json` | Inventaires des utilisateurs |
@@ -548,12 +672,13 @@ Tous les modules respectent des delais entre appels API Discord pour eviter le C
 | `planning_meta.json` | Metadata du planning |
 | `planning_messages.json` | IDs messages planning Discord |
 | `dm_reminder_notified.json` | Suivi DM rappels roles |
+| `boss.json` | Donnees boss communautaire actif |
 
 ### Base de donnees SQLite
 
 **Fichier**: `data/lanortrad.db`
 
-**Tables**: tasks, user_stats, polls, reminders, giveaways, user_badges, user_inventory, purchases, audit_log
+**Tables**: tasks, user_stats (avec monthly_xp, month_start), polls, reminders, giveaways, user_badges, user_inventory, purchases, audit_log
 
 ---
 
@@ -598,6 +723,7 @@ Acces aux commandes de taches et planning.
 | 🏙️ Tokyo Underworld | Role manga |
 | 👹 Tougen Anki | Role manga |
 | ⚽ Catenaccio | Role manga |
+| 🌀 Uzugami | Role manga (coming soon) |
 
 ### Notifications
 
@@ -627,17 +753,18 @@ Acces aux commandes de taches et planning.
 
 | Element | Nombre |
 |---------|--------|
-| Fichiers Python | 17 |
-| Commandes publiques | ~35 |
-| Commandes admin | ~45 |
-| Background tasks | 8 |
+| Fichiers Python | 18 |
+| Commandes publiques | ~45 |
+| Commandes admin | ~50 |
+| Background tasks | 9 |
 | Event listeners | 18+ |
-| Fichiers de donnees | 20 JSON + 1 SQLite |
-| Mangas geres | 5 |
-| Roles selectionnables | 17 |
+| Fichiers de donnees | 21 JSON + 1 SQLite |
+| Mangas geres | 6 |
+| Roles selectionnables | 18 |
+| Mini-jeux | 10 |
 | Statuts de badge | 5 (Common → Legendary) |
 | Statuts de planning | 8 |
 
 ---
 
-*Derniere mise a jour: 27 Mars 2026*
+*Derniere mise a jour: 7 Avril 2026*

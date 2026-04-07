@@ -91,6 +91,10 @@ async def setup_modules(bot):
     await planning.setup(bot)
     logging.info("✅ Module Planning chargé")
 
+    import minigames
+    await minigames.setup(bot)
+    logging.info("✅ Module MiniGames chargé")
+
 
 class LanorBot(commands.Bot):
     def __init__(self):
