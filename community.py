@@ -189,7 +189,9 @@ def get_user_stats(user_id):
             "last_daily": None,
             "last_seniority_bonus": None,
             "weekly_xp": 0,
-            "week_start": datetime.now().isocalendar()[1]
+            "week_start": datetime.now().isocalendar()[1],
+            "monthly_xp": 0,
+            "month_start": datetime.now().month
         }
     else:
         # Migration on-the-fly pour les anciens profils
@@ -204,6 +206,8 @@ def get_user_stats(user_id):
         s.setdefault("xp", 0)
         s.setdefault("total_xp", 0)
         s.setdefault("weekly_xp", 0)
+        s.setdefault("monthly_xp", 0)
+        s.setdefault("month_start", datetime.now().month)
 
     return user_stats[user_id_str]
 
@@ -270,8 +274,15 @@ def add_xp(user_id, amount, reason=""):
         stats["week_start"] = current_week
         stats["weekly_xp"] = 0
 
+    # Mise à jour stats mensuelles
+    current_month = datetime.now().month
+    if stats.get("month_start") != current_month:
+        stats["month_start"] = current_month
+        stats["monthly_xp"] = 0
+
     if final_amount > 0:
         stats["weekly_xp"] = stats.get("weekly_xp", 0) + final_amount
+        stats["monthly_xp"] = stats.get("monthly_xp", 0) + final_amount
 
     sauvegarder_donnees()
 
@@ -305,10 +316,12 @@ class CommunitySystem(commands.Cog):
         charger_donnees()
         self.voice_check_loop.start()
         self.seniority_bonus_loop.start()
+        self.monthly_recap_loop.start()
 
     def cog_unload(self):
         self.voice_check_loop.cancel()
         self.seniority_bonus_loop.cancel()
+        self.monthly_recap_loop.cancel()
         sauvegarder_donnees()
 
     async def announce_level_up(self, user_id, new_level, channel=None):
@@ -648,6 +661,107 @@ class CommunitySystem(commands.Cog):
         await self.bot.wait_until_ready()
 
     # ═══════════════════════════════════════════════════════════════════════════
+    # RÉCAP MENSUEL - ANNONCE DU TOP XP DU MOIS
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    @tasks.loop(hours=24)
+    async def monthly_recap_loop(self):
+        """Annonce le classement XP du mois le 1er de chaque mois"""
+        try:
+            today = datetime.now().date()
+
+            # Ne s'exécute que le 1er du mois
+            if today.day != 1:
+                return
+
+            guild = self.bot.guilds[0] if self.bot.guilds else None
+            if not guild:
+                return
+
+            # Récupérer le mois précédent pour le titre
+            last_month = today.month - 1 if today.month > 1 else 12
+            last_year = today.year if today.month > 1 else today.year - 1
+            month_names = {
+                1: "Janvier", 2: "Février", 3: "Mars", 4: "Avril",
+                5: "Mai", 6: "Juin", 7: "Juillet", 8: "Août",
+                9: "Septembre", 10: "Octobre", 11: "Novembre", 12: "Décembre"
+            }
+            month_name = month_names[last_month]
+
+            # Trier les utilisateurs par monthly_xp (avant le reset)
+            sorted_monthly = sorted(
+                user_stats.items(),
+                key=lambda x: x[1].get("monthly_xp", 0),
+                reverse=True
+            )
+
+            # Filtrer les utilisateurs avec 0 XP et les bots
+            top_users = []
+            for user_id_str, stats in sorted_monthly:
+                monthly_xp = stats.get("monthly_xp", 0)
+                if monthly_xp <= 0:
+                    continue
+
+                member = guild.get_member(int(user_id_str))
+                if not member or member.bot:
+                    continue
+
+                top_users.append((user_id_str, stats, member, monthly_xp))
+                if len(top_users) >= 3:
+                    break
+
+            if not top_users:
+                logging.info("📊 Récap mensuel : aucun utilisateur actif ce mois-ci")
+                return
+
+            # Construire l'embed
+            medals = ["🥇", "🥈", "🥉"]
+            embed = discord.Embed(
+                title=f"🏆 CLASSEMENT DU MOIS — {month_name} {last_year}",
+                description=(
+                    f"Voici les **membres les plus actifs** du mois de {month_name} !\n"
+                    f"Bravo à tous pour votre participation 🎉"
+                ),
+                color=0xFFD700,
+                timestamp=datetime.now()
+            )
+
+            for i, (user_id_str, stats, member, monthly_xp) in enumerate(top_users):
+                level = calculate_level(stats.get("total_xp", 0))
+                embed.add_field(
+                    name=f"{medals[i]} #{i+1} — {member.display_name}",
+                    value=(
+                        f"⭐ **Nv. {level}** — 📊 **{monthly_xp:,} XP** ce mois\n"
+                        f"💬 {stats.get('messages_count', 0):,} messages • 🎤 {stats.get('voice_minutes', 0):,} min vocal"
+                    ),
+                    inline=False
+                )
+
+            # Mettre le gagnant en thumbnail
+            winner = top_users[0][2]
+            embed.set_thumbnail(url=winner.display_avatar.url)
+            embed.set_footer(text="Nouveau mois, nouveau classement — c'est reparti ! 🔥")
+
+            # Envoyer dans le channel configuré
+            recap_channel_id = CHANNELS.get("monthly_recap")
+            if recap_channel_id:
+                recap_channel = self.bot.get_channel(recap_channel_id)
+                if recap_channel:
+                    await safe_api_call(recap_channel.send, embed=embed)
+                    logging.info(f"📊 Récap mensuel envoyé dans #{recap_channel.name}")
+                else:
+                    logging.warning(f"⚠️ Channel monthly_recap introuvable (ID: {recap_channel_id})")
+            else:
+                logging.warning("⚠️ Aucun channel 'monthly_recap' configuré dans config.py")
+
+        except Exception as e:
+            logging.error(f"Erreur dans monthly_recap_loop: {e}")
+
+    @monthly_recap_loop.before_loop
+    async def before_monthly_recap(self):
+        await self.bot.wait_until_ready()
+
+    # ═══════════════════════════════════════════════════════════════════════════
     # COMMANDES - BONUS QUOTIDIEN
     # ═══════════════════════════════════════════════════════════════════════════
 
@@ -978,7 +1092,7 @@ class CommunitySystem(commands.Cog):
                 name=f"{medal} #{i} - {username}",
                 value=(
                     f"⭐ **Nv. {level}** — {stats.get('xp', stats.get('points', 0)):,} XP {streak_emoji}\n"
-                    f"📊 +{stats.get('weekly_xp', stats.get('weekly_points', 0)):,} cette semaine"
+                    f"📊 +{stats.get('weekly_xp', stats.get('weekly_points', 0)):,} cette semaine • 📅 +{stats.get('monthly_xp', 0):,} ce mois"
                 ),
                 inline=False
             )
@@ -1085,10 +1199,16 @@ class CommunitySystem(commands.Cog):
         except:
             pass
 
-        # Stats hebdomadaires
+        # Stats hebdomadaires & mensuelles
         embed.add_field(
             name="📅 Cette Semaine",
             value=f"⚡ {stats.get('weekly_xp', stats.get('weekly_points', 0)):,} XP",
+            inline=True
+        )
+
+        embed.add_field(
+            name="📆 Ce Mois",
+            value=f"⚡ {stats.get('monthly_xp', 0):,} XP",
             inline=True
         )
 

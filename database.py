@@ -65,6 +65,8 @@ class Database:
                     last_seniority_bonus TEXT,
                     weekly_xp INTEGER DEFAULT 0,
                     week_start INTEGER,
+                    monthly_xp INTEGER DEFAULT 0,
+                    month_start INTEGER,
                     joined_at TEXT,
                     last_activity TEXT,
                     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -150,6 +152,19 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_audit_date ON audit_log(created_at);
             """)
             conn.commit()
+
+            # Migration : ajouter les colonnes monthly_xp et month_start si absentes
+            try:
+                cursor = conn.execute("PRAGMA table_info(user_stats)")
+                columns = [row["name"] for row in cursor.fetchall()]
+                if "monthly_xp" not in columns:
+                    conn.execute("ALTER TABLE user_stats ADD COLUMN monthly_xp INTEGER DEFAULT 0")
+                if "month_start" not in columns:
+                    conn.execute("ALTER TABLE user_stats ADD COLUMN month_start INTEGER")
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"⚠️ Migration monthly_xp: {e}")
+
             logger.info("✅ Base de données initialisée")
         except Exception as e:
             logger.error(f"❌ Erreur initialisation BDD: {e}")
@@ -216,8 +231,9 @@ class Database:
                             INSERT OR REPLACE INTO user_stats
                             (user_id, xp, total_xp, messages_count, voice_minutes,
                              chapter_reactions, trivia_correct, daily_streak, last_daily,
-                             last_seniority_bonus, weekly_xp, week_start, joined_at, last_activity)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             last_seniority_bonus, weekly_xp, week_start,
+                             monthly_xp, month_start, joined_at, last_activity)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, (
                             int(user_id_str),
                             data.get("xp", data.get("points", 0)),
@@ -231,6 +247,8 @@ class Database:
                             data.get("last_seniority_bonus"),
                             data.get("weekly_xp", data.get("weekly_points", 0)),
                             data.get("week_start"),
+                            data.get("monthly_xp", 0),
+                            data.get("month_start"),
                             data.get("joined_at"),
                             data.get("last_activity"),
                         ))

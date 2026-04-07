@@ -171,6 +171,7 @@ CHANNELS = {
     "tickets": 1326357433588912179,
     "planning": 1332363693174034472,
     "rappels": 1431607377882382396,
+    "monthly_recap": None,  # ID du channel pour l'annonce mensuelle du top XP
 }
 
 MANGA_CHANNELS = {
