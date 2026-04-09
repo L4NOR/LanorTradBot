@@ -92,9 +92,9 @@ HELP_CATEGORIES = {
         "description": "Commandes de base accessibles à tous",
         "color": 0x3498DB,
         "commands": [
-            {"name": "help", "usage": "!help [commande]", "desc": "Affiche ce menu d'aide interactif"},
+            {"name": "help", "usage": "!help [commande]", "desc": "Affiche ce menu d'aide interactif", "example": "`!help daily` · `!help`"},
             {"name": "info", "usage": "!info", "desc": "Informations sur le serveur"},
-            {"name": "userinfo", "usage": "!userinfo [@membre]", "desc": "Détails du profil d'un membre"},
+            {"name": "userinfo", "usage": "!userinfo [@membre]", "desc": "Détails du profil d'un membre", "example": "`!userinfo @LanorTrad`"},
             {"name": "ping", "usage": "!ping", "desc": "Vérifie la latence du bot"},
             {"name": "avancee", "usage": "!avancee", "desc": "Voir l'avancée des chapitres manga"},
         ]
@@ -105,11 +105,11 @@ HELP_CATEGORIES = {
         "description": "Niveaux, XP et mini-jeux",
         "color": 0x9B59B6,
         "commands": [
-            {"name": "xp", "usage": "!xp [@membre]", "desc": "Voir votre XP et niveau"},
-            {"name": "profile", "usage": "!profile [@membre]", "desc": "Afficher votre profil"},
-            {"name": "leaderboard", "usage": "!leaderboard [page]", "desc": "Classement XP du serveur"},
+            {"name": "xp", "usage": "!xp [@membre]", "desc": "Voir votre XP et niveau", "example": "`!xp` · `!xp @user`"},
+            {"name": "profile", "usage": "!profile [@membre]", "desc": "Afficher votre profil", "example": "`!profile` · `!profile @user`"},
+            {"name": "leaderboard", "usage": "!leaderboard [page]", "desc": "Classement XP du serveur", "example": "`!leaderboard` · `!leaderboard 2`"},
             {"name": "daily", "usage": "!daily", "desc": "Récupérer votre bonus quotidien"},
-            {"name": "trivia", "usage": "!trivia [difficulté]", "desc": "Jouer au quiz"},
+            {"name": "trivia", "usage": "!trivia [difficulté]", "desc": "Jouer au quiz", "example": "`!trivia` · `!trivia hard`"},
             {"name": "guess", "usage": "!guess", "desc": "Jeu de devinette"},
         ]
     },
@@ -119,17 +119,17 @@ HELP_CATEGORIES = {
         "description": "Jeux pour gagner de l'XP",
         "color": 0xE91E63,
         "commands": [
-            {"name": "reaction", "usage": "!reaction", "desc": "Sois le premier à réagir avec le bon emoji (15 XP)"},
-            {"name": "unscramble", "usage": "!unscramble", "desc": "Remets les lettres dans le bon ordre (25 XP)"},
-            {"name": "wordle", "usage": "!wordle", "desc": "Devine le mot en 6 essais (50-100 XP)"},
-            {"name": "hangman", "usage": "!hangman", "desc": "Jeu du pendu collaboratif (30 XP)"},
-            {"name": "chain", "usage": "!chain", "desc": "Chaîne de mots — dernier debout gagne (20 XP)"},
-            {"name": "coinflip", "usage": "!coinflip <mise>", "desc": "Pile ou face — x2 ou perdu"},
-            {"name": "slots", "usage": "!slots <mise>", "desc": "Machine à sous — jackpot x15 !"},
-            {"name": "roulette", "usage": "!roulette <mise> <choix>", "desc": "Rouge/noir/vert/numéro"},
-            {"name": "duel", "usage": "!duel @user <mise>", "desc": "Défie un membre en duel d'XP"},
+            {"name": "reaction", "usage": "!reaction", "desc": "Sois le premier à réagir avec le bon emoji", "reward": "15 XP"},
+            {"name": "unscramble", "usage": "!unscramble", "desc": "Remets les lettres dans le bon ordre", "reward": "25 XP"},
+            {"name": "wordle", "usage": "!wordle", "desc": "Devine le mot en 6 essais", "reward": "50-100 XP"},
+            {"name": "hangman", "usage": "!hangman", "desc": "Jeu du pendu collaboratif", "reward": "30 XP"},
+            {"name": "chain", "usage": "!chain", "desc": "Chaîne de mots — dernier debout gagne", "reward": "20 XP"},
+            {"name": "coinflip", "usage": "!coinflip <mise>", "desc": "Pile ou face — x2 ou perdu", "example": "`!coinflip 50`"},
+            {"name": "slots", "usage": "!slots <mise>", "desc": "Machine à sous — jackpot x15 !", "example": "`!slots 100`"},
+            {"name": "roulette", "usage": "!roulette <mise> <choix>", "desc": "Rouge/noir/vert/numéro", "example": "`!roulette 50 rouge`"},
+            {"name": "duel", "usage": "!duel @user <mise>", "desc": "Défie un membre en duel d'XP", "example": "`!duel @user 100`"},
             {"name": "boss", "usage": "!boss", "desc": "Voir l'état du boss actuel"},
-            {"name": "attack", "usage": "!attack", "desc": "Attaquer le boss (5 XP/hit, 100 XP coup fatal)"},
+            {"name": "attack", "usage": "!attack", "desc": "Attaquer le boss", "reward": "5 XP/hit, 100 XP coup fatal"},
         ]
     },
     "badges": {
@@ -138,10 +138,10 @@ HELP_CATEGORIES = {
         "description": "Système de badges et récompenses",
         "color": 0xF1C40F,
         "commands": [
-            {"name": "badges", "usage": "!badges [@membre]", "desc": "Voir les badges d'un membre"},
+            {"name": "badges", "usage": "!badges [@membre]", "desc": "Voir les badges d'un membre", "example": "`!badges` · `!badges @user`"},
             {"name": "all_badges", "usage": "!all_badges", "desc": "Liste tous les badges disponibles"},
-            {"name": "badge_info", "usage": "!badge_info <nom>", "desc": "Détails d'un badge spécifique"},
-            {"name": "display_badge", "usage": "!display_badge <nom>", "desc": "Afficher un badge (max 3)"},
+            {"name": "badge_info", "usage": "!badge_info <nom>", "desc": "Détails d'un badge spécifique", "example": "`!badge_info Lecteur`"},
+            {"name": "display_badge", "usage": "!display_badge <nom>", "desc": "Afficher un badge sur ton profil (max 3)", "example": "`!display_badge Lecteur`"},
             {"name": "remove_badge", "usage": "!remove_badge <nom>", "desc": "Retirer un badge affiché"},
             {"name": "leaderboard_badges", "usage": "!leaderboard_badges", "desc": "Top collectionneurs de badges"},
         ]
@@ -152,10 +152,10 @@ HELP_CATEGORIES = {
         "description": "Boutique et système de points",
         "color": 0x2ECC71,
         "commands": [
-            {"name": "shop", "usage": "!shop [catégorie]", "desc": "Parcourir la boutique"},
-            {"name": "buy", "usage": "!buy <item>", "desc": "Acheter un item"},
+            {"name": "shop", "usage": "!shop [catégorie]", "desc": "Parcourir la boutique", "example": "`!shop` · `!shop rôles`"},
+            {"name": "buy", "usage": "!buy <item>", "desc": "Acheter un item", "example": "`!buy Couleur Or`"},
             {"name": "inventory", "usage": "!inventory [@membre]", "desc": "Voir votre inventaire"},
-            {"name": "use", "usage": "!use <item>", "desc": "Utiliser un item consommable"},
+            {"name": "use", "usage": "!use <item>", "desc": "Utiliser un item consommable", "example": "`!use Boost XP`"},
         ]
     },
     "giveaway": {
@@ -167,22 +167,38 @@ HELP_CATEGORIES = {
             {"name": "my_invites", "usage": "!my_invites", "desc": "Voir vos stats d'invitations"},
             {"name": "leaderboard_invites", "usage": "!leaderboard_invites", "desc": "Classement des invitations"},
             {"name": "list_giveaways", "usage": "!list_giveaways", "desc": "Liste des giveaways actifs"},
-            {"name": "giveaway_info", "usage": "!giveaway_info <id>", "desc": "Détails d'un giveaway"},
+            {"name": "giveaway_info", "usage": "!giveaway_info <id>", "desc": "Détails d'un giveaway", "example": "`!giveaway_info 3`"},
         ]
     },
-    "admin_tasks": {
-        "emoji": "📋",
-        "name": "Tâches",
-        "description": "Gestion des tâches de traduction",
-        "color": 0xE74C3C,
-        "admin": True,
+    "planning_public": {
+        "emoji": "📅",
+        "name": "Planning",
+        "description": "Consulter le planning des sorties",
+        "color": 0x7c3aed,
         "commands": [
-            {"name": "task", "usage": "!task <action> <manga> <chap...>", "desc": "MAJ tâche (clean/trad/check/edit)"},
-            {"name": "task_status", "usage": "!task_status <manga> <chap>", "desc": "État des tâches d'un chapitre"},
-            {"name": "task_all", "usage": "!task_all [manga]", "desc": "Toutes les tâches (optionnel: filtrer par manga)"},
-            {"name": "delete_task", "usage": "!delete_task <manga> <chap>", "desc": "Supprimer tâches d'un chapitre"},
-            {"name": "fix_tasks", "usage": "!fix_tasks", "desc": "Normaliser les clés des tâches"},
-            {"name": "actualiser", "usage": "!actualiser", "desc": "Sauvegarder/exporter les données"},
+            {"name": "planning", "usage": "!planning [manga]", "desc": "Voir le planning du mois (filtrable par manga)", "example": "`!planning` · `!planning Satsudou`"},
+        ]
+    },
+    "polls": {
+        "emoji": "📊",
+        "name": "Sondages",
+        "description": "Système de sondages interactifs",
+        "color": 0x3498DB,
+        "commands": [
+            {"name": "poll", "usage": "!poll Question | Opt1 | Opt2", "desc": "Créer un sondage", "example": "`!poll Meilleur manga ? | One Piece | Naruto`"},
+            {"name": "polls", "usage": "!polls", "desc": "Voir les sondages actifs"},
+            {"name": "poll_results", "usage": "!poll_results <id>", "desc": "Résultats détaillés d'un sondage"},
+        ]
+    },
+    "stats_serveur": {
+        "emoji": "📈",
+        "name": "Statistiques",
+        "description": "Statistiques du serveur et contributeurs",
+        "color": 0x1ABC9C,
+        "commands": [
+            {"name": "serverstats", "usage": "!serverstats", "desc": "Dashboard complet du serveur (paginé)"},
+            {"name": "membercount", "usage": "!membercount", "desc": "Nombre de membres rapide"},
+            {"name": "topcontrib", "usage": "!topcontrib", "desc": "Top contributeurs du projet"},
         ]
     },
     "rappels_public": {
@@ -192,6 +208,21 @@ HELP_CATEGORIES = {
         "color": 0xFF9800,
         "commands": [
             {"name": "rappel_pref", "usage": "!rappel_pref", "desc": "Choisir où recevoir tes rappels (channel ou DM)"},
+        ]
+    },
+    "admin_tasks": {
+        "emoji": "📋",
+        "name": "Tâches",
+        "description": "Gestion des tâches de traduction",
+        "color": 0xE74C3C,
+        "admin": True,
+        "commands": [
+            {"name": "task", "usage": "!task <action> <manga> <chap...>", "desc": "MAJ tâche (clean/trad/check/edit)", "example": "`!task clean Satsudou 45`"},
+            {"name": "task_status", "usage": "!task_status <manga> <chap>", "desc": "État des tâches d'un chapitre"},
+            {"name": "task_all", "usage": "!task_all [manga]", "desc": "Toutes les tâches (filtrer par manga)", "example": "`!task_all Satsudou`"},
+            {"name": "delete_task", "usage": "!delete_task <manga> <chap>", "desc": "Supprimer tâches d'un chapitre"},
+            {"name": "fix_tasks", "usage": "!fix_tasks", "desc": "Normaliser les clés des tâches"},
+            {"name": "actualiser", "usage": "!actualiser", "desc": "Sauvegarder/exporter les données"},
         ]
     },
     "admin_rappels": {
@@ -215,7 +246,7 @@ HELP_CATEGORIES = {
         "admin": True,
         "commands": [
             {"name": "create_giveaway", "usage": "!create_giveaway", "desc": "Créer un giveaway (interactif)"},
-            {"name": "giveaway", "usage": "!giveaway <durée> <gagnants> <prix>", "desc": "Giveaway rapide"},
+            {"name": "giveaway", "usage": "!giveaway <durée> <gagnants> <prix>", "desc": "Giveaway rapide", "example": "`!giveaway 1h 1 Tome manga`"},
             {"name": "end_giveaway", "usage": "!end_giveaway <id>", "desc": "Terminer un giveaway"},
             {"name": "delete_giveaway", "usage": "!delete_giveaway <id>", "desc": "Supprimer un giveaway"},
             {"name": "reroll", "usage": "!reroll <id> [nb]", "desc": "Retirer nouveaux gagnants"},
@@ -235,7 +266,7 @@ HELP_CATEGORIES = {
         "commands": [
             {"name": "newchapter", "usage": "!newchapter <msg_id> <manga> <chap>", "desc": "Lier chapitre au système"},
             {"name": "stats", "usage": "!stats", "desc": "Statistiques du serveur"},
-            {"name": "give_badge", "usage": "!give_badge @user <badge>", "desc": "Donner un badge"},
+            {"name": "give_badge", "usage": "!give_badge @user <badge>", "desc": "Donner un badge", "example": "`!give_badge @user Lecteur`"},
             {"name": "announce_chapter", "usage": "!announce_chapter", "desc": "Annoncer chapitre (interactif)"},
             {"name": "test_announce", "usage": "!test_announce", "desc": "Tester une annonce"},
         ]
@@ -261,18 +292,18 @@ HELP_CATEGORIES = {
         "color": 0x607D8B,
         "admin": True,
         "commands": [
-            {"name": "clear", "usage": "!clear <nombre>", "desc": "Supprimer des messages"},
+            {"name": "clear", "usage": "!clear <nombre>", "desc": "Supprimer des messages", "example": "`!clear 10`"},
             {"name": "kick", "usage": "!kick @user [raison]", "desc": "Expulser un membre"},
             {"name": "ban", "usage": "!ban @user [raison]", "desc": "Bannir un membre"},
             {"name": "unban", "usage": "!unban nom#tag", "desc": "Débannir un membre"},
             {"name": "warn", "usage": "!warn @user [raison]", "desc": "Avertir un membre"},
-            {"name": "bulk_role", "usage": "!bulk_role @role @user1 ID2...", "desc": "Assigner un rôle à plusieurs personnes"},
-            {"name": "bulk_remove_role", "usage": "!bulk_remove_role @role @user1 ID2...", "desc": "Retirer un rôle à plusieurs personnes"},
-            {"name": "multi_bulk_role", "usage": "!multi_bulk_role @role1 @role2 - @user1 ID2...", "desc": "Assigner plusieurs rôles à plusieurs personnes"},
-            {"name": "multi_bulk_remove_role", "usage": "!multi_bulk_remove_role @role1 @role2 - @user1 ID2...", "desc": "Retirer plusieurs rôles à plusieurs personnes"},
-            {"name": "bulk_role_channel", "usage": "!bulk_role_channel @role ID_CANAL", "desc": "Assigner un rôle à tous les membres d'un canal"},
-            {"name": "multi_bulk_role_channel", "usage": "!multi_bulk_role_channel @role1 @role2 - ID_CANAL", "desc": "Assigner plusieurs rôles aux membres d'un canal"},
-            {"name": "list_member_ids", "usage": "!list_member_ids ID_CIBLE", "desc": "Lister tous les IDs des membres d'un canal/fil/catégorie"},
+            {"name": "bulk_role", "usage": "!bulk_role @role @user1 ID2...", "desc": "Assigner un rôle en masse"},
+            {"name": "bulk_remove_role", "usage": "!bulk_remove_role @role @user1 ID2...", "desc": "Retirer un rôle en masse"},
+            {"name": "multi_bulk_role", "usage": "!multi_bulk_role @role1 @role2 - @user1 ID2...", "desc": "Assigner plusieurs rôles en masse"},
+            {"name": "multi_bulk_remove_role", "usage": "!multi_bulk_remove_role @role1 @role2 - @user1 ID2...", "desc": "Retirer plusieurs rôles en masse"},
+            {"name": "bulk_role_channel", "usage": "!bulk_role_channel @role ID_CANAL", "desc": "Rôle à tous les membres d'un canal"},
+            {"name": "multi_bulk_role_channel", "usage": "!multi_bulk_role_channel @role1 @role2 - ID_CANAL", "desc": "Plusieurs rôles aux membres d'un canal"},
+            {"name": "list_member_ids", "usage": "!list_member_ids ID_CIBLE", "desc": "Lister IDs des membres d'un canal"},
         ]
     },
     "admin_data": {
@@ -282,31 +313,9 @@ HELP_CATEGORIES = {
         "color": 0x795548,
         "admin": True,
         "commands": [
-            {"name": "data", "usage": "!data [action] [cible]", "desc": "Gestionnaire données"},
+            {"name": "data", "usage": "!data [action] [cible]", "desc": "Gestionnaire données", "example": "`!data export user_stats`"},
             {"name": "data_list", "usage": "!data_list", "desc": "Liste modules de données"},
             {"name": "backup", "usage": "!backup", "desc": "Sauvegarde + export complet"},
-        ]
-    },
-    "polls": {
-        "emoji": "📊",
-        "name": "Sondages",
-        "description": "Système de sondages interactifs",
-        "color": 0x3498DB,
-        "commands": [
-            {"name": "poll", "usage": "!poll Question | Opt1 | Opt2", "desc": "Créer un sondage (rapide ou interactif)"},
-            {"name": "polls", "usage": "!polls", "desc": "Voir les sondages actifs"},
-            {"name": "poll_results", "usage": "!poll_results <id>", "desc": "Résultats détaillés d'un sondage"},
-        ]
-    },
-    "stats_serveur": {
-        "emoji": "📈",
-        "name": "Statistiques",
-        "description": "Statistiques du serveur et contributeurs",
-        "color": 0x1ABC9C,
-        "commands": [
-            {"name": "serverstats", "usage": "!serverstats", "desc": "Dashboard complet du serveur (paginé)"},
-            {"name": "membercount", "usage": "!membercount", "desc": "Nombre de membres rapide"},
-            {"name": "topcontrib", "usage": "!topcontrib", "desc": "Top contributeurs du projet"},
         ]
     },
     "admin_polls": {
@@ -332,15 +341,6 @@ HELP_CATEGORIES = {
             {"name": "audit_test", "usage": "!audit_test", "desc": "Tester les logs d'audit"},
         ]
     },
-    "planning_public": {
-        "emoji": "📅",
-        "name": "Planning",
-        "description": "Consulter le planning des sorties",
-        "color": 0x7c3aed,
-        "commands": [
-            {"name": "planning", "usage": "!planning [manga]", "desc": "Voir le planning du mois (filtrable par manga)"},
-        ]
-    },
     "admin_planning": {
         "emoji": "📅",
         "name": "Admin Planning",
@@ -348,15 +348,15 @@ HELP_CATEGORIES = {
         "color": 0x7c3aed,
         "admin": True,
         "commands": [
-            {"name": "planning_add", "usage": "!planning_add [manga chap(s) AAAA-MM-JJ notes]", "desc": "Ajouter sortie(s) → auto-update #planning + ping rôle"},
-            {"name": "planning_status", "usage": "!planning_status <id> [statut]", "desc": "Changer le statut (prevu/en_cours/trad_done/edit_done/check_done/pret/sorti/retarde)"},
-            {"name": "planning_batch_status", "usage": "!planning_batch_status <statut> <id1> <id2>...", "desc": "Changer le statut de plusieurs entrées d'un coup"},
+            {"name": "planning_add", "usage": "!planning_add [manga chap(s) AAAA-MM-JJ notes]", "desc": "Ajouter sortie(s) → auto-update + ping"},
+            {"name": "planning_status", "usage": "!planning_status <id> [statut]", "desc": "Changer le statut d'une entrée", "example": "`!planning_status 5 sorti`"},
+            {"name": "planning_batch_status", "usage": "!planning_batch_status <statut> <id1> <id2>...", "desc": "Statut en masse"},
             {"name": "planning_date", "usage": "!planning_date <id> <AAAA-MM-JJ>", "desc": "Modifier la date de sortie"},
             {"name": "planning_teaser", "usage": "!planning_teaser <id> <texte>", "desc": "Ajouter/modifier un teaser spoil"},
             {"name": "planning_notes", "usage": "!planning_notes <id> <texte>", "desc": "Ajouter/modifier les notes"},
-            {"name": "planning_remove", "usage": "!planning_remove <id>", "desc": "Retirer une sortie (avec confirmation)"},
+            {"name": "planning_remove", "usage": "!planning_remove <id>", "desc": "Retirer une sortie"},
             {"name": "planning_full", "usage": "!planning_full", "desc": "Liste toutes les entrées avec IDs"},
-            {"name": "planning_post", "usage": "!planning_post", "desc": "Forcer le rafraîchissement des messages"},
+            {"name": "planning_post", "usage": "!planning_post", "desc": "Forcer le rafraîchissement"},
         ]
     },
 }
@@ -368,223 +368,242 @@ def setup(bot):
     bot_instance = bot
     bot.remove_command('help')
     
-    # ==================== NOUVELLE COMMANDE HELP ====================
-    
-    @bot.command()
-    @commands.cooldown(1, 5, commands.BucketType.user)
-    async def help(ctx, *, command_name: str = None):
-        """Affiche le menu d'aide interactif"""
-        admin_roles = ADMIN_ROLES
-        user_roles = [role.id for role in ctx.author.roles]
-        is_admin = any(role in user_roles for role in admin_roles)
-        
-        # Si une commande spécifique est demandée
-        if command_name:
-            await show_command_help(ctx, command_name, is_admin)
-            return
-        
-        # Menu principal
-        embed = create_main_help_embed(ctx, is_admin)
-        message = await ctx.send(embed=embed)
-        
-        # Ajouter les réactions
-        categories_to_show = get_available_categories(is_admin)
-        
-        await message.add_reaction("🏠")
-        for cat_key in categories_to_show:
-            cat = HELP_CATEGORIES[cat_key]
-            await message.add_reaction(cat["emoji"])
-        await message.add_reaction("❌")
-        
-        def check(reaction, user):
-            return user == ctx.author and reaction.message.id == message.id
-        
-        while True:
-            try:
-                reaction, user = await bot.wait_for("reaction_add", timeout=120, check=check)
-                emoji = str(reaction.emoji)
-                
-                await message.remove_reaction(reaction, user)
-                
-                if emoji == "❌":
-                    await message.delete()
-                    return
-                
-                if emoji == "🏠":
-                    await message.edit(embed=create_main_help_embed(ctx, is_admin))
+    # ==================== SYSTÈME HELP INTERACTIF (UI Components) ====================
+
+    # --- Views & Components ---
+
+    class HelpCategorySelect(discord.ui.Select):
+        """Menu déroulant pour naviguer entre les catégories"""
+        def __init__(self, is_admin, section="public"):
+            options = []
+            for cat_key, cat in HELP_CATEGORIES.items():
+                if cat.get("admin") and not is_admin:
                     continue
-                
-                for cat_key, cat in HELP_CATEGORIES.items():
-                    if cat["emoji"] == emoji:
-                        if cat.get("admin") and not is_admin:
-                            continue
-                        await message.edit(embed=create_category_embed(ctx, cat_key, cat))
-                        break
-                
-            except asyncio.TimeoutError:
-                try:
-                    await message.clear_reactions()
-                    timeout_embed = create_main_help_embed(ctx, is_admin)
-                    timeout_embed.set_footer(text="⏰ Menu expiré • !help pour réouvrir")
-                    await message.edit(embed=timeout_embed)
-                except:
-                    pass
-                break
-    
-    def get_available_categories(is_admin):
-        """Retourne les catégories disponibles"""
-        categories = []
-        for cat_key, cat in HELP_CATEGORIES.items():
-            if cat.get("admin") and not is_admin:
-                continue
-            categories.append(cat_key)
-        return categories
-    
+                if section == "public" and cat.get("admin"):
+                    continue
+                if section == "admin" and not cat.get("admin"):
+                    continue
+                label = cat["name"]
+                if len(label) > 25:
+                    label = label[:22] + "..."
+                options.append(discord.SelectOption(
+                    label=label,
+                    value=cat_key,
+                    emoji=cat["emoji"],
+                    description=f"{len(cat['commands'])} commande(s)"
+                ))
+            if not options:
+                options.append(discord.SelectOption(label="Aucune catégorie", value="none"))
+            placeholder = "🌐 Choisir une catégorie..." if section == "public" else "🔧 Administration..."
+            super().__init__(placeholder=placeholder, options=options, row=0 if section == "public" else 1)
+            self.is_admin = is_admin
+
+        async def callback(self, interaction: discord.Interaction):
+            if self.values[0] == "none":
+                return
+            cat_key = self.values[0]
+            cat = HELP_CATEGORIES[cat_key]
+            embed = create_category_embed(interaction, cat_key, cat)
+            await interaction.response.edit_message(embed=embed)
+
+    class HelpView(discord.ui.View):
+        """Vue principale du menu d'aide avec composants UI"""
+        def __init__(self, ctx, is_admin):
+            super().__init__(timeout=180)
+            self.ctx = ctx
+            self.is_admin = is_admin
+            self.message = None
+
+            # Ajouter le menu déroulant public
+            public_cats = [k for k, v in HELP_CATEGORIES.items() if not v.get("admin")]
+            if public_cats:
+                self.add_item(HelpCategorySelect(is_admin, section="public"))
+
+            # Ajouter le menu déroulant admin si admin
+            if is_admin:
+                admin_cats = [k for k, v in HELP_CATEGORIES.items() if v.get("admin")]
+                if admin_cats:
+                    self.add_item(HelpCategorySelect(is_admin, section="admin"))
+
+        async def interaction_check(self, interaction: discord.Interaction) -> bool:
+            if interaction.user.id != self.ctx.author.id:
+                await interaction.response.send_message(
+                    "Ce menu ne t'appartient pas ! Fais `!help` pour le tien.",
+                    ephemeral=True
+                )
+                return False
+            return True
+
+        async def on_timeout(self):
+            try:
+                for item in self.children:
+                    item.disabled = True
+                if self.message:
+                    timeout_embed = create_main_help_embed(self.ctx, self.is_admin)
+                    timeout_embed.set_footer(text="⏰ Menu expiré — !help pour réouvrir")
+                    timeout_embed.color = 0x2f3136
+                    await self.message.edit(embed=timeout_embed, view=self)
+            except Exception:
+                pass
+
+        @discord.ui.button(label="Accueil", emoji="🏠", style=discord.ButtonStyle.primary, row=2)
+        async def home_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+            embed = create_main_help_embed(self.ctx, self.is_admin)
+            await interaction.response.edit_message(embed=embed)
+
+        @discord.ui.button(label="Fermer", emoji="🗑️", style=discord.ButtonStyle.danger, row=2)
+        async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+            await interaction.message.delete()
+            self.stop()
+
+    # --- Embed Builders ---
+
     def create_main_help_embed(ctx, is_admin):
-        """Crée l'embed principal du menu d'aide"""
+        """Crée l'embed principal du menu d'aide — design modernisé"""
         embed = discord.Embed(color=0x5865F2, timestamp=datetime.now())
-        
+
+        guild_icon = None
+        if hasattr(ctx, 'guild') and ctx.guild and ctx.guild.icon:
+            guild_icon = ctx.guild.icon.url
+
         embed.set_author(
-            name="📚 Centre d'Aide • LanorTrad Bot",
-            icon_url=ctx.guild.icon.url if ctx.guild.icon else None
+            name="Centre d'Aide — LanorTrad Bot",
+            icon_url=guild_icon
         )
-        
-        # Header avec ASCII art simplifié
+
+        # Header
         description = (
             "```ansi\n"
-            "\u001b[1;36m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;36m║\u001b[0m   \u001b[1;37mBienvenue dans le menu d'aide !\u001b[0m   \u001b[1;36m║\u001b[0m\n"
-            "\u001b[1;36m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "\u001b[1;36m╔══════════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;36m║\u001b[0m  \u001b[1;37m✦  Bienvenue dans le Centre d'Aide  ✦\u001b[0m  \u001b[1;36m║\u001b[0m\n"
+            "\u001b[1;36m╚══════════════════════════════════════════╝\u001b[0m\n"
             "```\n"
-            "🔹 Cliquez sur un **emoji** pour voir une catégorie\n"
-            "🔹 Utilisez `!help <commande>` pour des détails\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "> Utilise le **menu déroulant** ci-dessous pour explorer les catégories.\n"
+            "> Ou tape `!help <commande>` pour les détails d'une commande.\n"
         )
         embed.description = description
-        
-        # Catégories publiques
-        public_cats = ""
-        for cat_key in ["general", "community", "badges", "shop", "giveaway"]:
+
+        # Catégories publiques — format compact en 2 colonnes
+        public_keys = [k for k, v in HELP_CATEGORIES.items() if not v.get("admin")]
+        col1 = ""
+        col2 = ""
+        for i, cat_key in enumerate(public_keys):
             cat = HELP_CATEGORIES[cat_key]
-            cmd_count = len(cat["commands"])
-            public_cats += f"{cat['emoji']} **{cat['name']}** › `{cmd_count}` cmds\n"
-        
-        embed.add_field(
-            name="🌐 __Commandes Publiques__",
-            value=public_cats,
-            inline=True
-        )
-        
+            line = f"{cat['emoji']} **{cat['name']}** · `{len(cat['commands'])}`\n"
+            if i < (len(public_keys) + 1) // 2:
+                col1 += line
+            else:
+                col2 += line
+
+        embed.add_field(name="🌐  Commandes Publiques", value=col1 or "—", inline=True)
+        if col2:
+            embed.add_field(name="\u200b", value=col2, inline=True)
+
         # Catégories admin
         if is_admin:
-            admin_cats_1 = ""
-            admin_cats_2 = ""
-            admin_list = [k for k, v in HELP_CATEGORIES.items() if v.get("admin")]
-            
-            for i, cat_key in enumerate(admin_list):
+            admin_keys = [k for k, v in HELP_CATEGORIES.items() if v.get("admin")]
+            acol1 = ""
+            acol2 = ""
+            for i, cat_key in enumerate(admin_keys):
                 cat = HELP_CATEGORIES[cat_key]
-                cmd_count = len(cat["commands"])
-                line = f"{cat['emoji']} **{cat['name']}** › `{cmd_count}`\n"
-                if i < len(admin_list) // 2 + 1:
-                    admin_cats_1 += line
+                line = f"{cat['emoji']} **{cat['name']}** · `{len(cat['commands'])}`\n"
+                if i < (len(admin_keys) + 1) // 2:
+                    acol1 += line
                 else:
-                    admin_cats_2 += line
-            
-            embed.add_field(
-                name="🔧 __Administration__",
-                value=admin_cats_1,
-                inline=True
-            )
-            if admin_cats_2:
-                embed.add_field(
-                    name="​",  # Caractère invisible
-                    value=admin_cats_2,
-                    inline=True
-                )
-        
-        # Stats
-        total_cmds = sum(len(cat["commands"]) for cat in HELP_CATEGORIES.values() 
+                    acol2 += line
+
+            embed.add_field(name="\u200b", value="\u200b", inline=False)  # Spacer
+            embed.add_field(name="🔧  Administration", value=acol1 or "—", inline=True)
+            if acol2:
+                embed.add_field(name="\u200b", value=acol2, inline=True)
+
+        # Stats footer
+        total_cmds = sum(len(cat["commands"]) for cat in HELP_CATEGORIES.values()
                         if not cat.get("admin") or is_admin)
-        total_public = sum(len(cat["commands"]) for cat in HELP_CATEGORIES.values() 
+        total_public = sum(len(cat["commands"]) for cat in HELP_CATEGORIES.values()
                           if not cat.get("admin"))
-        
-        embed.add_field(
-            name="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-            value=(
-                f"📊 **{total_cmds}** commandes disponibles "
-                f"({total_public} publiques)\n"
-                f"🏠 `Accueil` • ❌ `Fermer`"
-            ),
-            inline=False
-        )
-        
+
+        author = ctx.author if hasattr(ctx, 'author') else ctx.user
         embed.set_footer(
-            text=f"Demandé par {ctx.author.name} │ Préfixe: !",
-            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+            text=f"{total_cmds} commandes ({total_public} publiques) │ {author.name}",
+            icon_url=author.avatar.url if author.avatar else None
         )
-        
-        if ctx.guild.icon:
-            embed.set_thumbnail(url=ctx.guild.icon.url)
-        
+
+        if guild_icon:
+            embed.set_thumbnail(url=guild_icon)
+
         return embed
-    
+
     def create_category_embed(ctx, cat_key, cat):
-        """Crée l'embed d'une catégorie"""
+        """Crée l'embed d'une catégorie — design amélioré avec exemples et rewards"""
         embed = discord.Embed(color=cat["color"], timestamp=datetime.now())
-        
+
+        guild_icon = None
+        if hasattr(ctx, 'guild') and ctx.guild and ctx.guild.icon:
+            guild_icon = ctx.guild.icon.url
+        elif hasattr(ctx, 'message') and ctx.message and ctx.message.guild and ctx.message.guild.icon:
+            guild_icon = ctx.message.guild.icon.url
+
         embed.set_author(
-            name=f"{cat['emoji']} {cat['name']}",
-            icon_url=ctx.guild.icon.url if ctx.guild.icon else None
+            name=f"{cat['emoji']}  {cat['name']}",
+            icon_url=guild_icon
         )
-        
+
+        # Bandeau admin
         if cat.get("admin"):
-            embed.description = f"🔒 *Réservé aux administrateurs*\n\n{cat['description']}\n"
+            embed.description = f"🔒 **Réservé aux administrateurs**\n> {cat['description']}\n"
         else:
-            embed.description = f"*{cat['description']}*\n"
-        
-        # Construire la liste des commandes
-        cmd_list = ""
+            embed.description = f"> {cat['description']}\n"
+
+        # Construire la liste des commandes — format enrichi
+        cmd_lines = []
         for cmd in cat["commands"]:
-            cmd_list += f"**`{cmd['usage']}`**\n"
-            cmd_list += f"└ {cmd['desc']}\n\n"
-        
-        # Split si trop long
-        if len(cmd_list) > 1024:
-            mid = len(cat["commands"]) // 2
-            
-            first = ""
-            for cmd in cat["commands"][:mid]:
-                first += f"**`{cmd['usage']}`**\n└ {cmd['desc']}\n\n"
-            
-            second = ""
-            for cmd in cat["commands"][mid:]:
-                second += f"**`{cmd['usage']}`**\n└ {cmd['desc']}\n\n"
-            
-            embed.add_field(name="📖 Commandes", value=first.strip(), inline=False)
-            embed.add_field(name="​", value=second.strip(), inline=False)
+            line = f"### `{cmd['usage']}`\n"
+            line += f"↳ {cmd['desc']}"
+            if cmd.get("reward"):
+                line += f"  ·  🏅 **{cmd['reward']}**"
+            if cmd.get("example"):
+                line += f"\n> 💡 {cmd['example']}"
+            cmd_lines.append(line)
+
+        full_text = "\n".join(cmd_lines)
+
+        # Split en plusieurs fields si trop long (limite 4096 pour description, 1024 par field)
+        if len(full_text) <= 4096 - len(embed.description or ""):
+            embed.description += "\n" + full_text
         else:
-            embed.add_field(name="📖 Commandes", value=cmd_list.strip(), inline=False)
-        
-        embed.add_field(
-            name="━━━━━━━━━━━━━━━━━━━━",
-            value="🏠 `Accueil` • ❌ `Fermer`\n`!help <cmd>` pour plus de détails",
-            inline=False
-        )
-        
+            # Découper en chunks pour les fields
+            chunks = []
+            current = ""
+            for line in cmd_lines:
+                if len(current) + len(line) + 1 > 1024:
+                    chunks.append(current)
+                    current = line
+                else:
+                    current += "\n" + line if current else line
+            if current:
+                chunks.append(current)
+
+            for i, chunk in enumerate(chunks):
+                name = "📖 Commandes" if i == 0 else "\u200b"
+                embed.add_field(name=name, value=chunk, inline=False)
+
+        # Footer
+        author = ctx.author if hasattr(ctx, 'author') else ctx.user
         embed.set_footer(
-            text=f"{len(cat['commands'])} commande(s) │ {ctx.author.name}",
-            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+            text=f"{len(cat['commands'])} commande(s) │ 🏠 Accueil pour revenir │ {author.name}",
+            icon_url=author.avatar.url if author.avatar else None
         )
-        
+
         return embed
-    
+
     async def show_command_help(ctx, command_name, is_admin):
-        """Aide détaillée d'une commande"""
+        """Aide détaillée d'une commande — design enrichi"""
         command_name = command_name.lower().strip().lstrip('!')
-        
+
         found_cmd = None
         found_cat = None
-        
+
         for cat_key, cat in HELP_CATEGORIES.items():
             if cat.get("admin") and not is_admin:
                 continue
@@ -595,53 +614,112 @@ def setup(bot):
                     break
             if found_cmd:
                 break
-        
+
         if not found_cmd:
+            # Suggestion de commandes similaires
+            all_names = []
+            for cat in HELP_CATEGORIES.values():
+                if cat.get("admin") and not is_admin:
+                    continue
+                for cmd in cat["commands"]:
+                    all_names.append(cmd["name"])
+
+            suggestions = [n for n in all_names if command_name in n or n in command_name][:3]
+            suggest_text = ""
+            if suggestions:
+                suggest_text = "\n\n💡 **Peut-être :**\n" + "\n".join(f"› `!{s}`" for s in suggestions)
+
             embed = discord.Embed(
-                title="❌ Commande Introuvable",
                 description=(
+                    f"```ansi\n"
+                    f"\u001b[1;31m╔══════════════════════════════════╗\u001b[0m\n"
+                    f"\u001b[1;31m║\u001b[0m   \u001b[1;37m❌ Commande Introuvable\u001b[0m      \u001b[1;31m║\u001b[0m\n"
+                    f"\u001b[1;31m╚══════════════════════════════════╝\u001b[0m\n"
+                    f"```\n"
                     f"La commande `{command_name}` n'existe pas "
-                    f"ou vous n'y avez pas accès.\n\n"
+                    f"ou vous n'y avez pas accès."
+                    f"{suggest_text}\n\n"
                     f"Utilisez `!help` pour voir toutes les commandes."
                 ),
-                color=discord.Color.red()
+                color=0xE74C3C
             )
-            await ctx.send(embed=embed, delete_after=10)
+            await ctx.send(embed=embed, delete_after=15)
             return
-        
-        embed = discord.Embed(
-            title=f"📖 Commande: !{found_cmd['name']}",
-            color=found_cat["color"],
-            timestamp=datetime.now()
+
+        embed = discord.Embed(color=found_cat["color"], timestamp=datetime.now())
+
+        guild_icon = ctx.guild.icon.url if ctx.guild and ctx.guild.icon else None
+        embed.set_author(
+            name=f"📖  Détails — !{found_cmd['name']}",
+            icon_url=guild_icon
         )
-        
+
+        # Description principale
+        desc = f"## {found_cat['emoji']} {found_cmd['name']}\n"
+        desc += f"> {found_cmd['desc']}\n"
+        embed.description = desc
+
+        # Syntaxe
         embed.add_field(
-            name="📝 Description",
-            value=found_cmd["desc"],
+            name="⌨️  Syntaxe",
+            value=f"```\n{found_cmd['usage']}\n```",
             inline=False
         )
+
+        # Exemple si disponible
+        if found_cmd.get("example"):
+            embed.add_field(
+                name="💡  Exemple",
+                value=found_cmd["example"],
+                inline=False
+            )
+
+        # Récompense si disponible
+        if found_cmd.get("reward"):
+            embed.add_field(
+                name="🏅  Récompense",
+                value=f"**{found_cmd['reward']}**",
+                inline=True
+            )
+
+        # Infos
         embed.add_field(
-            name="⌨️ Syntaxe",
-            value=f"```{found_cmd['usage']}```",
-            inline=False
-        )
-        embed.add_field(
-            name="📁 Catégorie",
+            name="📁  Catégorie",
             value=f"{found_cat['emoji']} {found_cat['name']}",
             inline=True
         )
         embed.add_field(
-            name="🔐 Permission",
+            name="🔐  Permission",
             value="🔒 Admin" if found_cat.get("admin") else "🔓 Tous",
             inline=True
         )
-        
+
         embed.set_footer(
-            text=f"Demandé par {ctx.author.name}",
+            text=f"Demandé par {ctx.author.name} │ !help pour le menu complet",
             icon_url=ctx.author.avatar.url if ctx.author.avatar else None
         )
-        
+
         await ctx.send(embed=embed)
+
+    # --- Commande Help ---
+
+    @bot.command()
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    async def help(ctx, *, command_name: str = None):
+        """Affiche le menu d'aide interactif"""
+        user_roles = [role.id for role in ctx.author.roles]
+        is_admin = any(role in user_roles for role in ADMIN_ROLES)
+
+        # Aide d'une commande spécifique
+        if command_name:
+            await show_command_help(ctx, command_name, is_admin)
+            return
+
+        # Menu principal avec composants UI
+        embed = create_main_help_embed(ctx, is_admin)
+        view = HelpView(ctx, is_admin)
+        message = await ctx.send(embed=embed, view=view)
+        view.message = message
     
     # ==================== AUTRES COMMANDES ====================
     
