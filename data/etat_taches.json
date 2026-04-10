@@ -2,20 +2,20 @@
     "tougen anki_231": {
         "clean": "✅ Terminé",
         "trad": "✅ Terminé",
-        "check": "✅ Terminé",
+        "check": "❌ Non commencé",
         "edit": "✅ Terminé"
     },
     "tougen anki_232": {
         "clean": "✅ Terminé",
         "trad": "✅ Terminé",
         "check": "❌ Non commencé",
-        "edit": "✅ Terminé"
+        "edit": "❌ Non commencé"
     },
     "tougen anki_233": {
         "clean": "✅ Terminé",
         "trad": "✅ Terminé",
         "check": "❌ Non commencé",
-        "edit": "✅ Terminé"
+        "edit": "❌ Non commencé"
     },
     "tougen anki_234": {
         "clean": "✅ Terminé",
@@ -197,21 +197,63 @@
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
-    "tougen anki_264": {
+    "catenaccio_47": {
         "clean": "✅ Terminé",
-        "trad": "❌ Non commencé",
+        "trad": "✅ Terminé",
+        "check": "❌ Non commencé",
+        "edit": "✅ Terminé"
+    },
+    "catenaccio_48": {
+        "clean": "✅ Terminé",
+        "trad": "✅ Terminé",
+        "check": "❌ Non commencé",
+        "edit": "✅ Terminé"
+    },
+    "catenaccio_49": {
+        "clean": "✅ Terminé",
+        "trad": "✅ Terminé",
+        "check": "❌ Non commencé",
+        "edit": "✅ Terminé"
+    },
+    "catenaccio_50": {
+        "clean": "✅ Terminé",
+        "trad": "✅ Terminé",
+        "check": "❌ Non commencé",
+        "edit": "✅ Terminé"
+    },
+    "catenaccio_51": {
+        "clean": "✅ Terminé",
+        "trad": "✅ Terminé",
+        "check": "❌ Non commencé",
+        "edit": "✅ Terminé"
+    },
+    "catenaccio_52": {
+        "clean": "✅ Terminé",
+        "trad": "✅ Terminé",
+        "check": "❌ Non commencé",
+        "edit": "✅ Terminé"
+    },
+    "catenaccio_53": {
+        "clean": "✅ Terminé",
+        "trad": "✅ Terminé",
+        "check": "❌ Non commencé",
+        "edit": "✅ Terminé"
+    },
+    "catenaccio_54": {
+        "clean": "✅ Terminé",
+        "trad": "✅ Terminé",
+        "check": "❌ Non commencé",
+        "edit": "✅ Terminé"
+    },
+    "catenaccio_55": {
+        "clean": "✅ Terminé",
+        "trad": "✅ Terminé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
-    "tougen anki_265": {
+    "catenaccio_56": {
         "clean": "✅ Terminé",
-        "trad": "❌ Non commencé",
-        "check": "❌ Non commencé",
-        "edit": "❌ Non commencé"
-    },
-    "tougen anki_266": {
-        "clean": "✅ Terminé",
-        "trad": "❌ Non commencé",
+        "trad": "✅ Terminé",
         "check": "❌ Non commencé",
         "edit": "❌ Non commencé"
     },
@@ -372,12 +414,6 @@
         "edit": "❌ Non commencé"
     },
     "catenaccio_83": {
-        "clean": "✅ Terminé",
-        "trad": "❌ Non commencé",
-        "check": "❌ Non commencé",
-        "edit": "❌ Non commencé"
-    },
-    "catenaccio_84": {
         "clean": "✅ Terminé",
         "trad": "❌ Non commencé",
         "check": "❌ Non commencé",
