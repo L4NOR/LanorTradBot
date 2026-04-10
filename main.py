@@ -18,6 +18,7 @@ def signal_handler(signum, frame):
     sig_name = signal.Signals(signum).name
     logging.warning(f"⚠️ SIGNAL REÇU: {sig_name} ({signum})")
     logging.warning(f"⚠️ Stack trace au moment du signal:\n{''.join(traceback.format_stack(frame))}")
+    raise KeyboardInterrupt
 
 signal.signal(signal.SIGTERM, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)
