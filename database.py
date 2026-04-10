@@ -134,6 +134,34 @@ class Database:
                     purchased_at TEXT DEFAULT CURRENT_TIMESTAMP
                 );
 
+                -- Table des stats de mini-jeux
+                CREATE TABLE IF NOT EXISTS minigame_stats (
+                    user_id INTEGER NOT NULL,
+                    game TEXT NOT NULL,
+                    played INTEGER DEFAULT 0,
+                    wins INTEGER DEFAULT 0,
+                    losses INTEGER DEFAULT 0,
+                    xp_earned INTEGER DEFAULT 0,
+                    xp_lost INTEGER DEFAULT 0,
+                    best_streak INTEGER DEFAULT 0,
+                    current_streak INTEGER DEFAULT 0,
+                    fastest_win_seconds REAL,
+                    last_played TEXT,
+                    PRIMARY KEY(user_id, game)
+                );
+
+                -- Table de l'état des boss communautaires
+                CREATE TABLE IF NOT EXISTS boss_state (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    active INTEGER DEFAULT 0,
+                    name TEXT,
+                    max_hp INTEGER DEFAULT 0,
+                    hp INTEGER DEFAULT 0,
+                    participants TEXT DEFAULT '{}',
+                    spawned_at TEXT,
+                    channel_id INTEGER
+                );
+
                 -- Table des logs d'audit (historique)
                 CREATE TABLE IF NOT EXISTS audit_log (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -150,6 +178,8 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_user_stats_xp ON user_stats(total_xp DESC);
                 CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action);
                 CREATE INDEX IF NOT EXISTS idx_audit_date ON audit_log(created_at);
+                CREATE INDEX IF NOT EXISTS idx_minigame_game ON minigame_stats(game);
+                CREATE INDEX IF NOT EXISTS idx_minigame_user ON minigame_stats(user_id);
             """)
             conn.commit()
 
@@ -352,6 +382,135 @@ class Database:
         return self.fetch_all(
             "SELECT * FROM audit_log ORDER BY created_at DESC LIMIT ?",
             (limit,)
+        )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # MINI-JEUX
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def record_minigame(self, user_id, game, won, xp_delta=0, duration_seconds=None):
+        """Enregistre une partie de mini-jeu.
+
+        - won: True (victoire), False (défaite), None (neutre / participation)
+        - xp_delta: signed (positif = gain, négatif = perte)
+        - duration_seconds: optionnel, pour suivre le meilleur temps
+        """
+        conn = self._get_conn()
+        try:
+            conn.execute(
+                "INSERT OR IGNORE INTO minigame_stats (user_id, game) VALUES (?, ?)",
+                (user_id, game),
+            )
+            now_iso = datetime.now().isoformat()
+
+            if won is True:
+                gain = max(0, xp_delta)
+                conn.execute(
+                    """
+                    UPDATE minigame_stats
+                    SET played = played + 1,
+                        wins = wins + 1,
+                        xp_earned = xp_earned + ?,
+                        current_streak = current_streak + 1,
+                        best_streak = MAX(best_streak, current_streak + 1),
+                        fastest_win_seconds = CASE
+                            WHEN ? IS NULL THEN fastest_win_seconds
+                            WHEN fastest_win_seconds IS NULL THEN ?
+                            ELSE MIN(fastest_win_seconds, ?)
+                        END,
+                        last_played = ?
+                    WHERE user_id = ? AND game = ?
+                    """,
+                    (gain, duration_seconds, duration_seconds, duration_seconds, now_iso, user_id, game),
+                )
+            elif won is False:
+                loss = max(0, -xp_delta) if xp_delta and xp_delta < 0 else 0
+                conn.execute(
+                    """
+                    UPDATE minigame_stats
+                    SET played = played + 1,
+                        losses = losses + 1,
+                        xp_lost = xp_lost + ?,
+                        current_streak = 0,
+                        last_played = ?
+                    WHERE user_id = ? AND game = ?
+                    """,
+                    (loss, now_iso, user_id, game),
+                )
+            else:
+                conn.execute(
+                    """
+                    UPDATE minigame_stats
+                    SET played = played + 1,
+                        last_played = ?
+                    WHERE user_id = ? AND game = ?
+                    """,
+                    (now_iso, user_id, game),
+                )
+            conn.commit()
+        except Exception as e:
+            logger.error(f"❌ record_minigame: {e}")
+            conn.rollback()
+        finally:
+            conn.close()
+
+    def get_minigame_stats(self, user_id, game=None):
+        """Récupère les stats de mini-jeux d'un utilisateur."""
+        if game:
+            return self.fetch_one(
+                "SELECT * FROM minigame_stats WHERE user_id = ? AND game = ?",
+                (user_id, game),
+            )
+        return self.fetch_all(
+            "SELECT * FROM minigame_stats WHERE user_id = ? ORDER BY played DESC",
+            (user_id,),
+        )
+
+    def get_minigame_totals(self, user_id):
+        """Totaux agrégés tous jeux confondus pour un utilisateur."""
+        return self.fetch_one(
+            """
+            SELECT
+                COALESCE(SUM(played), 0) AS played,
+                COALESCE(SUM(wins), 0) AS wins,
+                COALESCE(SUM(losses), 0) AS losses,
+                COALESCE(SUM(xp_earned), 0) AS xp_earned,
+                COALESCE(SUM(xp_lost), 0) AS xp_lost,
+                COALESCE(MAX(best_streak), 0) AS best_streak
+            FROM minigame_stats
+            WHERE user_id = ?
+            """,
+            (user_id,),
+        )
+
+    def get_minigame_leaderboard(self, game=None, limit=10, sort_by="wins"):
+        """Top des joueurs (par jeu ou global). sort_by: wins | xp_earned | played"""
+        if sort_by not in ("wins", "xp_earned", "played"):
+            sort_by = "wins"
+        if game:
+            return self.fetch_all(
+                f"""
+                SELECT user_id, wins, played, xp_earned, best_streak
+                FROM minigame_stats
+                WHERE game = ?
+                ORDER BY {sort_by} DESC, xp_earned DESC
+                LIMIT ?
+                """,
+                (game, limit),
+            )
+        return self.fetch_all(
+            f"""
+            SELECT user_id,
+                   SUM(wins) AS wins,
+                   SUM(played) AS played,
+                   SUM(xp_earned) AS xp_earned,
+                   MAX(best_streak) AS best_streak
+            FROM minigame_stats
+            GROUP BY user_id
+            ORDER BY {sort_by} DESC, xp_earned DESC
+            LIMIT ?
+            """,
+            (limit,),
         )
 
     # ─────────────────────────────────────────────────────────────────────────

@@ -7,10 +7,12 @@ import discord
 from discord.ext import commands, tasks
 import random
 import asyncio
+import time
 import unicodedata
 from datetime import datetime, timedelta
 from config import COLORS, POINTS_ALLOWED_CHANNELS
 from community import add_xp, get_user_stats, sauvegarder_donnees, calculate_level, xp_progress, generate_xp_bar
+from database import db
 from utils import safe_api_call, load_json, save_json
 import logging
 
@@ -99,6 +101,21 @@ def remove_xp(user_id, amount):
     sauvegarder_donnees()
 
 
+def fmt_deadline(seconds_from_now):
+    """Retourne un timestamp Discord relatif (ex: <t:1234567890:R>)"""
+    return f"<t:{int(time.time()) + int(seconds_from_now)}:R>"
+
+
+async def announce_level_up_safe(bot, user_id, new_level):
+    """Annonce un level-up sans casser le flux du jeu en cas d'erreur."""
+    try:
+        cog = bot.get_cog("CommunitySystem")
+        if cog:
+            await cog.announce_level_up(user_id, new_level)
+    except Exception as e:
+        logger.warning(f"announce_level_up failed: {e}")
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # COG PRINCIPAL
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -108,7 +125,8 @@ class MiniGames(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.active_games = {}  # channel_id -> type de jeu actif
+        # channel_id -> {"type": str, "owner_id": int|None}
+        self.active_games = {}
         self.boss_data = load_json(BOSS_FILE, {})
         self.attack_cooldowns = {}  # user_id -> datetime
 
@@ -118,8 +136,11 @@ class MiniGames(commands.Cog):
     def _is_game_active(self, channel_id):
         return channel_id in self.active_games
 
-    def _set_game(self, channel_id, game_type):
-        self.active_games[channel_id] = game_type
+    def _get_game(self, channel_id):
+        return self.active_games.get(channel_id)
+
+    def _set_game(self, channel_id, game_type, owner_id=None):
+        self.active_games[channel_id] = {"type": game_type, "owner_id": owner_id}
 
     def _clear_game(self, channel_id):
         self.active_games.pop(channel_id, None)
@@ -135,7 +156,7 @@ class MiniGames(commands.Cog):
         if self._is_game_active(ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
 
-        self._set_game(ctx.channel.id, "reaction")
+        self._set_game(ctx.channel.id, "reaction", owner_id=None)
 
         try:
             target_emoji = random.choice(REACTION_EMOJIS)
@@ -143,16 +164,25 @@ class MiniGames(commands.Cog):
 
             embed = discord.Embed(
                 title="🎯 Jeu de Réaction",
-                description="Préparez-vous... Un emoji va apparaître !\nSoyez le **premier** à réagir avec le bon emoji !",
+                description=(
+                    f"Lancé par {ctx.author.mention}\n"
+                    "Préparez-vous... Un emoji va apparaître !\n"
+                    "Soyez le **premier** à réagir avec le bon emoji !"
+                ),
                 color=COLORS["info"]
             )
             msg = await ctx.send(embed=embed)
 
             await asyncio.sleep(delay)
 
-            embed.description = f"# RÉAGIS AVEC {target_emoji} !"
+            embed.description = (
+                f"# RÉAGIS AVEC {target_emoji} !\n"
+                f"⏱️ Expire {fmt_deadline(10)}"
+            )
             embed.color = 0xFF0000
             await msg.edit(embed=embed)
+
+            start_time = time.time()
 
             def check(reaction, user):
                 return (
@@ -163,20 +193,23 @@ class MiniGames(commands.Cog):
 
             try:
                 reaction, winner = await self.bot.wait_for("reaction_add", check=check, timeout=10)
+                elapsed = time.time() - start_time
                 xp_earned, _, level_up, new_level = add_xp(winner.id, MINIGAME_XP["reaction"], "reaction_game")
+                db.record_minigame(winner.id, "reaction", True, xp_earned, duration_seconds=elapsed)
 
                 embed = discord.Embed(
                     title="🎯 Réaction — Victoire !",
-                    description=f"{winner.mention} a été le plus rapide !\n**+{xp_earned} XP** gagnés !",
+                    description=(
+                        f"{winner.mention} a été le plus rapide !\n"
+                        f"⚡ **{elapsed:.2f}s** de réaction\n"
+                        f"**+{xp_earned} XP** gagnés !"
+                    ),
                     color=COLORS["success"]
                 )
                 await msg.edit(embed=embed)
 
                 if level_up:
-                    from community import CommunitySystem
-                    cog = self.bot.get_cog("CommunitySystem")
-                    if cog:
-                        await cog.announce_level_up(winner.id, new_level)
+                    await announce_level_up_safe(self.bot, winner.id, new_level)
 
             except asyncio.TimeoutError:
                 embed = discord.Embed(
@@ -193,13 +226,14 @@ class MiniGames(commands.Cog):
     # ═══════════════════════════════════════════════════════════════════════════
 
     @commands.command(name="unscramble")
-    @commands.cooldown(1, 15, commands.BucketType.channel)
+    @commands.cooldown(1, 15, commands.BucketType.user)
     async def unscramble_game(self, ctx):
-        """Remets les lettres dans le bon ordre !"""
+        """[Solo] Remets les lettres dans le bon ordre !"""
         if self._is_game_active(ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
 
-        self._set_game(ctx.channel.id, "unscramble")
+        self._set_game(ctx.channel.id, "unscramble", owner_id=ctx.author.id)
+        timeout = 30
 
         try:
             word = random.choice(MANGA_WORDS)
@@ -212,38 +246,50 @@ class MiniGames(commands.Cog):
 
             embed = discord.Embed(
                 title="🔤 Unscramble",
-                description=f"Remettez les lettres dans le bon ordre !\n\n# `{scrambled}`\n\n*{len(word)} lettres — 30 secondes*",
+                description=(
+                    f"👤 Joueur : {ctx.author.mention}\n"
+                    f"⏱️ Temps : {fmt_deadline(timeout)}\n\n"
+                    f"# `{scrambled}`\n\n"
+                    f"*{len(word)} lettres — réponds dans le chat !*"
+                ),
                 color=COLORS["info"]
             )
+            embed.set_footer(text="Jeu solo — seul le joueur qui a lancé peut répondre")
             await ctx.send(embed=embed)
 
             def check(m):
                 return (
                     m.channel.id == ctx.channel.id
-                    and not m.author.bot
+                    and m.author.id == ctx.author.id
                     and normalize(m.content.strip()) == normalize(word)
                 )
 
+            start = time.time()
             try:
-                msg = await self.bot.wait_for("message", check=check, timeout=30)
-                xp_earned, _, level_up, new_level = add_xp(msg.author.id, MINIGAME_XP["unscramble"], "unscramble")
+                msg = await self.bot.wait_for("message", check=check, timeout=timeout)
+                elapsed = time.time() - start
+                xp_earned, _, level_up, new_level = add_xp(ctx.author.id, MINIGAME_XP["unscramble"], "unscramble")
+                db.record_minigame(ctx.author.id, "unscramble", True, xp_earned, duration_seconds=elapsed)
 
                 embed = discord.Embed(
                     title="🔤 Unscramble — Bravo !",
-                    description=f"{msg.author.mention} a trouvé le mot **{word}** !\n**+{xp_earned} XP** gagnés !",
+                    description=(
+                        f"{ctx.author.mention} a trouvé le mot **{word}** !\n"
+                        f"⚡ Résolu en **{elapsed:.1f}s**\n"
+                        f"**+{xp_earned} XP** gagnés !"
+                    ),
                     color=COLORS["success"]
                 )
                 await ctx.send(embed=embed)
 
                 if level_up:
-                    cog = self.bot.get_cog("CommunitySystem")
-                    if cog:
-                        await cog.announce_level_up(msg.author.id, new_level)
+                    await announce_level_up_safe(self.bot, ctx.author.id, new_level)
 
             except asyncio.TimeoutError:
+                db.record_minigame(ctx.author.id, "unscramble", False, 0)
                 embed = discord.Embed(
                     title="🔤 Unscramble — Temps écoulé !",
-                    description=f"Personne n'a trouvé ! Le mot était **{word}**",
+                    description=f"{ctx.author.mention}, le mot était **{word}**",
                     color=COLORS["error"]
                 )
                 await ctx.send(embed=embed)
@@ -272,25 +318,27 @@ class MiniGames(commands.Cog):
         win = random.random() < 0.5
 
         embed = discord.Embed(title="🪙 Coinflip", color=COLORS["info"])
-        embed.description = f"La pièce tourne..."
+        embed.description = "La pièce tourne..."
         msg = await ctx.send(embed=embed)
 
         await asyncio.sleep(1.5)
 
         if win:
             xp_earned, _, level_up, new_level = add_xp(ctx.author.id, mise, "coinflip_win")
+            db.record_minigame(ctx.author.id, "coinflip", True, xp_earned)
+            new_balance = get_user_stats(ctx.author.id).get("xp", 0)
             embed.title = f"🪙 {result.upper()} — Tu gagnes !"
-            embed.description = f"**+{xp_earned} XP** gagnés !\n💰 Solde : {stats.get('xp', 0):,} XP"
+            embed.description = f"**+{xp_earned} XP** gagnés !\n💰 Solde : {new_balance:,} XP"
             embed.color = COLORS["success"]
 
             if level_up:
-                cog = self.bot.get_cog("CommunitySystem")
-                if cog:
-                    await cog.announce_level_up(ctx.author.id, new_level)
+                await announce_level_up_safe(self.bot, ctx.author.id, new_level)
         else:
             remove_xp(ctx.author.id, mise)
+            db.record_minigame(ctx.author.id, "coinflip", False, -mise)
+            new_balance = get_user_stats(ctx.author.id).get("xp", 0)
             embed.title = f"🪙 {result.upper()} — Tu perds !"
-            embed.description = f"**-{mise} XP** perdus...\n💰 Solde : {stats.get('xp', 0):,} XP"
+            embed.description = f"**-{mise} XP** perdus...\n💰 Solde : {new_balance:,} XP"
             embed.color = COLORS["error"]
 
         await msg.edit(embed=embed)
@@ -339,30 +387,29 @@ class MiniGames(commands.Cog):
 
             gain = mise * multiplier
             xp_earned, _, level_up, new_level = add_xp(ctx.author.id, gain, "slots_jackpot")
+            db.record_minigame(ctx.author.id, "slots", True, xp_earned)
             embed.title = title
             embed.description = f"{display}\n\n🎉 **x{multiplier}** — **+{xp_earned} XP** !"
             embed.color = 0xFFD700
 
             if level_up:
-                cog = self.bot.get_cog("CommunitySystem")
-                if cog:
-                    await cog.announce_level_up(ctx.author.id, new_level)
+                await announce_level_up_safe(self.bot, ctx.author.id, new_level)
 
         elif reels[0] == reels[1] or reels[1] == reels[2] or reels[0] == reels[2]:
             # 2 identiques
             gain = mise
             xp_earned, _, level_up, new_level = add_xp(ctx.author.id, gain, "slots_small")
+            db.record_minigame(ctx.author.id, "slots", True, xp_earned)
             embed.title = "🎰 Petite victoire !"
             embed.description = f"{display}\n\n**+{xp_earned} XP** gagnés !"
             embed.color = COLORS["success"]
 
             if level_up:
-                cog = self.bot.get_cog("CommunitySystem")
-                if cog:
-                    await cog.announce_level_up(ctx.author.id, new_level)
+                await announce_level_up_safe(self.bot, ctx.author.id, new_level)
         else:
             # Perdu
             remove_xp(ctx.author.id, mise)
+            db.record_minigame(ctx.author.id, "slots", False, -mise)
             embed.title = "🎰 Perdu..."
             embed.description = f"{display}\n\n**-{mise} XP** perdus"
             embed.color = COLORS["error"]
@@ -449,16 +496,16 @@ class MiniGames(commands.Cog):
         if win:
             gain = mise * (multiplier - 1)
             xp_earned, _, level_up, new_level = add_xp(ctx.author.id, gain, "roulette_win")
+            db.record_minigame(ctx.author.id, "roulette", True, xp_earned)
             embed.title = "🎡 Roulette — Tu gagnes !"
             embed.description = f"{result_text}\n\n**x{multiplier}** — **+{xp_earned} XP** !"
             embed.color = COLORS["success"]
 
             if level_up:
-                cog = self.bot.get_cog("CommunitySystem")
-                if cog:
-                    await cog.announce_level_up(ctx.author.id, new_level)
+                await announce_level_up_safe(self.bot, ctx.author.id, new_level)
         else:
             remove_xp(ctx.author.id, mise)
+            db.record_minigame(ctx.author.id, "roulette", False, -mise)
             embed.title = "🎡 Roulette — Perdu..."
             embed.description = f"{result_text}\n\n**-{mise} XP** perdus"
             embed.color = COLORS["error"]
@@ -493,11 +540,13 @@ class MiniGames(commands.Cog):
             return await ctx.send(f"❌ {adversaire.display_name} n'a que **{stats_opponent.get('xp', 0):,} XP** !")
 
         # Demander l'acceptation
+        accept_timeout = 60
         embed = discord.Embed(
             title="⚔️ Défi en Duel !",
             description=(
                 f"{ctx.author.mention} défie {adversaire.mention} !\n"
-                f"💰 Mise : **{mise} XP**\n\n"
+                f"💰 Mise : **{mise} XP**\n"
+                f"⏱️ Expire {fmt_deadline(accept_timeout)}\n\n"
                 f"{adversaire.mention}, réagis avec ✅ pour accepter ou ❌ pour refuser."
             ),
             color=COLORS["warning"]
@@ -514,7 +563,7 @@ class MiniGames(commands.Cog):
             )
 
         try:
-            reaction, _ = await self.bot.wait_for("reaction_add", check=check, timeout=60)
+            reaction, _ = await self.bot.wait_for("reaction_add", check=check, timeout=accept_timeout)
 
             if str(reaction.emoji) == "❌":
                 embed.title = "⚔️ Duel refusé"
@@ -552,6 +601,8 @@ class MiniGames(commands.Cog):
         # Transférer l'XP
         xp_earned, _, level_up, new_level = add_xp(winner.id, mise, "duel_win")
         remove_xp(loser.id, mise)
+        db.record_minigame(winner.id, "duel", True, xp_earned)
+        db.record_minigame(loser.id, "duel", False, -mise)
 
         embed = discord.Embed(
             title=f"⚔️ {winner.display_name} remporte le duel !",
@@ -566,9 +617,7 @@ class MiniGames(commands.Cog):
         await msg.edit(embed=embed)
 
         if level_up:
-            cog = self.bot.get_cog("CommunitySystem")
-            if cog:
-                await cog.announce_level_up(winner.id, new_level)
+            await announce_level_up_safe(self.bot, winner.id, new_level)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # 🟩 WORDLE - Deviner un mot en 6 essais
@@ -577,11 +626,12 @@ class MiniGames(commands.Cog):
     @commands.command(name="wordle")
     @commands.cooldown(1, 30, commands.BucketType.user)
     async def wordle(self, ctx):
-        """Devine le mot en 6 essais ! 🟩 = bonne place, 🟨 = mauvaise place, ⬛ = absent"""
+        """[Solo] Devine le mot en 6 essais ! 🟩 = bonne place, 🟨 = mauvaise place, ⬛ = absent"""
         if self._is_game_active(ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
 
-        self._set_game(ctx.channel.id, "wordle")
+        self._set_game(ctx.channel.id, "wordle", owner_id=ctx.author.id)
+        per_turn_timeout = 60
 
         try:
             word = random.choice(WORDLE_WORDS)
@@ -589,20 +639,34 @@ class MiniGames(commands.Cog):
             word_len = len(word_normalized)
             max_attempts = 6
             attempts = []
+            start_time = time.time()
 
-            embed = discord.Embed(
-                title="🟩 Wordle Manga",
-                description=(
-                    f"Devine le mot en **{max_attempts} essais** !\n"
-                    f"Le mot fait **{word_len} lettres**.\n\n"
-                    f"🟩 = bonne lettre, bonne place\n"
-                    f"🟨 = bonne lettre, mauvaise place\n"
-                    f"⬛ = lettre absente\n\n"
-                    f"*Tape ton essai dans le chat !*"
-                ),
-                color=COLORS["info"]
+            def render_embed(remaining_attempts, deadline_str=None, title=None, color=None, status_line=None):
+                desc_lines = [
+                    f"👤 Joueur : {ctx.author.mention}",
+                    f"📏 Mot de **{word_len} lettres** — **{remaining_attempts}/{max_attempts}** essais restants",
+                ]
+                if deadline_str:
+                    desc_lines.append(f"⏱️ Tour : {deadline_str}")
+                desc_lines.append("")
+                if attempts:
+                    desc_lines.append("\n".join(attempts))
+                    desc_lines.append("")
+                desc_lines.append("🟩 bonne place · 🟨 mauvaise place · ⬛ absente")
+                if status_line:
+                    desc_lines.append("")
+                    desc_lines.append(status_line)
+                e = discord.Embed(
+                    title=title or "🟩 Wordle Manga",
+                    description="\n".join(desc_lines),
+                    color=color if color is not None else COLORS["info"],
+                )
+                e.set_footer(text="Jeu solo — tape ton essai dans le chat")
+                return e
+
+            game_msg = await ctx.send(
+                embed=render_embed(max_attempts, deadline_str=fmt_deadline(per_turn_timeout))
             )
-            game_msg = await ctx.send(embed=embed)
 
             for attempt_num in range(1, max_attempts + 1):
                 def check(m):
@@ -614,18 +678,20 @@ class MiniGames(commands.Cog):
                     )
 
                 try:
-                    msg = await self.bot.wait_for("message", check=check, timeout=60)
+                    msg = await self.bot.wait_for("message", check=check, timeout=per_turn_timeout)
                 except asyncio.TimeoutError:
-                    embed.title = "🟩 Wordle — Temps écoulé !"
-                    embed.description = f"Le mot était **{word}** !"
-                    embed.color = COLORS["error"]
-                    attempts.append("⬛" * word_len + f" ~~{normalize(msg.content.strip()) if 'msg' in dir() else '?'}~~")
-                    return await game_msg.edit(embed=embed)
+                    db.record_minigame(ctx.author.id, "wordle", False, 0)
+                    timeout_embed = render_embed(
+                        max_attempts - attempt_num + 1,
+                        title="🟩 Wordle — Temps écoulé !",
+                        color=COLORS["error"],
+                        status_line=f"⌛ Plus de temps... Le mot était **{word.upper()}**",
+                    )
+                    return await game_msg.edit(embed=timeout_embed)
 
                 guess = normalize(msg.content.strip())
 
                 # Générer le feedback
-                feedback = []
                 word_chars = list(word_normalized)
                 guess_chars = list(guess)
                 result = ["⬛"] * word_len
@@ -648,37 +714,42 @@ class MiniGames(commands.Cog):
 
                 # Victoire ?
                 if guess == word_normalized:
+                    elapsed = time.time() - start_time
                     bonus = max(10, MINIGAME_XP["wordle"] + (max_attempts - attempt_num) * 10)
                     xp_earned, _, level_up, new_level = add_xp(ctx.author.id, bonus, "wordle")
+                    db.record_minigame(ctx.author.id, "wordle", True, xp_earned, duration_seconds=elapsed)
 
-                    embed.title = "🟩 Wordle — Bravo !"
-                    embed.description = (
-                        "\n".join(attempts) +
-                        f"\n\n🎉 Trouvé en **{attempt_num}/{max_attempts}** essais !\n"
-                        f"**+{xp_earned} XP** gagnés !"
+                    win_embed = render_embed(
+                        max_attempts - attempt_num,
+                        title="🟩 Wordle — Bravo !",
+                        color=COLORS["success"],
+                        status_line=(
+                            f"🎉 Trouvé en **{attempt_num}/{max_attempts}** essais "
+                            f"(⚡ {elapsed:.1f}s) — **+{xp_earned} XP** !"
+                        ),
                     )
-                    embed.color = COLORS["success"]
-                    await game_msg.edit(embed=embed)
+                    await game_msg.edit(embed=win_embed)
 
                     if level_up:
-                        cog = self.bot.get_cog("CommunitySystem")
-                        if cog:
-                            await cog.announce_level_up(ctx.author.id, new_level)
+                        await announce_level_up_safe(self.bot, ctx.author.id, new_level)
                     return
 
-                # Mettre à jour l'embed
+                # Mettre à jour l'embed pour le prochain tour
                 remaining = max_attempts - attempt_num
-                embed.description = (
-                    "\n".join(attempts) +
-                    f"\n\n*{remaining} essai(s) restant(s)*"
-                )
-                await game_msg.edit(embed=embed)
+                if remaining > 0:
+                    await game_msg.edit(
+                        embed=render_embed(remaining, deadline_str=fmt_deadline(per_turn_timeout))
+                    )
 
-            # Défaite
-            embed.title = "🟩 Wordle — Perdu !"
-            embed.description = "\n".join(attempts) + f"\n\nLe mot était **{word}** !"
-            embed.color = COLORS["error"]
-            await game_msg.edit(embed=embed)
+            # Défaite : tous les essais épuisés
+            db.record_minigame(ctx.author.id, "wordle", False, 0)
+            lose_embed = render_embed(
+                0,
+                title="🟩 Wordle — Perdu !",
+                color=COLORS["error"],
+                status_line=f"💀 Le mot était **{word.upper()}**",
+            )
+            await game_msg.edit(embed=lose_embed)
 
         finally:
             self._clear_game(ctx.channel.id)
@@ -688,13 +759,14 @@ class MiniGames(commands.Cog):
     # ═══════════════════════════════════════════════════════════════════════════
 
     @commands.command(name="hangman", aliases=["pendu"])
-    @commands.cooldown(1, 15, commands.BucketType.channel)
+    @commands.cooldown(1, 15, commands.BucketType.user)
     async def hangman(self, ctx):
-        """Jeu du pendu ! Devine le mot lettre par lettre"""
+        """[Solo] Jeu du pendu ! Devine le mot lettre par lettre"""
         if self._is_game_active(ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
 
-        self._set_game(ctx.channel.id, "hangman")
+        self._set_game(ctx.channel.id, "hangman", owner_id=ctx.author.id)
+        per_turn_timeout = 60
 
         try:
             word = random.choice(MANGA_WORDS)
@@ -702,53 +774,69 @@ class MiniGames(commands.Cog):
             guessed_letters = set()
             wrong_guesses = 0
             max_wrong = len(HANGMAN_STAGES) - 1
+            start_time = time.time()
 
             def get_display():
                 return " ".join(
-                    c.upper() if normalize(c) in guessed_letters else "\_"
+                    c.upper() if normalize(c) in guessed_letters else "\\_"
                     for c in word
                 )
 
-            def build_embed():
+            def build_embed(deadline_str=None, title=None, color=None, status_line=None):
                 display = get_display()
-                embed = discord.Embed(
-                    title="💀 Pendu",
-                    description=f"{HANGMAN_STAGES[wrong_guesses]}\n\n**{display}**\n\n*{len(word)} lettres*",
-                    color=COLORS["info"]
+                desc_lines = [
+                    f"👤 Joueur : {ctx.author.mention}",
+                    f"❤️ Vies : **{max_wrong - wrong_guesses}/{max_wrong}**",
+                ]
+                if deadline_str:
+                    desc_lines.append(f"⏱️ Tour : {deadline_str}")
+                desc_lines.append(HANGMAN_STAGES[wrong_guesses])
+                desc_lines.append(f"**{display}**  *({len(word)} lettres)*")
+                if status_line:
+                    desc_lines.append("")
+                    desc_lines.append(status_line)
+                e = discord.Embed(
+                    title=title or "💀 Pendu",
+                    description="\n".join(desc_lines),
+                    color=color if color is not None else COLORS["info"],
                 )
                 if guessed_letters:
-                    embed.add_field(
+                    e.add_field(
                         name="Lettres essayées",
-                        value=" ".join(sorted(l.upper() for l in guessed_letters))
+                        value=" ".join(sorted(l.upper() for l in guessed_letters)),
+                        inline=False,
                     )
-                embed.set_footer(text=f"Erreurs : {wrong_guesses}/{max_wrong} — Tape une lettre !")
-                return embed
+                e.set_footer(text="Jeu solo — tape une lettre dans le chat")
+                return e
 
-            game_msg = await ctx.send(embed=build_embed())
+            game_msg = await ctx.send(embed=build_embed(deadline_str=fmt_deadline(per_turn_timeout)))
 
             while wrong_guesses < max_wrong:
                 def check(m):
                     return (
                         m.channel.id == ctx.channel.id
-                        and not m.author.bot
+                        and m.author.id == ctx.author.id
                         and len(m.content.strip()) == 1
                         and m.content.strip().isalpha()
                     )
 
                 try:
-                    msg = await self.bot.wait_for("message", check=check, timeout=60)
+                    msg = await self.bot.wait_for("message", check=check, timeout=per_turn_timeout)
                 except asyncio.TimeoutError:
-                    embed = discord.Embed(
+                    db.record_minigame(ctx.author.id, "hangman", False, 0)
+                    return await game_msg.edit(embed=build_embed(
                         title="💀 Pendu — Temps écoulé !",
-                        description=f"Le mot était **{word}** !",
-                        color=COLORS["error"]
-                    )
-                    return await game_msg.edit(embed=embed)
+                        color=COLORS["error"],
+                        status_line=f"⌛ Le mot était **{word.upper()}**",
+                    ))
 
                 letter = normalize(msg.content.strip().lower())
 
                 if letter in guessed_letters:
-                    await msg.reply(f"❌ `{letter.upper()}` déjà essayée !", delete_after=3)
+                    try:
+                        await msg.reply(f"❌ `{letter.upper()}` déjà essayée !", delete_after=3)
+                    except Exception:
+                        pass
                     continue
 
                 guessed_letters.add(letter)
@@ -756,35 +844,33 @@ class MiniGames(commands.Cog):
                 if letter in word_normalized:
                     # Vérifier si le mot est complet
                     if all(normalize(c) in guessed_letters for c in word):
-                        xp_earned, _, level_up, new_level = add_xp(msg.author.id, MINIGAME_XP["hangman"], "hangman")
-                        embed = discord.Embed(
+                        elapsed = time.time() - start_time
+                        xp_earned, _, level_up, new_level = add_xp(ctx.author.id, MINIGAME_XP["hangman"], "hangman")
+                        db.record_minigame(ctx.author.id, "hangman", True, xp_earned, duration_seconds=elapsed)
+                        await game_msg.edit(embed=build_embed(
                             title="💀 Pendu — Victoire !",
-                            description=(
-                                f"Le mot était **{word}** !\n\n"
-                                f"🎉 {msg.author.mention} a trouvé la dernière lettre !\n"
-                                f"**+{xp_earned} XP** gagnés !"
+                            color=COLORS["success"],
+                            status_line=(
+                                f"🎉 Mot trouvé : **{word.upper()}** "
+                                f"(⚡ {elapsed:.1f}s) — **+{xp_earned} XP** !"
                             ),
-                            color=COLORS["success"]
-                        )
-                        await game_msg.edit(embed=embed)
+                        ))
 
                         if level_up:
-                            cog = self.bot.get_cog("CommunitySystem")
-                            if cog:
-                                await cog.announce_level_up(msg.author.id, new_level)
+                            await announce_level_up_safe(self.bot, ctx.author.id, new_level)
                         return
                 else:
                     wrong_guesses += 1
 
-                await game_msg.edit(embed=build_embed())
+                await game_msg.edit(embed=build_embed(deadline_str=fmt_deadline(per_turn_timeout)))
 
             # Défaite
-            embed = discord.Embed(
+            db.record_minigame(ctx.author.id, "hangman", False, 0)
+            await game_msg.edit(embed=build_embed(
                 title="💀 Pendu — Défaite !",
-                description=f"{HANGMAN_STAGES[-1]}\n\nLe mot était **{word}** !",
-                color=COLORS["error"]
-            )
-            await game_msg.edit(embed=embed)
+                color=COLORS["error"],
+                status_line=f"💀 Le mot était **{word.upper()}**",
+            ))
 
         finally:
             self._clear_game(ctx.channel.id)
@@ -800,7 +886,8 @@ class MiniGames(commands.Cog):
         if self._is_game_active(ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
 
-        self._set_game(ctx.channel.id, "chain")
+        self._set_game(ctx.channel.id, "chain", owner_id=None)
+        turn_timeout = 15
 
         try:
             start_word = random.choice(["manga", "anime", "combat", "magie", "epee", "demon"])
@@ -812,9 +899,11 @@ class MiniGames(commands.Cog):
             embed = discord.Embed(
                 title="🔗 Chaîne de Mots",
                 description=(
+                    f"Lancée par {ctx.author.mention}\n"
                     f"Le premier mot est : **{start_word.upper()}**\n\n"
                     f"Tapez un mot qui commence par la lettre **`{current_letter.upper()}`** !\n"
-                    f"⏱️ **15 secondes** par tour — dernier debout gagne !\n\n"
+                    f"⏱️ **{turn_timeout}s** par tour — dernier debout gagne !\n"
+                    f"⏱️ Premier tour : {fmt_deadline(turn_timeout)}\n\n"
                     f"*Règles : min. 3 lettres, pas de répétition, pas 2x d'affilée le même joueur*"
                 ),
                 color=COLORS["info"]
@@ -835,7 +924,7 @@ class MiniGames(commands.Cog):
                     )
 
                 try:
-                    msg = await self.bot.wait_for("message", check=check, timeout=15)
+                    msg = await self.bot.wait_for("message", check=check, timeout=turn_timeout)
                 except asyncio.TimeoutError:
                     # Fin du jeu
                     if not participants:
@@ -851,6 +940,10 @@ class MiniGames(commands.Cog):
                     winner = ctx.guild.get_member(winner_id)
 
                     xp_earned, _, level_up, new_level = add_xp(winner_id, MINIGAME_XP["chain"], "chain")
+                    db.record_minigame(winner_id, "chain", True, xp_earned)
+                    for pid in participants:
+                        if pid != winner_id:
+                            db.record_minigame(pid, "chain", False, 0)
 
                     embed = discord.Embed(
                         title="🔗 Chaîne — Temps écoulé !",
@@ -865,9 +958,7 @@ class MiniGames(commands.Cog):
                     await ctx.send(embed=embed)
 
                     if level_up:
-                        cog = self.bot.get_cog("CommunitySystem")
-                        if cog:
-                            await cog.announce_level_up(winner_id, new_level)
+                        await announce_level_up_safe(self.bot, winner_id, new_level)
                     return
 
                 word = normalize(msg.content.strip().lower())
@@ -876,7 +967,10 @@ class MiniGames(commands.Cog):
                 last_player = msg.author.id
                 participants[msg.author.id] = participants.get(msg.author.id, 0) + 1
 
-                await msg.add_reaction("✅")
+                try:
+                    await msg.add_reaction("✅")
+                except Exception:
+                    pass
 
         finally:
             self._clear_game(ctx.channel.id)
@@ -1071,6 +1165,124 @@ class MiniGames(commands.Cog):
         self.boss_data = {"active": False}
         save_json(BOSS_FILE, self.boss_data)
         await ctx.send("✅ Boss terminé de force.")
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 📊 MGSTATS / MGTOP / MGCANCEL - Stats & gestion
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    @commands.command(name="mgstats", aliases=["minigame_stats", "gamestats"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    async def mgstats(self, ctx, member: discord.Member = None):
+        """Affiche tes statistiques de mini-jeux (ou celles d'un autre membre)"""
+        target = member or ctx.author
+        rows = db.get_minigame_stats(target.id)
+        totals = db.get_minigame_totals(target.id)
+
+        embed = discord.Embed(
+            title=f"📊 Stats Mini-Jeux — {target.display_name}",
+            color=COLORS["info"],
+        )
+        embed.set_thumbnail(url=target.display_avatar.url)
+
+        if not rows or not totals or totals.get("played", 0) == 0:
+            embed.description = "Aucune partie jouée pour le moment.\nLance `!unscramble`, `!wordle`, `!hangman`... pour commencer !"
+            return await ctx.send(embed=embed)
+
+        played = totals.get("played", 0) or 0
+        wins = totals.get("wins", 0) or 0
+        losses = totals.get("losses", 0) or 0
+        winrate = (wins / played * 100) if played else 0
+        net = (totals.get("xp_earned", 0) or 0) - (totals.get("xp_lost", 0) or 0)
+
+        embed.description = (
+            f"🎮 **{played:,}** parties · 🏆 **{wins:,}** victoires · 💀 **{losses:,}** défaites\n"
+            f"📈 Winrate : **{winrate:.1f}%**\n"
+            f"💰 XP net : **{net:+,}** (gagnés {totals.get('xp_earned', 0):,} / perdus {totals.get('xp_lost', 0):,})\n"
+            f"🔥 Meilleure série : **{totals.get('best_streak', 0)}**"
+        )
+
+        # Détail par jeu
+        emoji_map = {
+            "reaction": "🎯", "unscramble": "🔤", "wordle": "🟩",
+            "hangman": "💀", "chain": "🔗", "coinflip": "🪙",
+            "slots": "🎰", "roulette": "🎡", "duel": "⚔️",
+        }
+        lines = []
+        for r in rows:
+            game = r["game"]
+            emo = emoji_map.get(game, "🎲")
+            wr = (r["wins"] / r["played"] * 100) if r["played"] else 0
+            line = f"{emo} **{game.capitalize()}** — {r['played']} parties · {r['wins']}V/{r['losses']}D ({wr:.0f}%)"
+            if r.get("fastest_win_seconds"):
+                line += f" · ⚡ {r['fastest_win_seconds']:.1f}s"
+            lines.append(line)
+
+        if lines:
+            embed.add_field(name="Détail par jeu", value="\n".join(lines), inline=False)
+
+        await ctx.send(embed=embed)
+
+    @commands.command(name="mgtop", aliases=["minigame_top"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    async def mgtop(self, ctx, game: str = None):
+        """Classement des meilleurs joueurs de mini-jeux. Usage: !mgtop [jeu]"""
+        valid_games = {"reaction", "unscramble", "wordle", "hangman", "chain",
+                       "coinflip", "slots", "roulette", "duel"}
+        game_filter = None
+        if game:
+            game = game.lower().strip()
+            if game not in valid_games:
+                return await ctx.send(
+                    f"❌ Jeu inconnu. Disponibles : {', '.join(sorted(valid_games))}"
+                )
+            game_filter = game
+
+        rows = db.get_minigame_leaderboard(game=game_filter, limit=10, sort_by="wins")
+
+        title = f"🏆 Top Mini-Jeux" + (f" — {game_filter.capitalize()}" if game_filter else " (global)")
+        embed = discord.Embed(title=title, color=COLORS["info"])
+
+        if not rows:
+            embed.description = "Aucun joueur classé pour le moment."
+            return await ctx.send(embed=embed)
+
+        medals = ["🥇", "🥈", "🥉"]
+        lines = []
+        for i, r in enumerate(rows):
+            uid = r["user_id"]
+            member = ctx.guild.get_member(uid) if ctx.guild else None
+            name = member.display_name if member else f"User {uid}"
+            medal = medals[i] if i < 3 else f"`#{i+1}`"
+            wins = r.get("wins") or 0
+            played = r.get("played") or 0
+            xp = r.get("xp_earned") or 0
+            lines.append(
+                f"{medal} **{name}** — {wins}V / {played} parties · {xp:,} XP"
+            )
+
+        embed.description = "\n".join(lines)
+        embed.set_footer(text="Trié par victoires • !mgstats pour tes stats perso")
+        await ctx.send(embed=embed)
+
+    @commands.command(name="mgcancel", aliases=["cancel_game"])
+    async def mgcancel(self, ctx):
+        """Annule le mini-jeu actif dans ce channel (uniquement le lanceur ou un admin)"""
+        game = self._get_game(ctx.channel.id)
+        if not game:
+            return await ctx.send("❌ Aucun mini-jeu actif dans ce channel.")
+
+        from config import ADMIN_ROLES
+        is_admin = any(r.name in ADMIN_ROLES for r in getattr(ctx.author, "roles", []))
+        owner_id = game.get("owner_id")
+        is_owner = owner_id == ctx.author.id
+
+        if not (is_owner or is_admin):
+            return await ctx.send(
+                "❌ Seul le joueur qui a lancé la partie (ou un admin) peut l'annuler."
+            )
+
+        self._clear_game(ctx.channel.id)
+        await ctx.send(f"✅ Mini-jeu **{game.get('type', '?')}** annulé. Tu peux en relancer un.")
 
 
 async def setup(bot):
