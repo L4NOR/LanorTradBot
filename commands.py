@@ -131,6 +131,7 @@ HELP_CATEGORIES = {
             {"name": "mgstats", "usage": "!mgstats [@membre]", "desc": "Tes stats de mini-jeux (V/D, winrate, XP net)", "example": "`!mgstats` · `!mgstats @user`"},
             {"name": "mgtop", "usage": "!mgtop [jeu]", "desc": "Classement des meilleurs joueurs", "example": "`!mgtop` · `!mgtop wordle`"},
             {"name": "mgcancel", "usage": "!mgcancel", "desc": "Annule ton jeu solo en cours dans le channel"},
+            {"name": "mglimits", "usage": "!mglimits [@membre]", "desc": "Tes limites quotidiennes et ton usage du jour", "example": "`!mglimits` · `!mglimits @user`"},
             {"name": "boss", "usage": "!boss", "desc": "Voir l'état du boss actuel"},
             {"name": "attack", "usage": "!attack", "desc": "Attaquer le boss", "reward": "5 XP/hit, 100 XP coup fatal"},
         ]

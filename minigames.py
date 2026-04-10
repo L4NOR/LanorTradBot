@@ -33,6 +33,39 @@ MINIGAME_XP = {
     "duel_min_bet": 10,
 }
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# LIMITES QUOTIDIENNES — pool partagé par catégorie
+# ═══════════════════════════════════════════════════════════════════════════════
+# Les admins (rôles dans ADMIN_ROLES) ne sont pas soumis à ces limites.
+# Chaque utilisateur dispose d'un pool partagé :
+#   • "minigames" : 15 parties/jour réparties librement entre les 9 mini-jeux
+#   • "boss"      : 1 attaque/jour
+# Le compteur est stocké en SQLite via la "catégorie" comme clé (pas par jeu).
+
+CATEGORY_LIMITS = {
+    "minigames": 15,
+    "boss":      1,
+}
+
+# Mapping nom du jeu → catégorie partagée
+GAME_CATEGORIES = {
+    "reaction":   "minigames",
+    "unscramble": "minigames",
+    "wordle":     "minigames",
+    "hangman":    "minigames",
+    "chain":      "minigames",
+    "coinflip":   "minigames",
+    "slots":      "minigames",
+    "roulette":   "minigames",
+    "duel":       "minigames",
+    "boss":       "boss",
+}
+
+CATEGORY_LABELS = {
+    "minigames": "Mini-jeux",
+    "boss":      "Attaques boss",
+}
+
 # Mots pour les jeux (thème manga / traduction)
 MANGA_WORDS = [
     # Personnages & Mangas
@@ -135,24 +168,70 @@ async def run_countdown(message, state, rebuild_embed, interval=3):
       rate-limit Discord).
     """
     try:
+        # Petit délai initial : laisse le main code entrer dans wait_for avant
+        # le premier tick, et évite de ré-éditer immédiatement après ctx.send()
+        await asyncio.sleep(1.0)
+
         while True:
             if state.get("ended"):
                 return
             remaining = state.get("deadline", 0) - time.time()
             if remaining <= 0:
                 return
+
+            # Construction de l'embed (protégée : si le rebuild crash,
+            # on log la trace et on arrête pour ne pas boucler à l'infini)
             try:
-                await message.edit(embed=rebuild_embed(remaining))
+                embed = rebuild_embed(remaining)
+            except Exception:
+                logger.exception("run_countdown: rebuild_embed a crashé")
+                return
+
+            try:
+                await message.edit(embed=embed)
+            except asyncio.CancelledError:
+                raise
             except discord.NotFound:
                 return
+            except discord.Forbidden:
+                logger.warning("run_countdown: edit refusé (Forbidden)")
+                return
             except discord.HTTPException as e:
-                logger.debug(f"countdown edit failed: {e}")
-            # Ne pas dormir plus longtemps que le temps restant
-            await asyncio.sleep(min(interval, max(1, remaining)))
+                # Rate-limit ou autre erreur HTTP transitoire : on loggue et on continue
+                logger.warning(f"run_countdown: edit HTTP échoué ({e}) — on continue")
+            except Exception:
+                logger.exception("run_countdown: edit inattendu")
+                return
+
+            # Sleep jusqu'au prochain tick, sans dépasser le temps restant
+            sleep_for = min(interval, max(0.5, remaining))
+            try:
+                await asyncio.sleep(sleep_for)
+            except asyncio.CancelledError:
+                raise
     except asyncio.CancelledError:
         return
-    except Exception as e:
-        logger.warning(f"run_countdown error: {e}")
+    except Exception:
+        logger.exception("run_countdown: erreur fatale")
+
+
+async def stop_countdown(task, state):
+    """Arrête proprement une tâche de countdown et attend sa fin.
+
+    Garantit que la tâche ne produira plus d'édition APRÈS cet appel, ce qui
+    évite qu'un tick résiduel n'écrase l'embed final de fin de jeu.
+    """
+    if state is not None:
+        state["ended"] = True
+    if task is None or task.done():
+        return
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+    except Exception:
+        logger.exception("stop_countdown: erreur en attendant la tâche")
 
 
 async def announce_level_up_safe(bot, user_id, new_level):
@@ -194,6 +273,67 @@ class MiniGames(commands.Cog):
     def _clear_game(self, channel_id):
         self.active_games.pop(channel_id, None)
 
+    # ─────────────────────────────────────────────────────────────────────────
+    # LIMITES QUOTIDIENNES
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _is_admin(self, member):
+        """Un admin contourne les limites quotidiennes."""
+        try:
+            from config import ADMIN_ROLES
+            roles = getattr(member, "roles", None) or []
+            return any(r.name in ADMIN_ROLES for r in roles)
+        except Exception:
+            return False
+
+    async def _check_daily_limit(self, ctx, game):
+        """Vérifie la limite quotidienne (pool partagé par catégorie) et incrémente.
+
+        Retourne True si l'utilisateur peut jouer, False sinon (un message
+        d'erreur a déjà été envoyé au joueur).
+
+        Comportement :
+        - Chaque jeu appartient à une catégorie (`GAME_CATEGORIES`) qui partage
+          un pool unique par utilisateur (`CATEGORY_LIMITS`).
+        - Les admins bypass la limite (et ne consomment pas de compteur).
+        - Une catégorie sans limite (0 ou absente) passe toujours.
+        """
+        category = GAME_CATEGORIES.get(game)
+        if category is None:
+            return True
+
+        limit = CATEGORY_LIMITS.get(category, 0)
+        if limit <= 0:
+            return True
+
+        if self._is_admin(ctx.author):
+            return True
+
+        used = db.get_daily_usage(ctx.author.id, category)
+        if used >= limit:
+            now = datetime.now()
+            next_midnight = (now + timedelta(days=1)).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            reset_unix = int(next_midnight.timestamp())
+
+            label = CATEGORY_LABELS.get(category, category)
+            embed = discord.Embed(
+                title="🚫 Limite quotidienne atteinte",
+                description=(
+                    f"{ctx.author.mention}, tu as déjà utilisé **{used}/{limit}** "
+                    f"de tes **{label}** aujourd'hui.\n\n"
+                    f"⏰ Reset <t:{reset_unix}:R>\n"
+                    f"📊 Utilise `!mglimits` pour voir tes compteurs."
+                ),
+                color=COLORS["error"],
+            )
+            await ctx.send(embed=embed)
+            return False
+
+        db.increment_daily_usage(ctx.author.id, category)
+        return True
+
     # ═══════════════════════════════════════════════════════════════════════════
     # 🎯 REACTION - Jeu de rapidité
     # ═══════════════════════════════════════════════════════════════════════════
@@ -205,8 +345,13 @@ class MiniGames(commands.Cog):
         if self._is_game_active(ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
 
+        if not await self._check_daily_limit(ctx, "reaction"):
+            return
+
         self._set_game(ctx.channel.id, "reaction", owner_id=None)
 
+        countdown_task = None
+        state = {"deadline": 0, "ended": False}
         try:
             target_emoji = random.choice(REACTION_EMOJIS)
             delay = random.uniform(2, 6)
@@ -225,10 +370,10 @@ class MiniGames(commands.Cog):
             await asyncio.sleep(delay)
 
             react_timeout = 10
-            state = {"deadline": time.time() + react_timeout, "ended": False}
+            state["deadline"] = time.time() + react_timeout
 
             def build_reaction_embed(remaining_seconds):
-                e = discord.Embed(
+                return discord.Embed(
                     title="🎯 Jeu de Réaction",
                     description=(
                         f"# RÉAGIS AVEC {target_emoji} !\n"
@@ -236,7 +381,6 @@ class MiniGames(commands.Cog):
                     ),
                     color=0xFF0000,
                 )
-                return e
 
             await msg.edit(embed=build_reaction_embed(react_timeout))
             countdown_task = asyncio.create_task(
@@ -254,8 +398,8 @@ class MiniGames(commands.Cog):
 
             try:
                 reaction, winner = await self.bot.wait_for("reaction_add", check=check, timeout=react_timeout)
-                state["ended"] = True
-                countdown_task.cancel()
+                await stop_countdown(countdown_task, state)
+                countdown_task = None
                 elapsed = time.time() - start_time
                 xp_earned, _, level_up, new_level = add_xp(winner.id, MINIGAME_XP["reaction"], "reaction_game")
                 db.record_minigame(winner.id, "reaction", True, xp_earned, duration_seconds=elapsed)
@@ -275,8 +419,8 @@ class MiniGames(commands.Cog):
                     await announce_level_up_safe(self.bot, winner.id, new_level)
 
             except asyncio.TimeoutError:
-                state["ended"] = True
-                countdown_task.cancel()
+                await stop_countdown(countdown_task, state)
+                countdown_task = None
                 embed = discord.Embed(
                     title="🎯 Réaction — Temps écoulé !",
                     description="Personne n'a réagi à temps... 😔",
@@ -284,6 +428,7 @@ class MiniGames(commands.Cog):
                 )
                 await msg.edit(embed=embed)
         finally:
+            await stop_countdown(countdown_task, state)
             self._clear_game(ctx.channel.id)
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -297,9 +442,14 @@ class MiniGames(commands.Cog):
         if self._is_game_active(ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
 
+        if not await self._check_daily_limit(ctx, "unscramble"):
+            return
+
         self._set_game(ctx.channel.id, "unscramble", owner_id=ctx.author.id)
         total_timeout = 30
 
+        countdown_task = None
+        state = {"deadline": 0, "ended": False}
         try:
             word = random.choice(MANGA_WORDS)
             scrambled = list(word)
@@ -309,7 +459,7 @@ class MiniGames(commands.Cog):
                 attempts += 1
             scrambled = ''.join(scrambled).upper()
 
-            state = {"deadline": time.time() + total_timeout, "ended": False}
+            state["deadline"] = time.time() + total_timeout
 
             def build_embed(remaining):
                 return discord.Embed(
@@ -338,12 +488,12 @@ class MiniGames(commands.Cog):
             start = time.time()
             try:
                 msg = await self.bot.wait_for("message", check=check, timeout=total_timeout)
+                await stop_countdown(countdown_task, state)
+                countdown_task = None
+
                 elapsed = time.time() - start
                 xp_earned, _, level_up, new_level = add_xp(ctx.author.id, MINIGAME_XP["unscramble"], "unscramble")
                 db.record_minigame(ctx.author.id, "unscramble", True, xp_earned, duration_seconds=elapsed)
-
-                state["ended"] = True
-                countdown_task.cancel()
 
                 win_embed = discord.Embed(
                     title="🔤 Unscramble — Bravo !",
@@ -360,8 +510,8 @@ class MiniGames(commands.Cog):
                     await announce_level_up_safe(self.bot, ctx.author.id, new_level)
 
             except asyncio.TimeoutError:
-                state["ended"] = True
-                countdown_task.cancel()
+                await stop_countdown(countdown_task, state)
+                countdown_task = None
                 db.record_minigame(ctx.author.id, "unscramble", False, 0)
                 lose_embed = discord.Embed(
                     title="🔤 Unscramble — Temps écoulé !",
@@ -370,6 +520,7 @@ class MiniGames(commands.Cog):
                 )
                 await game_msg.edit(embed=lose_embed)
         finally:
+            await stop_countdown(countdown_task, state)
             self._clear_game(ctx.channel.id)
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -389,6 +540,9 @@ class MiniGames(commands.Cog):
         stats = get_user_stats(ctx.author.id)
         if stats.get("xp", 0) < mise:
             return await ctx.send(f"❌ Tu n'as que **{stats.get('xp', 0):,} XP** !")
+
+        if not await self._check_daily_limit(ctx, "coinflip"):
+            return
 
         result = random.choice(["pile", "face"])
         win = random.random() < 0.5
@@ -436,6 +590,9 @@ class MiniGames(commands.Cog):
         stats = get_user_stats(ctx.author.id)
         if stats.get("xp", 0) < mise:
             return await ctx.send(f"❌ Tu n'as que **{stats.get('xp', 0):,} XP** !")
+
+        if not await self._check_daily_limit(ctx, "slots"):
+            return
 
         # Tirer 3 emojis
         reels = [random.choice(SLOT_EMOJIS) for _ in range(3)]
@@ -538,6 +695,9 @@ class MiniGames(commands.Cog):
         else:
             return await ctx.send("❌ Choix invalide ! Utilise `rouge`, `noir`, `vert` ou un numéro `0-36`")
 
+        if not await self._check_daily_limit(ctx, "roulette"):
+            return
+
         # Tirer le résultat
         result = random.randint(0, 36)
         rouges = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
@@ -615,6 +775,9 @@ class MiniGames(commands.Cog):
         if stats_opponent.get("xp", 0) < mise:
             return await ctx.send(f"❌ {adversaire.display_name} n'a que **{stats_opponent.get('xp', 0):,} XP** !")
 
+        if not await self._check_daily_limit(ctx, "duel"):
+            return
+
         # Demander l'acceptation — avec countdown live
         accept_timeout = 60
         duel_state = {"deadline": time.time() + accept_timeout, "ended": False}
@@ -647,8 +810,7 @@ class MiniGames(commands.Cog):
 
         try:
             reaction, _ = await self.bot.wait_for("reaction_add", check=check, timeout=accept_timeout)
-            duel_state["ended"] = True
-            duel_countdown.cancel()
+            await stop_countdown(duel_countdown, duel_state)
 
             if str(reaction.emoji) == "❌":
                 refused = discord.Embed(
@@ -659,8 +821,7 @@ class MiniGames(commands.Cog):
                 return await msg.edit(embed=refused)
 
         except asyncio.TimeoutError:
-            duel_state["ended"] = True
-            duel_countdown.cancel()
+            await stop_countdown(duel_countdown, duel_state)
             expired = discord.Embed(
                 title="⚔️ Duel expiré",
                 description="Pas de réponse... Le duel est annulé.",
@@ -721,9 +882,18 @@ class MiniGames(commands.Cog):
         if self._is_game_active(ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
 
+        if not await self._check_daily_limit(ctx, "wordle"):
+            return
+
         self._set_game(ctx.channel.id, "wordle", owner_id=ctx.author.id)
         per_turn_timeout = 60
 
+        countdown_task = None
+        state = {
+            "deadline": 0,
+            "ended": False,
+            "remaining_attempts": 6,
+        }
         try:
             word = random.choice(WORDLE_WORDS)
             word_normalized = normalize(word)
@@ -733,11 +903,8 @@ class MiniGames(commands.Cog):
             start_time = time.time()
 
             # État partagé pour la tâche de countdown
-            state = {
-                "deadline": time.time() + per_turn_timeout,
-                "ended": False,
-                "remaining_attempts": max_attempts,
-            }
+            state["deadline"] = time.time() + per_turn_timeout
+            state["remaining_attempts"] = max_attempts
 
             def render_embed(remaining_seconds=None, title=None, color=None, status_line=None):
                 desc_lines = [
@@ -783,8 +950,8 @@ class MiniGames(commands.Cog):
                 try:
                     msg = await self.bot.wait_for("message", check=check, timeout=per_turn_timeout)
                 except asyncio.TimeoutError:
-                    state["ended"] = True
-                    countdown_task.cancel()
+                    await stop_countdown(countdown_task, state)
+                    countdown_task = None
                     db.record_minigame(ctx.author.id, "wordle", False, 0)
                     return await game_msg.edit(embed=render_embed(
                         title="🟩 Wordle — Temps écoulé !",
@@ -822,8 +989,8 @@ class MiniGames(commands.Cog):
                     xp_earned, _, level_up, new_level = add_xp(ctx.author.id, bonus, "wordle")
                     db.record_minigame(ctx.author.id, "wordle", True, xp_earned, duration_seconds=elapsed)
 
-                    state["ended"] = True
-                    countdown_task.cancel()
+                    await stop_countdown(countdown_task, state)
+                    countdown_task = None
                     state["remaining_attempts"] = max_attempts - attempt_num
 
                     await game_msg.edit(embed=render_embed(
@@ -847,8 +1014,8 @@ class MiniGames(commands.Cog):
                     await game_msg.edit(embed=render_embed(per_turn_timeout))
 
             # Défaite : tous les essais épuisés
-            state["ended"] = True
-            countdown_task.cancel()
+            await stop_countdown(countdown_task, state)
+            countdown_task = None
             state["remaining_attempts"] = 0
             db.record_minigame(ctx.author.id, "wordle", False, 0)
             await game_msg.edit(embed=render_embed(
@@ -858,6 +1025,7 @@ class MiniGames(commands.Cog):
             ))
 
         finally:
+            await stop_countdown(countdown_task, state)
             self._clear_game(ctx.channel.id)
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -871,21 +1039,26 @@ class MiniGames(commands.Cog):
         if self._is_game_active(ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
 
+        if not await self._check_daily_limit(ctx, "hangman"):
+            return
+
         self._set_game(ctx.channel.id, "hangman", owner_id=ctx.author.id)
         per_turn_timeout = 60
 
+        countdown_task = None
+        state = {
+            "deadline": 0,
+            "ended": False,
+            "wrong": 0,
+            "max_wrong": len(HANGMAN_STAGES) - 1,
+        }
         try:
             word = random.choice(MANGA_WORDS)
             word_normalized = normalize(word)
             guessed_letters = set()
             start_time = time.time()
 
-            state = {
-                "deadline": time.time() + per_turn_timeout,
-                "ended": False,
-                "wrong": 0,
-                "max_wrong": len(HANGMAN_STAGES) - 1,
-            }
+            state["deadline"] = time.time() + per_turn_timeout
 
             def get_display():
                 return " ".join(
@@ -940,8 +1113,8 @@ class MiniGames(commands.Cog):
                 try:
                     msg = await self.bot.wait_for("message", check=check, timeout=per_turn_timeout)
                 except asyncio.TimeoutError:
-                    state["ended"] = True
-                    countdown_task.cancel()
+                    await stop_countdown(countdown_task, state)
+                    countdown_task = None
                     db.record_minigame(ctx.author.id, "hangman", False, 0)
                     return await game_msg.edit(embed=build_embed(
                         title="💀 Pendu — Temps écoulé !",
@@ -967,8 +1140,8 @@ class MiniGames(commands.Cog):
                         xp_earned, _, level_up, new_level = add_xp(ctx.author.id, MINIGAME_XP["hangman"], "hangman")
                         db.record_minigame(ctx.author.id, "hangman", True, xp_earned, duration_seconds=elapsed)
 
-                        state["ended"] = True
-                        countdown_task.cancel()
+                        await stop_countdown(countdown_task, state)
+                        countdown_task = None
 
                         await game_msg.edit(embed=build_embed(
                             title="💀 Pendu — Victoire !",
@@ -990,8 +1163,8 @@ class MiniGames(commands.Cog):
                 await game_msg.edit(embed=build_embed(per_turn_timeout))
 
             # Défaite
-            state["ended"] = True
-            countdown_task.cancel()
+            await stop_countdown(countdown_task, state)
+            countdown_task = None
             db.record_minigame(ctx.author.id, "hangman", False, 0)
             await game_msg.edit(embed=build_embed(
                 title="💀 Pendu — Défaite !",
@@ -1000,6 +1173,7 @@ class MiniGames(commands.Cog):
             ))
 
         finally:
+            await stop_countdown(countdown_task, state)
             self._clear_game(ctx.channel.id)
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -1012,6 +1186,9 @@ class MiniGames(commands.Cog):
         """Chaîne de mots ! Chaque mot doit commencer par la dernière lettre du précédent"""
         if self._is_game_active(ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
+
+        if not await self._check_daily_limit(ctx, "chain"):
+            return
 
         self._set_game(ctx.channel.id, "chain", owner_id=None)
         turn_timeout = 15
@@ -1198,6 +1375,9 @@ class MiniGames(commands.Cog):
         if last_attack and (now - last_attack).total_seconds() < 30:
             remaining = 30 - int((now - last_attack).total_seconds())
             return await ctx.send(f"⏱️ Cooldown ! Attaque disponible dans **{remaining}s**", delete_after=5)
+
+        if not await self._check_daily_limit(ctx, "boss"):
+            return
 
         self.attack_cooldowns[user_id] = now
 
@@ -1410,6 +1590,62 @@ class MiniGames(commands.Cog):
 
         self._clear_game(ctx.channel.id)
         await ctx.send(f"✅ Mini-jeu **{game.get('type', '?')}** annulé. Tu peux en relancer un.")
+
+    @commands.command(name="mglimits", aliases=["mglimit", "minigame_limits"])
+    async def mglimits(self, ctx, member: discord.Member = None):
+        """Affiche les pools quotidiens (mini-jeux + boss) et ton usage du jour."""
+        target = member or ctx.author
+        usage = db.get_all_daily_usage(target.id)
+        is_admin_target = self._is_admin(target)
+
+        now = datetime.now()
+        next_midnight = (now + timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        reset_unix = int(next_midnight.timestamp())
+
+        embed = discord.Embed(
+            title=f"📊 Limites quotidiennes — {target.display_name}",
+            description=f"⏰ Reset <t:{reset_unix}:R>",
+            color=COLORS["info"],
+        )
+
+        if is_admin_target:
+            embed.add_field(
+                name="👑 Admin",
+                value="Bypass actif — aucune limite quotidienne.",
+                inline=False,
+            )
+
+        lines = []
+        for category, limit in CATEGORY_LIMITS.items():
+            label = CATEGORY_LABELS.get(category, category)
+            used = usage.get(category, 0)
+            if is_admin_target:
+                bar = "♾️"
+                status = f"`{used}` utilisées"
+            else:
+                ratio = min(1.0, used / limit) if limit > 0 else 0
+                filled = int(ratio * 10)
+                if used >= limit:
+                    bar = "🟥" * 10
+                else:
+                    bar = "🟩" * filled + "⬜" * (10 - filled)
+                status = f"`{used}/{limit}`"
+            lines.append(f"**{label}** — {status}\n{bar}")
+
+        embed.add_field(name="Pools", value="\n\n".join(lines), inline=False)
+        embed.add_field(
+            name="ℹ️ Détail",
+            value=(
+                "• **Mini-jeux** : pool partagé entre `reaction`, `unscramble`, "
+                "`wordle`, `hangman`, `chain`, `coinflip`, `slots`, `roulette`, `duel`.\n"
+                "• **Attaques boss** : 1 `!attack` par jour."
+            ),
+            inline=False,
+        )
+        embed.set_footer(text="Les admins ont un bypass • !mgstats pour tes stats")
+        await ctx.send(embed=embed)
 
 
 async def setup(bot):

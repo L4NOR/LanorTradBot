@@ -134,6 +134,15 @@ class Database:
                     purchased_at TEXT DEFAULT CURRENT_TIMESTAMP
                 );
 
+                -- Table du compteur quotidien d'utilisation par mini-jeu
+                CREATE TABLE IF NOT EXISTS minigame_daily_usage (
+                    user_id INTEGER NOT NULL,
+                    game TEXT NOT NULL,
+                    day TEXT NOT NULL,          -- format YYYY-MM-DD
+                    count INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY(user_id, game, day)
+                );
+
                 -- Table des stats de mini-jeux
                 CREATE TABLE IF NOT EXISTS minigame_stats (
                     user_id INTEGER NOT NULL,
@@ -180,6 +189,8 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_audit_date ON audit_log(created_at);
                 CREATE INDEX IF NOT EXISTS idx_minigame_game ON minigame_stats(game);
                 CREATE INDEX IF NOT EXISTS idx_minigame_user ON minigame_stats(user_id);
+                CREATE INDEX IF NOT EXISTS idx_minigame_daily_day ON minigame_daily_usage(day);
+                CREATE INDEX IF NOT EXISTS idx_minigame_daily_user ON minigame_daily_usage(user_id, day);
             """)
             conn.commit()
 
@@ -385,7 +396,90 @@ class Database:
         )
 
     # ─────────────────────────────────────────────────────────────────────────
-    # MINI-JEUX
+    # MINI-JEUX — Limites quotidiennes
+    # ─────────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _today_str():
+        return datetime.now().strftime("%Y-%m-%d")
+
+    def get_daily_usage(self, user_id, game, day=None):
+        """Retourne le nombre de parties jouées aujourd'hui pour ce jeu."""
+        day = day or self._today_str()
+        row = self.fetch_one(
+            "SELECT count FROM minigame_daily_usage WHERE user_id = ? AND game = ? AND day = ?",
+            (user_id, game, day),
+        )
+        return row["count"] if row else 0
+
+    def get_all_daily_usage(self, user_id, day=None):
+        """Retourne un dict {game: count} pour la journée."""
+        day = day or self._today_str()
+        rows = self.fetch_all(
+            "SELECT game, count FROM minigame_daily_usage WHERE user_id = ? AND day = ?",
+            (user_id, day),
+        )
+        return {r["game"]: r["count"] for r in rows}
+
+    def increment_daily_usage(self, user_id, game, day=None):
+        """Incrémente et retourne le nouveau compteur."""
+        day = day or self._today_str()
+        conn = self._get_conn()
+        try:
+            conn.execute(
+                """
+                INSERT INTO minigame_daily_usage (user_id, game, day, count)
+                VALUES (?, ?, ?, 1)
+                ON CONFLICT(user_id, game, day) DO UPDATE SET count = count + 1
+                """,
+                (user_id, game, day),
+            )
+            conn.commit()
+            row = conn.execute(
+                "SELECT count FROM minigame_daily_usage WHERE user_id = ? AND game = ? AND day = ?",
+                (user_id, game, day),
+            ).fetchone()
+            return row["count"] if row else 1
+        except Exception as e:
+            logger.error(f"❌ increment_daily_usage: {e}")
+            conn.rollback()
+            return 0
+        finally:
+            conn.close()
+
+    def decrement_daily_usage(self, user_id, game, day=None):
+        """Décrémente le compteur (utile quand un jeu est annulé avant de démarrer)."""
+        day = day or self._today_str()
+        conn = self._get_conn()
+        try:
+            conn.execute(
+                """
+                UPDATE minigame_daily_usage
+                SET count = MAX(0, count - 1)
+                WHERE user_id = ? AND game = ? AND day = ?
+                """,
+                (user_id, game, day),
+            )
+            conn.commit()
+        except Exception as e:
+            logger.error(f"❌ decrement_daily_usage: {e}")
+            conn.rollback()
+        finally:
+            conn.close()
+
+    def purge_old_daily_usage(self, keep_days=7):
+        """Nettoyage périodique : supprime les lignes plus anciennes que `keep_days`."""
+        try:
+            cutoff = (datetime.now() - __import__("datetime").timedelta(days=keep_days)).strftime("%Y-%m-%d")
+            self.execute(
+                "DELETE FROM minigame_daily_usage WHERE day < ?",
+                (cutoff,),
+            )
+        except Exception as e:
+            logger.warning(f"purge_old_daily_usage: {e}")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # MINI-JEUX — Stats cumulées
     # ─────────────────────────────────────────────────────────────────────────
 
     def record_minigame(self, user_id, game, won, xp_delta=0, duration_seconds=None):
