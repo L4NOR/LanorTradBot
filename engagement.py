@@ -341,7 +341,7 @@ class EngagementSystem(commands.Cog):
             update_challenge_progress(ctx.author.id, "minigame", 1)
         elif name == "daily":
             update_challenge_progress(ctx.author.id, "daily", 1)
-        elif name in ("reward", "dailyreward", "claim"):
+        elif name in ("reward", "dailyreward"):
             update_challenge_progress(ctx.author.id, "reward", 1)
 
     # ───────────────────────────────────────────────────────────────────────────
@@ -376,7 +376,7 @@ class EngagementSystem(commands.Cog):
     # 🎁 DAILY REWARD CALENDAR — !reward
     # ═══════════════════════════════════════════════════════════════════════════
 
-    @commands.command(name="reward", aliases=["dailyreward", "claim"])
+    @commands.command(name="reward", aliases=["dailyreward"])
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def reward_calendar(self, ctx):
         """Calendrier de récompenses sur 7 jours (cycle hebdomadaire)."""
