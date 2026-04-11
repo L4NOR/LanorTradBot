@@ -396,6 +396,51 @@
     },
     "active": true
   },
+  "hero_apprenti": {
+    "name": "🗡️ Héros Apprenti",
+    "description": "Un jeune aventurier prêt à frapper le boss du serveur ! À usage unique : utilise `!use hero_apprenti` pendant qu'un boss est actif pour lui infliger **1 500 dégâts** d'un seul coup.",
+    "emoji": "🗡️",
+    "category": "heroes",
+    "price": 400,
+    "stock": -1,
+    "type": "consumable",
+    "hero_damage": 1500,
+    "requirements": {
+      "badges": [],
+      "level": 0
+    },
+    "active": true
+  },
+  "hero_veteran": {
+    "name": "⚔️ Héros Vétéran",
+    "description": "Un guerrier aguerri qui a vu mille batailles. Utilise `!use hero_veteran` quand un boss est actif pour lui infliger **4 000 dégâts** instantanés.",
+    "emoji": "⚔️",
+    "category": "heroes",
+    "price": 950,
+    "stock": -1,
+    "type": "consumable",
+    "hero_damage": 4000,
+    "requirements": {
+      "badges": [],
+      "level": 3
+    },
+    "active": true
+  },
+  "hero_legendaire": {
+    "name": "🛡️ Héros Légendaire",
+    "description": "Une figure mythique invoquée pour les heures les plus sombres. Utilise `!use hero_legendaire` pour infliger **10 000 dégâts** à un boss actif. Le coup résonnera dans tout le serveur.",
+    "emoji": "🛡️",
+    "category": "heroes",
+    "price": 2200,
+    "stock": -1,
+    "type": "consumable",
+    "hero_damage": 10000,
+    "requirements": {
+      "badges": [],
+      "level": 7
+    },
+    "active": true
+  },
   "limited_founder_badge": {
     "name": "🛡️ Badge Fondateur",
     "description": "Badge exclusif réservé aux membres de la première heure ! Édition ultra-limitée à 10 exemplaires.",

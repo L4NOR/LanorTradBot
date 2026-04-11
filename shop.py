@@ -487,7 +487,9 @@ class ShopSystem(commands.Cog):
             "manga_packs": {"emoji": "📚", "name": "Collections Manga", "desc": "Des packs pour les passionnés"},
             "social": {"emoji": "💬", "name": "Articles Sociaux", "desc": "Interagissez différemment"},
             "utility": {"emoji": "🔧", "name": "Outils Pratiques", "desc": "Facilitez-vous la vie"},
-            "limited": {"emoji": "💎", "name": "Édition Limitée", "desc": "Rarissimes et précieux"}
+            "limited": {"emoji": "💎", "name": "Édition Limitée", "desc": "Rarissimes et précieux"},
+            "heroes": {"emoji": "🗡️", "name": "Héros Invocables", "desc": "Aide à vaincre le boss du serveur"},
+            "mystery": {"emoji": "📦", "name": "Boîtes Mystère", "desc": "Tente ta chance"},
         }
         
         # Afficher jusqu'à 6 catégories dans l'embed
@@ -1206,28 +1208,62 @@ class ShopSystem(commands.Cog):
         # Utiliser l'item
         if item_data.get("category") == "boosts":
             activate_boost(ctx.author.id, item_id, item_data)
-            
+
             # Déduire de l'inventaire
             inv["items"][item_id] -= 1
             if inv["items"][item_id] <= 0:
                 del inv["items"][item_id]
-            
+
             sauvegarder_shop()
-            
+
             embed = discord.Embed(
                 title="✨ Article Utilisé !",
                 description=f"Vous avez activé **{item_data.get('name', item_id)}** !",
                 color=discord.Color.green()
             )
-            
+
             if item_data.get("duration_hours"):
                 embed.add_field(
                     name="⏰ Durée",
                     value=f"{item_data['duration_hours']} heure(s)",
                     inline=True
                 )
-            
+
             await ctx.send(embed=embed)
+        elif item_data.get("category") == "heroes":
+            # Héros : attaque unique sur le boss actif
+            mg_cog = self.bot.get_cog("MiniGames")
+            if mg_cog is None:
+                await ctx.send("❌ Le système de boss est indisponible. Réessaye plus tard.")
+                return
+
+            if not mg_cog.boss_data.get("active"):
+                await ctx.send(
+                    "❌ Aucun boss actif en ce moment — ton héros attend dans l'auberge. "
+                    "Garde-le pour le prochain boss !"
+                )
+                return
+
+            hero_name = item_data.get("name", item_id)
+            hero_damage = int(item_data.get("hero_damage", 0))
+            if hero_damage <= 0:
+                await ctx.send("❌ Cet héros n'a pas de dégâts configurés. Préviens un admin.")
+                return
+
+            # Consommer l'item AVANT l'attaque (évite double-use si l'API échoue)
+            inv["items"][item_id] -= 1
+            if inv["items"][item_id] <= 0:
+                del inv["items"][item_id]
+            sauvegarder_shop()
+
+            try:
+                await mg_cog.hero_attack(ctx.channel, ctx.author, hero_name, hero_damage)
+            except Exception as e:
+                # Rollback en cas d'erreur inattendue
+                inv = get_user_inventory(ctx.author.id)
+                inv["items"][item_id] = inv["items"].get(item_id, 0) + 1
+                sauvegarder_shop()
+                await ctx.send(f"❌ Erreur lors de l'invocation du héros : `{e}`. L'item a été restitué.")
         else:
             await ctx.send("⚠️ Cet article ne peut pas être utilisé de cette manière.")
     

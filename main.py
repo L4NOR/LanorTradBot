@@ -1,34 +1,28 @@
 import discord
 from discord.ext import commands
 import os
-import signal
 import logging
-import traceback
 from aiohttp import web
 from config import TOKEN, PREFIX, INTENTS, PORT, DATA_DIR
 
-# Configuration du logging
+# ═══════════════════════════════════════════════════════════════
+# LOGGING
+# ═══════════════════════════════════════════════════════════════
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# Capturer les signaux pour savoir pourquoi le process s'arrête
-def signal_handler(signum, frame):
-    sig_name = signal.Signals(signum).name
-    logging.warning(f"⚠️ SIGNAL REÇU: {sig_name} ({signum})")
-    logging.warning(f"⚠️ Stack trace au moment du signal:\n{''.join(traceback.format_stack(frame))}")
-    raise KeyboardInterrupt
-
-signal.signal(signal.SIGTERM, signal_handler)
-signal.signal(signal.SIGINT, signal_handler)
-
 # Créer le dossier data au démarrage
 os.makedirs(DATA_DIR, exist_ok=True)
 
 
+# ═══════════════════════════════════════════════════════════════
+# CHARGEMENT DES MODULES
+# ═══════════════════════════════════════════════════════════════
+
 async def setup_modules(bot):
-    """Charge tous les modules sur l'instance du bot."""
     import events
     events.setup(bot)
     logging.info("✅ Module Events chargé")
@@ -97,18 +91,20 @@ async def setup_modules(bot):
     logging.info("✅ Module MiniGames chargé")
 
 
+# ═══════════════════════════════════════════════════════════════
+# BOT CLASS
+# ═══════════════════════════════════════════════════════════════
+
 class LanorBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix=PREFIX, intents=INTENTS)
         self.web_runner = None
 
     async def setup_hook(self):
-        """Chargement async au démarrage"""
         await setup_modules(self)
         await self.start_webserver()
 
     async def start_webserver(self):
-        """Serveur web interne (health check VPS)"""
         if self.web_runner is not None:
             return
 
@@ -117,7 +113,6 @@ class LanorBot(commands.Bot):
         async def health_check(request):
             return web.Response(text="OK", status=200)
 
-        # Route simple (PAS de webhook ici ⚠️)
         app.router.add_get('/', health_check)
 
         self.web_runner = web.AppRunner(app)
@@ -129,28 +124,19 @@ class LanorBot(commands.Bot):
         logging.info(f"🌐 Serveur web démarré sur le port {PORT}")
 
     async def close(self):
-        """Fermeture propre du bot"""
-        logging.warning(f"⚠️ bot.close() APPELÉ - Stack trace:")
-        logging.warning(''.join(traceback.format_stack()))
+        logging.info("🛑 Fermeture propre du bot...")
+
         if self.web_runner:
             await self.web_runner.cleanup()
+
         await super().close()
 
 
 # ═══════════════════════════════════════════════════════════════
-# LANCEMENT DU BOT
+# LANCEMENT
 # ═══════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    try:
-        bot = LanorBot()
-        logging.info("🚀 Démarrage du bot...")
-        bot.run(TOKEN)
-        logging.warning("⚠️ bot.run() A RETOURNÉ NORMALEMENT - le bot s'est arrêté sans erreur")
-    except SystemExit as e:
-        logging.error(f"❌ SystemExit reçu: code={e.code}")
-    except KeyboardInterrupt:
-        logging.warning("⚠️ KeyboardInterrupt reçu")
-    except Exception as e:
-        logging.error(f"❌ Erreur fatale: {type(e).__name__}: {e}")
-        logging.error(traceback.format_exc())
+    bot = LanorBot()
+    logging.info("🚀 Démarrage du bot...")
+    bot.run(TOKEN)

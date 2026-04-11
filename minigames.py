@@ -67,38 +67,118 @@ CATEGORY_LABELS = {
 }
 
 # Mots pour les jeux (thème manga / traduction)
+# Utilisés par !hangman et !unscramble (filtrage par longueur dans unscramble).
 MANGA_WORDS = [
-    # Personnages & Mangas
+    # ─── Personnages, mangas & univers du serveur ──────────────────────────
     "exorciste", "demon", "satan", "flammes", "paladin",
-    "assassin", "combat", "survie", "lame", "maldiction",
+    "assassin", "combat", "survie", "lame", "malediction",
     "football", "gardien", "attaquant", "defenseur", "match",
     "yakuza", "crime", "souterrain", "gang",
-    "oni", "shiki", "transformation",
-    # Termes manga
-    "manga", "anime", "shonen", "seinen", "chapitre", "tome",
-    "traduction", "sensei", "nakama", "katana", "shinobi",
-    "jutsu", "sabre", "pouvoir", "technique", "combat",
-    "guerrier", "dragon", "esprit", "ombre", "lumiere",
-    "heros", "vilain", "mentor", "rival", "equipe",
-    "mission", "quete", "aventure", "mystere", "secret",
-    "magie", "sortilege", "invocation", "portail", "dimension",
-    "armure", "bouclier", "lance", "arc", "fleche",
-    "clan", "royaume", "empire", "forteresse", "donjon",
-    "elixir", "poison", "antidote", "potion", "parchemin",
-    "prophete", "oracle", "gardien", "sentinelle", "chasseur",
-    "fantome", "spectre", "vampire", "loup", "phenix",
+    "oni", "shiki", "transformation", "rituel", "pacte",
+    # ─── Termes manga / édition ────────────────────────────────────────────
+    "manga", "anime", "shonen", "seinen", "shojo", "josei", "kodomo",
+    "chapitre", "tome", "volume", "scan", "raw", "edition", "couverture",
+    "traduction", "traducteur", "correction", "relecture", "cleaning",
+    "typesetting", "redraw", "sfx", "mangaka", "studio", "serialisation",
+    "editeur", "tirage", "preview",
+    # ─── Maîtres, élèves & relations ───────────────────────────────────────
+    "sensei", "nakama", "kohai", "senpai", "shifu", "disciple",
+    "maitre", "apprenti", "mentor", "rival", "equipe", "famille",
+    # ─── Armes blanches & équipement ───────────────────────────────────────
+    "katana", "wakizashi", "tanto", "nodachi", "tachi", "naginata",
+    "shinobi", "shuriken", "kunai", "sabre", "lame", "epee",
+    "rapiere", "dague", "fleau", "hache", "masse", "lance",
+    "bouclier", "armure", "casque", "gantelet", "arc", "fleche",
+    "arbalete", "javelot", "fronde", "fouet",
+    # ─── Pouvoirs & techniques ─────────────────────────────────────────────
+    "jutsu", "ninjutsu", "genjutsu", "taijutsu", "fuinjutsu",
+    "chakra", "haki", "bankai", "shikai", "reiatsu", "zanpakuto",
+    "sharingan", "byakugan", "rinnegan", "tsukuyomi", "amaterasu",
+    "susanoo", "rasengan", "kamehameha", "bijuu",
+    "pouvoir", "technique", "incantation", "mudra", "sceau",
+    # ─── Magie & arcanes ───────────────────────────────────────────────────
+    "magie", "sortilege", "invocation", "rituel", "portail", "dimension",
+    "alchimie", "necromancie", "elementaire", "runique", "arcane",
+    "enchantement", "malefice", "exorcisme", "purification",
+    # ─── Personnages génériques d'aventure ─────────────────────────────────
+    "guerrier", "barbare", "moine", "voleur", "rodeur", "barde",
+    "paladin", "druide", "necromant", "sorcier", "magicien", "invocateur",
+    "chevalier", "samourai", "ronin", "ninja", "ashigaru", "shogun", "daimyo",
+    "heros", "vilain", "tueur", "chasseur", "traqueur", "garde",
+    # ─── Créatures & ennemis ───────────────────────────────────────────────
+    "dragon", "wyverne", "hydre", "kraken", "leviathan", "behemoth",
+    "fantome", "spectre", "revenant", "liche", "vampire", "loup",
+    "loupgarou", "phenix", "griffon", "minotaure", "centaure", "harpie",
+    "gorgone", "chimere", "basilic", "sphinx", "manticore",
+    "yokai", "tengu", "kappa", "kitsune", "tanuki", "akuma",
+    "gobelin", "orc", "troll", "ogre", "geant", "titan", "colosse",
+    # ─── Lieux & royaumes ──────────────────────────────────────────────────
+    "clan", "royaume", "empire", "forteresse", "donjon", "chateau",
+    "tour", "citadelle", "muraille", "temple", "sanctuaire", "monastere",
+    "village", "cite", "capitale", "taverne", "marche", "guilde",
+    "foret", "montagne", "caverne", "abime", "oasis", "desert",
+    "konoha", "soulsociety", "wano", "edo",
+    # ─── Objets, potions & artefacts ───────────────────────────────────────
+    "elixir", "poison", "antidote", "potion", "parchemin", "grimoire",
+    "amulette", "talisman", "relique", "artefact", "joyau", "cristal",
+    "rune", "totem", "anneau", "couronne", "sceptre", "orbe",
+    # ─── Quêtes, missions, mystères ────────────────────────────────────────
+    "mission", "quete", "aventure", "mystere", "secret", "enigme",
+    "prophetie", "oracle", "vision", "prediction", "destin", "fatalite",
+    # ─── Combat & émotions ─────────────────────────────────────────────────
+    "courage", "bravoure", "honneur", "fierte", "fureur", "rage",
+    "colere", "vengeance", "trahison", "loyaute", "amitie", "amour",
+    "haine", "peur", "terreur", "espoir", "douleur", "sacrifice",
+    # ─── Cuisine & culture japonaise ───────────────────────────────────────
+    "ramen", "sushi", "miso", "udon", "soba", "tempura", "onigiri",
+    "matsuri", "sakura", "momiji", "kimono", "yukata", "hakama",
+    "kanji", "hiragana", "katakana", "tatami", "shoji",
 ]
 
-# Mots de 5 lettres pour Wordle (sans accents)
+# Mots pour Wordle. La longueur du mot tiré définit le nombre de lettres
+# que le joueur doit taper. On regroupe les mots par longueur pour faciliter
+# l'ajout futur. Tous les mots sont sans accents (la fonction normalize()
+# les enlève dans les comparaisons). NE PAS y mettre des mots avec apostrophe
+# ou tiret — la garde `isalpha()` les rejetterait.
 WORDLE_WORDS = [
+    # ─── 4 lettres ─────────────────────────────────────────────────────────
+    "lame", "epee", "ange", "mort", "noir", "rage", "lien", "voie",
+    "cles", "loup", "tete", "nuit", "jour", "feux", "vent", "clan",
+    "amis", "elfe", "nain", "neko", "yari", "tabi", "sumo", "tabi",
+    # ─── 5 lettres (cœur du jeu) ───────────────────────────────────────────
     "manga", "anime", "demon", "sabre", "magie", "force",
     "lames", "flame", "heros", "shiki", "garde", "armes",
     "monde", "coeur", "piege", "noble", "titan", "chaos",
-    "divin", "epees", "ombre", "guilde", "quete", "rival",
-    "lance", "duels", "arena", "glace", "foudre",
-    "ninja", "ronin", "shogu", "droit", "clan",
-    "encre", "trait", "plume", "panel", "trame",
-    "scans", "clean", "check", "ligne", "bulle",
+    "divin", "epees", "ombre", "quete", "rival",
+    "lance", "duels", "arena", "glace", "ninja", "ronin",
+    "droit", "encre", "trait", "plume", "panel",
+    "trame", "scans", "clean", "check", "ligne", "bulle",
+    "amour", "haine", "peine", "songe", "reves", "nuage",
+    "neige", "pluie", "brume", "vents", "forge", "armee",
+    "siege", "tueur", "cible", "mages", "sages", "dieux",
+    "saint", "pieux", "prier", "ecrit", "pages", "texte",
+    "verbe", "prose", "torse", "genou", "barbe", "front",
+    "ailes", "queue", "crocs", "poils", "ourse", "loups",
+    "lions", "fumee", "trone", "large", "court", "brave",
+    "honte", "rouge", "blanc", "noirs", "verts", "bleus",
+    "jours", "soirs", "midis", "foret", "monts", "mares",
+    "vague", "orage", "volee", "prise", "chute", "sauts",
+    "choix", "plans", "objet", "outil", "clefs", "chefs",
+    "rangs", "ordre", "juste", "grace", "ciels", "lunes",
+    "matin", "aubes", "neufs", "cents", "mille", "perle",
+    "bague", "croix", "route", "voies", "piste", "ponts",
+    "tours", "cites", "toits", "camps", "forts", "ports",
+    "baies", "kanji", "ramen", "sushi", "moine", "barde",
+    "ogres", "morts", "anges", "tengu", "kappa", "akuma",
+    "haiku",
+    # ─── 6 lettres (plus dur) ──────────────────────────────────────────────
+    "guerre", "combat", "rituel", "magies", "sabres", "lances",
+    "ennemi", "allies", "garcon", "noires", "rouges", "vertes",
+    "vivant", "enfers", "saints", "demons", "diable",
+    "donjon", "guilde", "foudre", "tonner", "purger", "trolls",
+    "fureur", "esprit", "vision", "destin", "tueurs",
+    "loyaux", "marche", "berger", "ombres", "soldat",
+    "voleur", "rodeur", "mentor", "epaule", "casque",
 ]
 
 # Emojis pour le slot machine
@@ -108,6 +188,108 @@ SLOT_EMOJIS = ["🍒", "🍋", "🍊", "🍇", "⭐", "💎", "7️⃣"]
 REACTION_EMOJIS = ["🔥", "⚡", "💎", "🎯", "🌟", "👑", "🎲", "🎪", "🎭", "🎨"]
 
 BOSS_FILE = "data/boss.json"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BOSS COMMUNAUTAIRES — Catalogue de boss
+# ═══════════════════════════════════════════════════════════════════════════════
+# Chaque boss reste actif pendant BOSS_DURATION_DAYS. Les bosses tournent
+# (manuellement avec !boss_rotate, ou automatiquement avec !boss_auto on).
+# La liste est ordonnée — c'est l'ordre de rotation. Ajouter / retirer / modifier
+# librement, l'index de rotation est sauvegardé en base et ré-ajusté au load.
+
+BOSS_DURATION_DAYS = 30  # 1 mois
+
+BOSS_CATALOG = [
+    {
+        "id": "dragon_ombres",
+        "name": "🐉 Dragon des Ombres",
+        "color": 0x4B0082,
+        "max_hp": 50000,
+        "hit_min": 15,
+        "hit_max": 60,
+        "lore": (
+            "Un dragon ancien tissé d'ombres et de cendres. Ses écailles "
+            "absorbent la lumière, et son rugissement glace les âmes."
+        ),
+    },
+    {
+        "id": "oni_supreme",
+        "name": "👹 Oni Suprême",
+        "color": 0xC0392B,
+        "max_hp": 60000,
+        "hit_min": 12,
+        "hit_max": 55,
+        "lore": (
+            "Roi des oni, descendu des montagnes interdites. Sa massue "
+            "brise les sceaux, son rire fait trembler les villages."
+        ),
+    },
+    {
+        "id": "spectre_maudit",
+        "name": "💀 Spectre Maudit",
+        "color": 0x2C3E50,
+        "max_hp": 45000,
+        "hit_min": 10,
+        "hit_max": 50,
+        "lore": (
+            "Un revenant lié à un pacte brisé. Insaisissable, il ne peut "
+            "être blessé que par la volonté collective de ses traqueurs."
+        ),
+    },
+    {
+        "id": "demon_flammes",
+        "name": "🔥 Démon des Flammes",
+        "color": 0xE74C3C,
+        "max_hp": 55000,
+        "hit_min": 18,
+        "hit_max": 65,
+        "lore": (
+            "Né d'une fournaise infernale, il transforme l'air en braise "
+            "et le sol en lave. Quiconque l'approche brûle déjà."
+        ),
+    },
+    {
+        "id": "titan_foudre",
+        "name": "⚡ Titan de Foudre",
+        "color": 0xF1C40F,
+        "max_hp": 65000,
+        "hit_min": 14,
+        "hit_max": 58,
+        "lore": (
+            "Un colosse sculpté dans l'orage. Chacun de ses pas déclenche "
+            "un éclair, chacun de ses coups un tonnerre dévastateur."
+        ),
+    },
+    {
+        "id": "leviathan_abyssal",
+        "name": "🌊 Léviathan Abyssal",
+        "color": 0x1F618D,
+        "max_hp": 70000,
+        "hit_min": 20,
+        "hit_max": 70,
+        "lore": (
+            "Surgi des fosses sans fond, ce monstre marin engloutit des "
+            "flottes entières. Ses tentacules atteignent même le rivage."
+        ),
+    },
+]
+
+
+def get_boss_by_id(boss_id):
+    """Retourne le dict du boss correspondant à l'id, ou None."""
+    for b in BOSS_CATALOG:
+        if b["id"] == boss_id:
+            return b
+    return None
+
+
+def get_boss_index(boss_id):
+    """Retourne l'index du boss dans le catalogue, ou -1."""
+    for i, b in enumerate(BOSS_CATALOG):
+        if b["id"] == boss_id:
+            return i
+    return -1
+
 
 # Hangman stages
 HANGMAN_STAGES = [
@@ -288,10 +470,20 @@ class MiniGames(commands.Cog):
         # channel_id -> {"type": str, "owner_id": int|None}
         self.active_games = {}
         self.boss_data = load_json(BOSS_FILE, {})
+        # Migration : ajouter les nouveaux champs si absents (anciens fichiers)
+        self.boss_data.setdefault("rotation_index", -1)
+        self.boss_data.setdefault("auto_rotate", False)
+        self.boss_data.setdefault("history", [])
         self.attack_cooldowns = {}  # user_id -> datetime
+        # Tâche d'arrière-plan : check toutes les heures si le boss a expiré
+        # ou si un nouveau doit spawn (auto rotation).
+        self.boss_rotation_task.start()
 
     def cog_unload(self):
-        pass
+        try:
+            self.boss_rotation_task.cancel()
+        except Exception:
+            pass
 
     def _is_game_active(self, channel_id):
         return channel_id in self.active_games
@@ -1253,7 +1445,14 @@ class MiniGames(commands.Cog):
         timer_msg = None
         state = {"deadline": 0, "ended": False}
         try:
-            start_word = random.choice(["manga", "anime", "combat", "magie", "epee", "demon"])
+            start_word = random.choice([
+                "manga", "anime", "combat", "magie", "epee", "demon",
+                "sabre", "ninja", "ronin", "ombre", "force", "rituel",
+                "guerre", "bouclier", "armure", "katana", "guilde",
+                "donjon", "esprit", "flamme", "tempete", "oracle",
+                "nakama", "sensei", "shogun", "yokai", "arcane",
+                "guerrier", "mystere", "potion", "talisman", "phenix",
+            ])
             used_words = {start_word}
             current_letter = normalize(start_word[-1])
             last_player = None
@@ -1355,47 +1554,253 @@ class MiniGames(commands.Cog):
             self._clear_game(ctx.channel.id)
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # 👹 BOSS - Boss communautaire
+    # 👹 BOSS - Boss communautaire (durée 1 mois, rotation 6 boss)
     # ═══════════════════════════════════════════════════════════════════════════
 
-    @commands.command(name="boss_spawn", aliases=["spawn_boss"])
-    @commands.has_any_role(*__import__('config').ADMIN_ROLES)
-    async def boss_spawn(self, ctx, hp: int = 500, *, name: str = None):
-        """(ADMIN) Fait apparaître un boss communautaire"""
-        if self.boss_data.get("active"):
-            return await ctx.send("❌ Un boss est déjà actif ! Utilise `!boss` pour voir son état.")
+    # ─── Helpers internes ────────────────────────────────────────────────────
 
-        boss_names = [
-            "🐉 Dragon des Ombres", "👹 Oni Suprême", "💀 Spectre Maudit",
-            "🔥 Démon des Flammes", "⚡ Titan de Foudre", "🌊 Léviathan Abyssal",
-            "👿 Seigneur Déchu", "🦇 Vampire Ancien", "🐺 Loup Alpha",
-        ]
-        boss_name = name or random.choice(boss_names)
+    def _spawn_boss(self, boss_def, channel_id, *, auto_rotate=None):
+        """Initialise self.boss_data pour un nouveau boss et sauvegarde.
+
+        boss_def : dict du catalogue (id, name, max_hp, hit_min, hit_max, color, lore)
+        channel_id : channel utilisé pour les annonces auto.
+        auto_rotate : si fourni, écrase la valeur dans boss_data.
+        """
+        now = datetime.now()
+        ends_at = now + timedelta(days=BOSS_DURATION_DAYS)
+        previous_auto = self.boss_data.get("auto_rotate", False)
+        history = self.boss_data.get("history", [])
 
         self.boss_data = {
             "active": True,
-            "name": boss_name,
-            "max_hp": hp,
-            "hp": hp,
-            "participants": {},  # user_id_str -> total_damage
-            "spawned_at": datetime.now().isoformat(),
-            "channel_id": ctx.channel.id,
+            "boss_id": boss_def["id"],
+            "name": boss_def["name"],
+            "max_hp": boss_def["max_hp"],
+            "hp": boss_def["max_hp"],
+            "hit_min": boss_def["hit_min"],
+            "hit_max": boss_def["hit_max"],
+            "color": boss_def["color"],
+            "lore": boss_def["lore"],
+            "participants": {},
+            "spawned_at": now.isoformat(),
+            "ends_at": ends_at.isoformat(),
+            "channel_id": channel_id,
+            "rotation_index": get_boss_index(boss_def["id"]),
+            "auto_rotate": auto_rotate if auto_rotate is not None else previous_auto,
+            "history": history,
         }
         save_json(BOSS_FILE, self.boss_data)
 
-        embed = discord.Embed(
-            title=f"⚠️ {boss_name} APPARAÎT !",
-            description=(
-                f"Un boss redoutable a envahi le serveur !\n\n"
-                f"❤️ **HP : {hp:,} / {hp:,}**\n"
-                f"```{'█' * 20} 100%```\n\n"
-                f"Utilisez `!attack` pour l'attaquer !\n"
-                f"⏱️ Cooldown : 30 secondes par attaque\n"
-                f"🏆 **{MINIGAME_XP['boss_kill']} XP** pour le coup fatal !"
-            ),
-            color=0xFF0000
+    def _archive_boss(self, status):
+        """Archive l'instance courante du boss dans l'historique."""
+        history = self.boss_data.get("history", [])
+        history.append({
+            "boss_id": self.boss_data.get("boss_id"),
+            "name": self.boss_data.get("name"),
+            "spawned_at": self.boss_data.get("spawned_at"),
+            "ended_at": datetime.now().isoformat(),
+            "status": status,  # "killed", "expired", "force_ended"
+            "participants": self.boss_data.get("participants", {}),
+            "hp_remaining": self.boss_data.get("hp"),
+        })
+        # Limiter la taille
+        self.boss_data["history"] = history[-50:]
+
+    def _build_boss_embed(self, attacker=None, damage=0, crit=False, xp_hit=0):
+        """Construit l'embed d'état du boss (utilisé par !boss et après une attaque)."""
+        hp = self.boss_data["hp"]
+        max_hp = self.boss_data["max_hp"]
+        name = self.boss_data["name"]
+        percentage = int((hp / max_hp) * 100) if max_hp else 0
+        bar_len = 20
+        filled = int((hp / max_hp) * bar_len) if max_hp else 0
+
+        # Temps restant
+        ends_str = self.boss_data.get("ends_at")
+        time_line = ""
+        if ends_str:
+            try:
+                ends_at = datetime.fromisoformat(ends_str)
+                ends_unix = int(ends_at.timestamp())
+                time_line = f"\n⏳ Disparaît <t:{ends_unix}:R>"
+            except Exception:
+                pass
+
+        desc = (
+            f"❤️ **HP : {hp:,} / {max_hp:,}**\n"
+            f"```{'█' * filled}{'░' * (bar_len - filled)} {percentage}%```"
+            f"{time_line}"
         )
-        await ctx.send(embed=embed)
+
+        embed = discord.Embed(
+            title=f"👹 {name}",
+            description=desc,
+            color=self.boss_data.get("color", 0xFF0000),
+        )
+
+        if attacker is not None:
+            crit_text = " **CRITIQUE !** 💥" if crit else ""
+            embed.add_field(
+                name=f"⚔️ {attacker.display_name} attaque !",
+                value=f"**-{damage:,}** dégâts !{crit_text} (+{xp_hit} XP)",
+                inline=False,
+            )
+
+        return embed
+
+    async def _apply_damage(self, channel, attacker, damage, *, source_label="attack",
+                            crit=False, give_hit_xp=True):
+        """Applique des dégâts au boss et gère le coup fatal.
+
+        - channel : channel discord pour envoyer les embeds.
+        - attacker : discord.Member portant le coup.
+        - damage : dégâts bruts à appliquer.
+        - source_label : "attack" / "hero_apprenti" / etc. (pour les logs XP)
+        - give_hit_xp : si False, on ne donne pas l'XP de hit standard
+          (utile pour les héros, qui ont leur propre récompense).
+
+        Retourne True si le boss est tué, False sinon.
+        """
+        if not self.boss_data.get("active"):
+            await channel.send("❌ Aucun boss actif !")
+            return False
+
+        self.boss_data["hp"] = max(0, self.boss_data["hp"] - damage)
+
+        # Enregistrer la participation
+        uid_str = str(attacker.id)
+        self.boss_data.setdefault("participants", {})
+        self.boss_data["participants"][uid_str] = (
+            self.boss_data["participants"].get(uid_str, 0) + damage
+        )
+
+        xp_hit = 0
+        if give_hit_xp:
+            xp_hit, _, _, _ = add_xp(attacker.id, MINIGAME_XP["boss_hit"], source_label)
+
+        save_json(BOSS_FILE, self.boss_data)
+
+        # Boss mort ?
+        if self.boss_data["hp"] <= 0:
+            await self._on_boss_killed(channel, attacker, crit=crit, kill_xp_extra=xp_hit)
+            return True
+
+        # Sinon : embed d'attaque
+        embed = self._build_boss_embed(
+            attacker=attacker, damage=damage, crit=crit, xp_hit=xp_hit
+        )
+        await channel.send(embed=embed)
+        return False
+
+    async def _on_boss_killed(self, channel, killer, *, crit=False, kill_xp_extra=0):
+        """Distribue les récompenses, archive le boss et envoie l'embed final."""
+        xp_kill, _, level_up, new_level = add_xp(
+            killer.id, MINIGAME_XP["boss_kill"], "boss_kill"
+        )
+        participants = self.boss_data.get("participants", {})
+
+        # XP bonus pour tous les autres participants
+        for pid_str, total_dmg in participants.items():
+            if int(pid_str) != killer.id:
+                bonus = min(50, total_dmg // 10)
+                if bonus > 0:
+                    add_xp(int(pid_str), bonus, "boss_participation")
+
+        # Podium
+        sorted_attackers = sorted(participants.items(), key=lambda x: x[1], reverse=True)[:3]
+        podium = ""
+        medals = ["🥇", "🥈", "🥉"]
+        for i, (uid, dmg) in enumerate(sorted_attackers):
+            member = channel.guild.get_member(int(uid)) if channel.guild else None
+            name_str = member.display_name if member else f"User {uid}"
+            podium += f"{medals[i]} {name_str} — **{dmg:,}** dégâts\n"
+
+        crit_text = " **CRITIQUE !** 💥" if crit else ""
+        embed = discord.Embed(
+            title=f"☠️ {self.boss_data['name']} est VAINCU !",
+            description=(
+                f"💥 {killer.mention} a porté le **coup fatal** !{crit_text}\n"
+                f"**+{xp_kill + kill_xp_extra} XP** pour le coup fatal !\n\n"
+                f"**Podium :**\n{podium}\n"
+                f"🎉 **{len(participants)} participants** — XP bonus distribué à tous !"
+            ),
+            color=0xFFD700,
+        )
+        await channel.send(embed=embed)
+
+        # Archive + reset
+        self._archive_boss("killed")
+        self.boss_data["active"] = False
+        save_json(BOSS_FILE, self.boss_data)
+
+        if level_up:
+            await announce_level_up_safe(self.bot, killer.id, new_level)
+
+    # ─── Tâche de rotation auto / expiration ─────────────────────────────────
+
+    @tasks.loop(hours=1)
+    async def boss_rotation_task(self):
+        """Vérifie chaque heure si le boss courant a expiré.
+
+        - Si oui : on l'archive comme "expired"
+        - Si auto_rotate est activé : on spawn le boss suivant dans le catalogue
+        """
+        try:
+            if not self.boss_data.get("active"):
+                return
+            ends_str = self.boss_data.get("ends_at")
+            if not ends_str:
+                return
+            try:
+                ends_at = datetime.fromisoformat(ends_str)
+            except Exception:
+                return
+            if datetime.now() < ends_at:
+                return
+
+            # Boss expiré
+            channel_id = self.boss_data.get("channel_id")
+            channel = self.bot.get_channel(channel_id) if channel_id else None
+
+            previous_name = self.boss_data.get("name", "Boss")
+            self._archive_boss("expired")
+            self.boss_data["active"] = False
+            save_json(BOSS_FILE, self.boss_data)
+
+            if channel:
+                await channel.send(embed=discord.Embed(
+                    title=f"🌫️ {previous_name} se retire...",
+                    description=(
+                        "Le boss a survécu pendant 1 mois et disparaît dans les ombres.\n"
+                        "Les guerriers peuvent souffler... pour l'instant."
+                    ),
+                    color=0x95A5A6,
+                ))
+
+            # Auto rotation ?
+            if self.boss_data.get("auto_rotate") and channel:
+                next_index = (self.boss_data.get("rotation_index", -1) + 1) % len(BOSS_CATALOG)
+                next_boss = BOSS_CATALOG[next_index]
+                self._spawn_boss(next_boss, channel.id)
+                await channel.send(embed=discord.Embed(
+                    title=f"⚠️ {next_boss['name']} APPARAÎT !",
+                    description=(
+                        f"*{next_boss['lore']}*\n\n"
+                        f"❤️ **HP : {next_boss['max_hp']:,} / {next_boss['max_hp']:,}**\n"
+                        f"```{'█' * 20} 100%```\n\n"
+                        f"⏳ Disponible **{BOSS_DURATION_DAYS} jours**\n"
+                        f"Utilisez `!attack` pour l'attaquer !"
+                    ),
+                    color=next_boss["color"],
+                ))
+        except Exception as e:
+            logger.exception(f"boss_rotation_task error: {e}")
+
+    @boss_rotation_task.before_loop
+    async def before_boss_rotation_task(self):
+        await self.bot.wait_until_ready()
+
+    # ─── Commandes joueur ────────────────────────────────────────────────────
 
     @commands.command(name="boss")
     @commands.cooldown(1, 5, commands.BucketType.user)
@@ -1404,37 +1809,55 @@ class MiniGames(commands.Cog):
         if not self.boss_data.get("active"):
             return await ctx.send("❌ Aucun boss actif. Un admin peut en invoquer un avec `!boss_spawn`.")
 
-        hp = self.boss_data["hp"]
-        max_hp = self.boss_data["max_hp"]
-        name = self.boss_data["name"]
-        percentage = int((hp / max_hp) * 100)
-        bar_len = 20
-        filled = int((hp / max_hp) * bar_len)
+        embed = self._build_boss_embed()
+
+        # Lore en field
+        lore = self.boss_data.get("lore")
+        if lore:
+            embed.add_field(name="📖 Légende", value=f"*{lore}*", inline=False)
 
         # Top attaquants
         participants = self.boss_data.get("participants", {})
         sorted_attackers = sorted(participants.items(), key=lambda x: x[1], reverse=True)[:5]
-
-        attackers_text = ""
-        for i, (uid, dmg) in enumerate(sorted_attackers):
-            member = ctx.guild.get_member(int(uid))
-            name_str = member.display_name if member else f"User {uid}"
-            medal = ["🥇", "🥈", "🥉"][i] if i < 3 else f"#{i+1}"
-            attackers_text += f"{medal} {name_str} — **{dmg:,}** dégâts\n"
-
-        embed = discord.Embed(
-            title=f"👹 {name}",
-            description=(
-                f"❤️ **HP : {hp:,} / {max_hp:,}**\n"
-                f"```{'█' * filled}{'░' * (bar_len - filled)} {percentage}%```"
-            ),
-            color=0xFF0000 if percentage > 50 else 0xFF8C00 if percentage > 25 else 0x00FF00
-        )
-
-        if attackers_text:
+        if sorted_attackers:
+            attackers_text = ""
+            for i, (uid, dmg) in enumerate(sorted_attackers):
+                member = ctx.guild.get_member(int(uid))
+                name_str = member.display_name if member else f"User {uid}"
+                medal = ["🥇", "🥈", "🥉"][i] if i < 3 else f"#{i+1}"
+                attackers_text += f"{medal} {name_str} — **{dmg:,}** dégâts\n"
             embed.add_field(name="⚔️ Top Attaquants", value=attackers_text, inline=False)
 
-        embed.set_footer(text=f"Utilise !attack pour attaquer • {len(participants)} participant(s)")
+        embed.set_footer(
+            text=f"!attack pour attaquer • {len(participants)} participant(s) "
+                 f"• Auto rotation: {'ON' if self.boss_data.get('auto_rotate') else 'OFF'}"
+        )
+        await ctx.send(embed=embed)
+
+    @commands.command(name="boss_list", aliases=["bosses", "boss_catalog"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    async def boss_list(self, ctx):
+        """Affiche le catalogue des 6 boss disponibles."""
+        embed = discord.Embed(
+            title="📜 Catalogue des Boss",
+            description=(
+                f"**{len(BOSS_CATALOG)}** boss au total. Chaque boss reste actif "
+                f"**{BOSS_DURATION_DAYS} jours**.\n\n"
+                f"_Un seul boss est actif à la fois — voir `!boss`._"
+            ),
+            color=COLORS["info"],
+        )
+        current_id = self.boss_data.get("boss_id") if self.boss_data.get("active") else None
+        for i, b in enumerate(BOSS_CATALOG):
+            marker = " ◀ **EN COURS**" if b["id"] == current_id else ""
+            embed.add_field(
+                name=f"{i+1}. {b['name']}{marker}",
+                value=(
+                    f"❤️ **{b['max_hp']:,}** HP — `id: {b['id']}`\n"
+                    f"*{b['lore']}*"
+                ),
+                inline=False,
+            )
         await ctx.send(embed=embed)
 
     @commands.command(name="attack", aliases=["attaque", "atk"])
@@ -1456,86 +1879,153 @@ class MiniGames(commands.Cog):
 
         self.attack_cooldowns[user_id] = now
 
-        # Dégâts aléatoires
-        damage = random.randint(10, 50)
+        # Dégâts aléatoires basés sur les stats du boss
+        hit_min = self.boss_data.get("hit_min", 10)
+        hit_max = self.boss_data.get("hit_max", 50)
+        damage = random.randint(hit_min, hit_max)
         crit = random.random() < 0.1  # 10% de chance de critique
         if crit:
             damage *= 3
-            crit_text = " **CRITIQUE !** 💥"
-        else:
-            crit_text = ""
 
-        self.boss_data["hp"] = max(0, self.boss_data["hp"] - damage)
+        await self._apply_damage(
+            ctx.channel, ctx.author, damage, source_label="boss_hit", crit=crit
+        )
 
-        # Enregistrer la participation
-        uid_str = str(user_id)
-        self.boss_data.setdefault("participants", {})
-        self.boss_data["participants"][uid_str] = self.boss_data["participants"].get(uid_str, 0) + damage
+    # ─── API publique pour les héros (appelée depuis shop.py) ────────────────
 
-        # XP par hit
-        xp_hit, _, _, _ = add_xp(user_id, MINIGAME_XP["boss_hit"], "boss_hit")
+    async def hero_attack(self, channel, attacker, hero_name, hero_damage):
+        """Inflige une attaque héroïque au boss courant.
 
-        save_json(BOSS_FILE, self.boss_data)
+        Appelé par shop.py quand un joueur utilise un item de catégorie 'heroes'.
+        Retourne (success, message_si_echec).
+        """
+        if not self.boss_data.get("active"):
+            return False, "❌ Aucun boss actif — ton héros attend l'occasion."
 
-        # Boss mort ?
-        if self.boss_data["hp"] <= 0:
-            # Coup fatal !
-            xp_kill, _, level_up, new_level = add_xp(user_id, MINIGAME_XP["boss_kill"], "boss_kill")
-            participants = self.boss_data.get("participants", {})
-
-            # XP bonus pour tous les participants
-            for pid_str, total_dmg in participants.items():
-                if int(pid_str) != user_id:
-                    bonus = min(50, total_dmg // 10)
-                    if bonus > 0:
-                        add_xp(int(pid_str), bonus, "boss_participation")
-
-            # Top 3
-            sorted_attackers = sorted(participants.items(), key=lambda x: x[1], reverse=True)[:3]
-            podium = ""
-            medals = ["🥇", "🥈", "🥉"]
-            for i, (uid, dmg) in enumerate(sorted_attackers):
-                member = ctx.guild.get_member(int(uid))
-                name_str = member.display_name if member else f"User {uid}"
-                podium += f"{medals[i]} {name_str} — **{dmg:,}** dégâts\n"
-
-            embed = discord.Embed(
-                title=f"☠️ {self.boss_data['name']} est VAINCU !",
+        # Annonce d'arrivée du héros
+        try:
+            await channel.send(embed=discord.Embed(
+                title=f"✨ {hero_name} entre dans la bataille !",
                 description=(
-                    f"💥 {ctx.author.mention} a porté le **coup fatal** !{crit_text}\n"
-                    f"**+{xp_kill + xp_hit} XP** pour le coup fatal !\n\n"
-                    f"**Podium :**\n{podium}\n"
-                    f"🎉 **{len(participants)} participants** — XP bonus distribué à tous !"
+                    f"{attacker.mention} a invoqué **{hero_name}** "
+                    f"pour frapper **{self.boss_data['name']}** !"
                 ),
-                color=0xFFD700
-            )
-            await ctx.send(embed=embed)
+                color=0x9B59B6,
+            ))
+        except Exception:
+            pass
 
-            # Reset
-            self.boss_data = {"active": False}
+        # Le héros tape un gros coup (pas de crit, pas d'XP de hit standard)
+        await self._apply_damage(
+            channel, attacker, hero_damage,
+            source_label="hero_attack", crit=False, give_hit_xp=False,
+        )
+        return True, None
+
+    # ─── Commandes admin ─────────────────────────────────────────────────────
+
+    @commands.command(name="boss_spawn", aliases=["spawn_boss"])
+    @commands.has_any_role(*__import__('config').ADMIN_ROLES)
+    async def boss_spawn(self, ctx, boss_id: str = None):
+        """(ADMIN) Fait apparaître un boss du catalogue.
+
+        Usage : `!boss_spawn` (boss suivant dans la rotation)
+                `!boss_spawn dragon_ombres` (par id)
+                `!boss_spawn 3` (par numéro 1-6)
+        """
+        if self.boss_data.get("active"):
+            return await ctx.send(
+                "❌ Un boss est déjà actif ! Utilise `!boss` pour voir son état "
+                "ou `!boss_end` pour le terminer."
+            )
+
+        # Sélection du boss
+        boss_def = None
+        if boss_id is None:
+            # Suivant dans la rotation
+            next_index = (self.boss_data.get("rotation_index", -1) + 1) % len(BOSS_CATALOG)
+            boss_def = BOSS_CATALOG[next_index]
+        else:
+            # Par numéro ?
+            if boss_id.isdigit():
+                idx = int(boss_id) - 1
+                if 0 <= idx < len(BOSS_CATALOG):
+                    boss_def = BOSS_CATALOG[idx]
+            # Par id ?
+            if boss_def is None:
+                boss_def = get_boss_by_id(boss_id)
+
+        if boss_def is None:
+            return await ctx.send(
+                f"❌ Boss inconnu. Utilise `!boss_list` pour voir les ids disponibles."
+            )
+
+        self._spawn_boss(boss_def, ctx.channel.id)
+
+        embed = discord.Embed(
+            title=f"⚠️ {boss_def['name']} APPARAÎT !",
+            description=(
+                f"*{boss_def['lore']}*\n\n"
+                f"❤️ **HP : {boss_def['max_hp']:,} / {boss_def['max_hp']:,}**\n"
+                f"```{'█' * 20} 100%```\n\n"
+                f"⏳ Disponible **{BOSS_DURATION_DAYS} jours**\n"
+                f"Utilisez `!attack` pour l'attaquer !\n"
+                f"⏱️ Cooldown : 30 secondes par attaque\n"
+                f"🏆 **{MINIGAME_XP['boss_kill']} XP** pour le coup fatal !"
+            ),
+            color=boss_def["color"],
+        )
+        await ctx.send(embed=embed)
+
+    @commands.command(name="boss_rotate")
+    @commands.has_any_role(*__import__('config').ADMIN_ROLES)
+    async def boss_rotate(self, ctx):
+        """(ADMIN) Termine le boss courant (s'il y en a un) et spawn le suivant."""
+        if self.boss_data.get("active"):
+            self._archive_boss("force_ended")
+            self.boss_data["active"] = False
             save_json(BOSS_FILE, self.boss_data)
 
-            if level_up:
-                cog = self.bot.get_cog("CommunitySystem")
-                if cog:
-                    await cog.announce_level_up(user_id, new_level)
-        else:
-            hp = self.boss_data["hp"]
-            max_hp = self.boss_data["max_hp"]
-            percentage = int((hp / max_hp) * 100)
-            bar_len = 15
-            filled = int((hp / max_hp) * bar_len)
+        next_index = (self.boss_data.get("rotation_index", -1) + 1) % len(BOSS_CATALOG)
+        boss_def = BOSS_CATALOG[next_index]
+        self._spawn_boss(boss_def, ctx.channel.id)
 
-            embed = discord.Embed(
-                title=f"⚔️ {ctx.author.display_name} attaque !",
-                description=(
-                    f"**-{damage}** dégâts !{crit_text} (+{xp_hit} XP)\n\n"
-                    f"❤️ **{hp:,} / {max_hp:,}** HP\n"
-                    f"```{'█' * filled}{'░' * (bar_len - filled)} {percentage}%```"
-                ),
-                color=COLORS["warning"]
+        await ctx.send(embed=discord.Embed(
+            title=f"⚠️ {boss_def['name']} APPARAÎT !",
+            description=(
+                f"*{boss_def['lore']}*\n\n"
+                f"❤️ **HP : {boss_def['max_hp']:,} / {boss_def['max_hp']:,}**\n"
+                f"```{'█' * 20} 100%```\n\n"
+                f"⏳ Disponible **{BOSS_DURATION_DAYS} jours** — `!attack` pour frapper !"
+            ),
+            color=boss_def["color"],
+        ))
+
+    @commands.command(name="boss_auto")
+    @commands.has_any_role(*__import__('config').ADMIN_ROLES)
+    async def boss_auto(self, ctx, mode: str = None):
+        """(ADMIN) Active/désactive la rotation auto mensuelle.
+
+        Usage : `!boss_auto on` / `!boss_auto off` / `!boss_auto` (status)
+        """
+        if mode is None:
+            current = self.boss_data.get("auto_rotate", False)
+            return await ctx.send(
+                f"🔁 Auto rotation : **{'ON' if current else 'OFF'}**\n"
+                f"Utilise `!boss_auto on|off` pour changer."
             )
-            await ctx.send(embed=embed)
+
+        mode_lower = mode.lower()
+        if mode_lower in ("on", "true", "1", "yes", "oui"):
+            self.boss_data["auto_rotate"] = True
+            save_json(BOSS_FILE, self.boss_data)
+            await ctx.send("✅ Rotation automatique **activée**. Le bot fera spawn le boss suivant à la fin du mois.")
+        elif mode_lower in ("off", "false", "0", "no", "non"):
+            self.boss_data["auto_rotate"] = False
+            save_json(BOSS_FILE, self.boss_data)
+            await ctx.send("✅ Rotation automatique **désactivée**.")
+        else:
+            await ctx.send("❌ Usage : `!boss_auto on|off`")
 
     @commands.command(name="boss_end")
     @commands.has_any_role(*__import__('config').ADMIN_ROLES)
@@ -1544,7 +2034,8 @@ class MiniGames(commands.Cog):
         if not self.boss_data.get("active"):
             return await ctx.send("❌ Aucun boss actif.")
 
-        self.boss_data = {"active": False}
+        self._archive_boss("force_ended")
+        self.boss_data["active"] = False
         save_json(BOSS_FILE, self.boss_data)
         await ctx.send("✅ Boss terminé de force.")
 
