@@ -279,28 +279,30 @@
   },
   "tougen_pack": {
     "name": "👹 Pack Tougen Anki",
-    "description": "Pack exclusif pour les fans de Tougen Anki ! Comprend un badge spécial et des avantages thématiques.",
+    "description": "Pack collector dédié à **Tougen Anki** !\n\n**Inclus :**\n• 🏅 Badge `Fan de Tougen Anki` (visible sur ton profil)\n• 🔓 Accès au salon `#tougen-anki-discussion`\n• 🎁 +5 % de gain de points sur les réactions/messages liés à ce manga\n• 📌 Mention dans les remerciements de la prochaine sortie Tougen Anki",
     "emoji": "👹",
     "category": "manga_packs",
     "price": 800,
     "stock": -1,
     "type": "bundle",
     "includes": ["tougen_fan_badge"],
+    "manga": "tougen_anki",
     "requirements": {
       "badges": [],
       "level": 2
     },
     "active": true
   },
-  "ao_pack": {
-    "name": "🔥 Pack Ao no Exorcist",
-    "description": "Pack exclusif pour les fans d'Ao no Exorcist ! Comprend un badge spécial et des avantages thématiques.",
+  "blueexorcist_pack": {
+    "name": "🔵 Pack Blue Exorcist",
+    "description": "Pack collector dédié à **Blue Exorcist** !\n\n**Inclus :**\n• 🏅 Badge `Exorciste de la Vraie Croix`\n• 🔓 Accès au salon `#blue-exorcist-discussion`\n• 🔥 +5 % de gain de points sur les activités liées à la série\n• 📌 Mention dans les remerciements de la prochaine sortie Blue Exorcist",
     "emoji": "🔵",
     "category": "manga_packs",
     "price": 800,
     "stock": -1,
     "type": "bundle",
-    "includes": ["ao_fan_badge"],
+    "includes": ["blueexorcist_fan_badge"],
+    "manga": "blue_exorcist",
     "requirements": {
       "badges": [],
       "level": 2
@@ -309,13 +311,14 @@
   },
   "satsudou_pack": {
     "name": "⚔️ Pack Satsudou",
-    "description": "Pack exclusif pour les fans de Satsudou ! Comprend un badge spécial et des avantages thématiques.",
+    "description": "Pack collector dédié à **Satsudou** !\n\n**Inclus :**\n• 🏅 Badge `Disciple de l'Assassin`\n• 🔓 Accès au salon `#satsudou-discussion`\n• 🗡️ +5 % de gain de points sur les activités liées à la série\n• 📌 Mention dans les remerciements de la prochaine sortie Satsudou",
     "emoji": "⚔️",
     "category": "manga_packs",
     "price": 800,
     "stock": -1,
     "type": "bundle",
     "includes": ["satsudou_fan_badge"],
+    "manga": "satsudou",
     "requirements": {
       "badges": [],
       "level": 2
@@ -324,13 +327,14 @@
   },
   "tokyo_pack": {
     "name": "🏙️ Pack Tokyo Underworld",
-    "description": "Pack exclusif pour les fans de Tokyo Underworld ! Comprend un badge spécial et des avantages thématiques.",
+    "description": "Pack collector dédié à **Tokyo Underworld** !\n\n**Inclus :**\n• 🏅 Badge `Membre du Syndicat`\n• 🔓 Accès au salon `#tokyo-underworld-discussion`\n• 💼 +5 % de gain de points sur les activités liées à la série\n• 📌 Mention dans les remerciements de la prochaine sortie Tokyo Underworld",
     "emoji": "🏙️",
     "category": "manga_packs",
     "price": 800,
     "stock": -1,
     "type": "bundle",
     "includes": ["tokyo_fan_badge"],
+    "manga": "tokyo_underworld",
     "requirements": {
       "badges": [],
       "level": 2
@@ -339,16 +343,131 @@
   },
   "catenaccio_pack": {
     "name": "⚽ Pack Catenaccio",
-    "description": "Pack exclusif pour les fans de Catenaccio ! Comprend un badge spécial et des avantages thématiques.",
+    "description": "Pack collector dédié à **Catenaccio** !\n\n**Inclus :**\n• 🏅 Badge `Tactico` (visible sur ton profil)\n• 🔓 Accès au salon `#catenaccio-discussion`\n• ⚽ +5 % de gain de points sur les activités liées à la série\n• 📌 Mention dans les remerciements de la prochaine sortie Catenaccio",
     "emoji": "⚽",
     "category": "manga_packs",
     "price": 800,
     "stock": -1,
     "type": "bundle",
     "includes": ["catenaccio_fan_badge"],
+    "manga": "catenaccio",
     "requirements": {
       "badges": [],
       "level": 2
+    },
+    "active": true
+  },
+  "uzugami_pack": {
+    "name": "🌀 Pack Uzugami",
+    "description": "Pack collector dédié à **Uzugami** !\n\n**Inclus :**\n• 🏅 Badge `Élu du Tourbillon`\n• 🔓 Accès au salon `#uzugami-discussion`\n• 🌊 +5 % de gain de points sur les activités liées à la série\n• 📌 Mention dans les remerciements de la prochaine sortie Uzugami",
+    "emoji": "🌀",
+    "category": "manga_packs",
+    "price": 800,
+    "stock": -1,
+    "type": "bundle",
+    "includes": ["uzugami_fan_badge"],
+    "manga": "uzugami",
+    "requirements": {
+      "badges": [],
+      "level": 2
+    },
+    "active": true
+  },
+  "lanortrad_collector": {
+    "name": "📚 Collection Complète LanorTrad",
+    "description": "Le **Graal** des fans de la team !\n\n**Inclus :**\n• 🏅 Badge ultime `Collectionneur LanorTrad` (animé)\n• 🎖️ Tous les badges des 6 séries de la team (Tougen Anki, Satsudou, Tokyo Underworld, Catenaccio, Blue Exorcist, Uzugami)\n• 🔓 Accès aux 6 salons de discussion exclusifs\n• 💎 +15 % de gain de points permanent (cumulable avec les boosts)\n• 🎤 Droit de proposer une œuvre à traduire (1×)\n• 📜 Mention permanente dans les crédits du site\n\n*Pour les vrais passionnés.*",
+    "emoji": "📚",
+    "category": "manga_packs",
+    "price": 6000,
+    "stock": -1,
+    "type": "one_time",
+    "includes": [
+      "tougen_fan_badge",
+      "blueexorcist_fan_badge",
+      "satsudou_fan_badge",
+      "tokyo_fan_badge",
+      "catenaccio_fan_badge",
+      "uzugami_fan_badge",
+      "lanortrad_collector_badge"
+    ],
+    "requirements": {
+      "badges": [],
+      "level": 8,
+      "total_spent": 3000
+    },
+    "active": true
+  },
+  "beta_reader": {
+    "name": "📖 Beta Reader (14 jours)",
+    "description": "Deviens **Beta Reader** de la team LanorTrad pendant 14 jours !\n\n**Avantages :**\n• 🔍 Accès au salon `#beta-readers` où sont postés les brouillons de traduction\n• 💬 Tu peux signaler les coquilles avant publication\n• 📝 Ton nom apparaît dans la section *remerciements* des chapitres relus\n• 🎁 Récompenses bonus pour chaque rapport utile\n\n*Aide la team à sortir des chapitres irréprochables !*",
+    "emoji": "📖",
+    "category": "privileges",
+    "price": 1200,
+    "stock": -1,
+    "type": "role",
+    "duration_days": 14,
+    "role_id": null,
+    "requirements": {
+      "badges": [],
+      "level": 5
+    },
+    "active": true
+  },
+  "chapter_priority": {
+    "name": "⏩ Priorisation de Chapitre",
+    "description": "Tu choisis **un chapitre** d'une des séries de la team qui sera priorisé dans la file de traduction !\n\n**Conditions :**\n• Le chapitre doit faire partie d'une série en cours\n• 1 demande par utilisateur par mois\n• La team garde le dernier mot en cas de contraintes techniques\n\n*Une admin te contactera après l'achat pour valider ta demande.*",
+    "emoji": "⏩",
+    "category": "privileges",
+    "price": 3000,
+    "stock": -1,
+    "type": "consumable",
+    "max_purchases": 1,
+    "requirements": {
+      "badges": [],
+      "level": 7
+    },
+    "active": true
+  },
+  "credits_mention": {
+    "name": "🎬 Mention dans les Crédits",
+    "description": "Ton pseudo (ou un nom de ton choix) sera affiché dans les **crédits officiels** d'un chapitre au choix parmi les sorties de la team !\n\n**Détails :**\n• Visible sur la page de crédits de fin de chapitre\n• Choisis la série lors de la commande avec un admin\n• Idéal pour soutenir la team de manière visible\n\n*Un classique du fansub, mais en version premium.*",
+    "emoji": "🎬",
+    "category": "social",
+    "price": 1500,
+    "stock": -1,
+    "type": "consumable",
+    "requirements": {
+      "badges": [],
+      "level": 4
+    },
+    "active": true
+  },
+  "custom_emoji": {
+    "name": "😀 Emoji Custom Discord",
+    "description": "Propose un **emoji personnalisé** qui sera ajouté au serveur LanorTrad !\n\n**Conditions :**\n• Image de ton choix (validée par les admins)\n• Doit respecter le règlement (pas de NSFW, pas d'offensant)\n• L'emoji restera tant qu'il y a de la place sur le serveur\n• Tu choisis le nom de l'emoji (court, en minuscules)\n\n*Laisse ta marque sur le serveur !*",
+    "emoji": "😀",
+    "category": "cosmetics",
+    "price": 2000,
+    "stock": -1,
+    "type": "consumable",
+    "requirements": {
+      "badges": [],
+      "level": 6
+    },
+    "active": true
+  },
+  "pin_message": {
+    "name": "📌 Épingler un Message",
+    "description": "Le bot épingle un message de ton choix dans un salon (hors annonces) pendant **7 jours** !\n\n**Idéal pour :**\n• Partager une théorie marquante\n• Mettre en avant un fanart\n• Laisser une trace dans le salon discussion d'une série\n\n*Après 7 jours, le message est désépinglé automatiquement.*",
+    "emoji": "📌",
+    "category": "privileges",
+    "price": 600,
+    "stock": -1,
+    "type": "consumable",
+    "duration_days": 7,
+    "requirements": {
+      "badges": [],
+      "level": 3
     },
     "active": true
   },
@@ -454,6 +573,181 @@
       "badges": [],
       "level": 10,
       "total_spent": 5000
+    },
+    "active": true
+  },
+  "xp_pack_small": {
+    "name": "💰 Bourse d'XP (200)",
+    "description": "Une petite bourse contenant **200 XP** instantanés crédités sur ton solde.\n\n*Idéal pour faire un palier de niveau quand il te manque juste un petit boost.*",
+    "emoji": "💰",
+    "category": "xp_packs",
+    "price": 350,
+    "stock": -1,
+    "type": "consumable",
+    "xp_amount": 200,
+    "requirements": {
+      "badges": [],
+      "level": 0
+    },
+    "active": true
+  },
+  "xp_pack_medium": {
+    "name": "💎 Coffre d'XP (600)",
+    "description": "Un coffre contenant **600 XP** instantanés crédités sur ton solde.\n\n*Le bon compromis entre prix et puissance.*",
+    "emoji": "💎",
+    "category": "xp_packs",
+    "price": 900,
+    "stock": -1,
+    "type": "consumable",
+    "xp_amount": 600,
+    "requirements": {
+      "badges": [],
+      "level": 3
+    },
+    "active": true
+  },
+  "xp_pack_large": {
+    "name": "👑 Trésor d'XP (1500)",
+    "description": "Un trésor royal contenant **1 500 XP** instantanés crédités sur ton solde !\n\n*Pour franchir plusieurs paliers de niveau d'un coup.*",
+    "emoji": "👑",
+    "category": "xp_packs",
+    "price": 2000,
+    "stock": -1,
+    "type": "consumable",
+    "xp_amount": 1500,
+    "requirements": {
+      "badges": [],
+      "level": 7
+    },
+    "active": true
+  },
+  "streak_shield": {
+    "name": "🛡️ Bouclier de Streak",
+    "description": "Protège ton streak `!daily` ou ton cycle `!reward` pendant **1 jour** !\n\nSi tu oublies de te connecter 1 journée, ce bouclier absorbe la cassure et ton streak/cycle reste intact.\n\n*L'item indispensable des lecteurs occupés.*",
+    "emoji": "🛡️",
+    "category": "boosts",
+    "price": 800,
+    "stock": -1,
+    "type": "consumable",
+    "boost_type": "streak_shield",
+    "requirements": {
+      "badges": [],
+      "level": 2
+    },
+    "active": true
+  },
+  "challenge_skip": {
+    "name": "⏭️ Skip de Challenge",
+    "description": "Marque automatiquement **1 challenge hebdomadaire** comme complété, sans avoir besoin d'atteindre le quota !\n\nUtilise `!use challenge_skip <id_challenge>` pour l'appliquer.\n\n*Bypasse les challenges trop chronophages.*",
+    "emoji": "⏭️",
+    "category": "boosts",
+    "price": 1200,
+    "stock": -1,
+    "type": "consumable",
+    "requirements": {
+      "badges": [],
+      "level": 4
+    },
+    "active": true
+  },
+  "quiz_hint": {
+    "name": "💡 Indice Quiz",
+    "description": "Réduit le quiz manga à **2 choix** au lieu de 4 !\n\nUtilise `!use quiz_hint` *avant* de lancer un `!quizmanga` pour activer l'effet sur ton prochain quiz.\n\n*Triple presque tes chances de bonne réponse.*",
+    "emoji": "💡",
+    "category": "boosts",
+    "price": 250,
+    "stock": -1,
+    "type": "consumable",
+    "requirements": {
+      "badges": [],
+      "level": 0
+    },
+    "active": true
+  },
+  "prediction_insurance": {
+    "name": "📜 Assurance Pari",
+    "description": "Si tu perds une `!prediction`, tu récupères **50 % de ta mise** !\n\nUtilise `!use prediction_insurance` *avant* de placer ton pari pour activer l'effet sur ton prochain pari.\n\n*Pour parier en sécurité sur les théories les plus folles.*",
+    "emoji": "📜",
+    "category": "boosts",
+    "price": 500,
+    "stock": -1,
+    "type": "consumable",
+    "requirements": {
+      "badges": [],
+      "level": 3
+    },
+    "active": true
+  },
+  "xp_transfer": {
+    "name": "🤝 Transfert d'XP",
+    "description": "Envoie jusqu'à **500 XP** à un autre membre du serveur !\n\nParfait pour aider un ami à monter de niveau, ou pour célébrer ensemble un événement.\n\nUtilise `!use xp_transfer @membre <quantité>` après l'achat.",
+    "emoji": "🤝",
+    "category": "social",
+    "price": 700,
+    "stock": -1,
+    "type": "consumable",
+    "max_transfer_xp": 500,
+    "requirements": {
+      "badges": [],
+      "level": 5
+    },
+    "active": true
+  },
+  "level_freeze": {
+    "name": "🧊 Gel de Niveau",
+    "description": "Bloque ton niveau actuel pendant **3 jours** : tu continues à gagner de l'XP, mais ton niveau ne monte pas pendant la durée du gel.\n\n*Utile pour rester dans une catégorie de classement, ou pour challenge personnel.*",
+    "emoji": "🧊",
+    "category": "boosts",
+    "price": 600,
+    "stock": -1,
+    "type": "consumable",
+    "boost_type": "level_freeze",
+    "duration_hours": 72,
+    "requirements": {
+      "badges": [],
+      "level": 5
+    },
+    "active": true
+  },
+  "birthday_cake": {
+    "name": "🎂 Gâteau d'Anniversaire",
+    "description": "Offre un **gâteau virtuel** à un membre dont c'est l'anniversaire ! Le bot publie un message personnalisé dans le salon général à ta place.\n\nUtilise `!use birthday_cake @membre` après l'achat.\n\n*Un petit geste qui fait toujours plaisir.*",
+    "emoji": "🎂",
+    "category": "social",
+    "price": 300,
+    "stock": -1,
+    "type": "consumable",
+    "requirements": {
+      "badges": [],
+      "level": 0
+    },
+    "active": true
+  },
+  "fortune_cookie": {
+    "name": "🥠 Fortune Cookie",
+    "description": "Brise le biscuit pour révéler ta fortune du jour !\n\nL'item te donne une **récompense aléatoire** : entre **50 et 1 000 XP**, ou parfois un objet bonus surprise.\n\n*Tente ta chance, c'est le risque qui rend l'aventure amusante.*",
+    "emoji": "🥠",
+    "category": "mystery",
+    "price": 150,
+    "stock": -1,
+    "type": "consumable",
+    "requirements": {
+      "badges": [],
+      "level": 0
+    },
+    "active": true
+  },
+  "manga_recommendation": {
+    "name": "📖 Reco Personnalisée",
+    "description": "Un membre de la team LanorTrad te recommande **3 mangas personnalisés** selon tes goûts (DM) !\n\n*Tu indiques tes critères après l'achat, et un admin te répond sous 7 jours.*",
+    "emoji": "📖",
+    "category": "privileges",
+    "price": 800,
+    "stock": -1,
+    "type": "consumable",
+    "requirements": {
+      "badges": [],
+      "level": 4
     },
     "active": true
   }

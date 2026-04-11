@@ -481,6 +481,7 @@ class ShopSystem(commands.Cog):
         category_display = {
             "roles": {"emoji": "👑", "name": "Rôles Prestigieux", "desc": "Devenez quelqu'un d'important"},
             "boosts": {"emoji": "⚡", "name": "Potions & Boosts", "desc": "Augmentez votre pouvoir"},
+            "xp_packs": {"emoji": "💎", "name": "Packs d'XP", "desc": "XP instantanée à la demande"},
             "cosmetics": {"emoji": "🎨", "name": "Parures Cosmétiques", "desc": "Personnalisez votre apparence"},
             "privileges": {"emoji": "⭐", "name": "Privilèges Exclusifs", "desc": "Accédez à l'élite"},
             "lottery": {"emoji": "🎰", "name": "Jeux de Hasard", "desc": "Tentez votre chance"},
@@ -1181,16 +1182,28 @@ class ShopSystem(commands.Cog):
     @commands.command(name="use", aliases=["utiliser"])
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def use_item(self, ctx, *, item_name: str):
-        """Utilise un item consommable"""
+        """Utilise un item consommable. Certains items acceptent des arguments :
+        ex: !use xp_transfer @membre 200, !use birthday_cake @membre"""
         inv = get_user_inventory(ctx.author.id)
-        
-        # Chercher l'item
+
+        # Parser le premier mot comme item_id, le reste comme arguments
+        raw_parts = item_name.strip().split()
+        first_word = raw_parts[0] if raw_parts else ""
+        extra_args = raw_parts[1:]
+
+        # Chercher l'item (sur le premier mot OU sur la chaîne complète pour
+        # garder la compatibilité avec les noms à plusieurs mots)
         item_id = None
-        for iid in inv.get("items", {}).keys():
-            if iid.lower() == item_name.lower() or iid.lower().replace("_", " ") == item_name.lower():
-                item_id = iid
+        for candidate in (first_word, item_name):
+            if not candidate:
+                continue
+            for iid in inv.get("items", {}).keys():
+                if iid.lower() == candidate.lower() or iid.lower().replace("_", " ") == candidate.lower():
+                    item_id = iid
+                    break
+            if item_id:
                 break
-        
+
         if not item_id:
             await ctx.send(f"❌ Vous ne possédez pas cet article.")
             return
@@ -1264,6 +1277,151 @@ class ShopSystem(commands.Cog):
                 inv["items"][item_id] = inv["items"].get(item_id, 0) + 1
                 sauvegarder_shop()
                 await ctx.send(f"❌ Erreur lors de l'invocation du héros : `{e}`. L'item a été restitué.")
+        elif item_data.get("category") == "xp_packs":
+            # Pack d'XP : crédite directement xp_amount
+            xp_amount = int(item_data.get("xp_amount", 0))
+            if xp_amount <= 0:
+                await ctx.send("❌ Ce pack d'XP n'a pas de valeur configurée. Préviens un admin.")
+                return
+
+            # Consommer l'item d'abord
+            inv["items"][item_id] -= 1
+            if inv["items"][item_id] <= 0:
+                del inv["items"][item_id]
+            sauvegarder_shop()
+
+            try:
+                from community import add_xp as comm_add_xp
+                final, mult = comm_add_xp(ctx.author.id, xp_amount, f"xp_pack_{item_id}")
+            except Exception as e:
+                # Rollback
+                inv = get_user_inventory(ctx.author.id)
+                inv["items"][item_id] = inv["items"].get(item_id, 0) + 1
+                sauvegarder_shop()
+                await ctx.send(f"❌ Erreur lors de l'utilisation : `{e}`. L'item a été restitué.")
+                return
+
+            embed = discord.Embed(
+                title="💎 Pack d'XP utilisé !",
+                description=f"Tu as ouvert **{item_data.get('name', item_id)}** et reçu **+{final} XP** !"
+                            + (f"\n⚡ Multiplicateur actif : x{mult:.1f}" if mult > 1 else ""),
+                color=discord.Color.gold(),
+            )
+            await ctx.send(embed=embed)
+
+        elif item_id == "fortune_cookie":
+            # Fortune cookie : récompense XP aléatoire (50–1000) + parfois un loot bonus
+            inv["items"][item_id] -= 1
+            if inv["items"][item_id] <= 0:
+                del inv["items"][item_id]
+            sauvegarder_shop()
+
+            xp_won = random.randint(50, 1000)
+            try:
+                from community import add_xp as comm_add_xp
+                final, _ = comm_add_xp(ctx.author.id, xp_won, "fortune_cookie")
+            except Exception:
+                final = xp_won
+
+            bonus_msg = ""
+            # 15% chance de loot bonus
+            if random.random() < 0.15:
+                bonus_loot = random.choice(["lottery_ticket", "double_points_24h", "mystery_box_common"])
+                inv = get_user_inventory(ctx.author.id)
+                inv["items"][bonus_loot] = inv["items"].get(bonus_loot, 0) + 1
+                sauvegarder_shop()
+                bonus_msg = f"\n\n🎁 **CHANCE !** Tu reçois en bonus : **{bonus_loot.replace('_', ' ').title()}** !"
+
+            fortunes = [
+                "« Les vrais lecteurs ne meurent jamais, ils continuent dans le tome suivant. »",
+                "« Une grande sortie attend ceux qui patientent. »",
+                "« Le prochain chapitre changera tout. »",
+                "« Les théories les plus folles sont souvent les vraies. »",
+                "« Aujourd'hui est un bon jour pour spam la team de likes. »",
+                "« Ton manga préféré aura bientôt une couverture exceptionnelle. »",
+            ]
+            embed = discord.Embed(
+                title="🥠 Fortune Cookie",
+                description=f"*{random.choice(fortunes)}*\n\n💎 Tu reçois **+{final} XP** !{bonus_msg}",
+                color=discord.Color.from_rgb(255, 200, 100),
+            )
+            await ctx.send(embed=embed)
+
+        elif item_id == "xp_transfer":
+            # !use xp_transfer @membre <quantité>
+            if len(extra_args) < 2:
+                await ctx.send("❌ Utilisation : `!use xp_transfer @membre <quantité>` (max 500)")
+                return
+            try:
+                target_member = await commands.MemberConverter().convert(ctx, extra_args[0])
+                amount = int(extra_args[1])
+            except Exception:
+                await ctx.send("❌ Membre ou quantité invalide.")
+                return
+
+            if target_member.id == ctx.author.id:
+                await ctx.send("❌ Tu ne peux pas te transférer de l'XP à toi-même.")
+                return
+            if target_member.bot:
+                await ctx.send("❌ Tu ne peux pas envoyer d'XP à un bot.")
+                return
+
+            max_transfer = int(item_data.get("max_transfer_xp", 500))
+            if amount < 10 or amount > max_transfer:
+                await ctx.send(f"❌ Quantité invalide. Min : 10 — Max : {max_transfer}.")
+                return
+
+            try:
+                from community import get_user_stats, add_xp as comm_add_xp
+                sender_stats = get_user_stats(ctx.author.id)
+                if sender_stats.get("xp", 0) < amount:
+                    await ctx.send(f"❌ Tu n'as que **{sender_stats.get('xp', 0)} XP** sur ton solde.")
+                    return
+                comm_add_xp(ctx.author.id, -amount, "xp_transfer_sent")
+                comm_add_xp(target_member.id, amount, "xp_transfer_received")
+            except Exception as e:
+                await ctx.send(f"❌ Erreur lors du transfert : {e}")
+                return
+
+            # Consommer
+            inv["items"][item_id] -= 1
+            if inv["items"][item_id] <= 0:
+                del inv["items"][item_id]
+            sauvegarder_shop()
+
+            embed = discord.Embed(
+                title="🤝 Transfert effectué !",
+                description=f"{ctx.author.mention} a envoyé **{amount} XP** à {target_member.mention} !",
+                color=discord.Color.green(),
+            )
+            await ctx.send(embed=embed)
+
+        elif item_id == "birthday_cake":
+            # !use birthday_cake @membre
+            if len(extra_args) < 1:
+                await ctx.send("❌ Utilisation : `!use birthday_cake @membre`")
+                return
+            try:
+                target_member = await commands.MemberConverter().convert(ctx, extra_args[0])
+            except Exception:
+                await ctx.send("❌ Membre invalide.")
+                return
+
+            inv["items"][item_id] -= 1
+            if inv["items"][item_id] <= 0:
+                del inv["items"][item_id]
+            sauvegarder_shop()
+
+            embed = discord.Embed(
+                title="🎂 Joyeux anniversaire !",
+                description=f"{ctx.author.mention} offre un délicieux gâteau virtuel à "
+                            f"{target_member.mention} ! 🥳🎉\n\n*Que cette journée soit aussi "
+                            f"sucrée que ce gâteau !*",
+                color=0xFF69B4,
+            )
+            embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/3656/3656871.png")
+            await ctx.send(content=target_member.mention, embed=embed)
+
         else:
             await ctx.send("⚠️ Cet article ne peut pas être utilisé de cette manière.")
     

@@ -90,6 +90,10 @@ async def setup_modules(bot):
     await minigames.setup(bot)
     logging.info("✅ Module MiniGames chargé")
 
+    import engagement
+    await engagement.setup(bot)
+    logging.info("✅ Module Engagement chargé")
+
 
 # ═══════════════════════════════════════════════════════════════
 # BOT CLASS
