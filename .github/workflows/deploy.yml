@@ -1,0 +1,39 @@
+name: Deploy to VPS
+
+# Déclenche le déploiement à chaque push sur main, OU à la demande depuis
+# l'onglet "Actions" du repo (workflow_dispatch).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: SSH deploy + pm2 restart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            cd "${{ secrets.VPS_BOT_PATH }}"
+
+            echo "▶ Pull des derniers commits..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "▶ Mise à jour des dépendances Python..."
+            if [ -f requirements.txt ]; then
+              python3 -m pip install --user -r requirements.txt
+            fi
+
+            echo "▶ Restart du bot via pm2..."
+            pm2 restart LanorTradBot --update-env
+
+            echo "✅ Déploiement terminé."
+            pm2 status LanorTradBot
