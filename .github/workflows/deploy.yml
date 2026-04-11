@@ -27,9 +27,11 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            echo "▶ Mise à jour des dépendances Python..."
-            if [ -f requirements.txt ]; then
-              python3 -m pip install --user -r requirements.txt
+            echo "▶ Mise à jour des dépendances Python (venv)..."
+            if [ -f requirements.txt ] && [ -x venv/bin/pip ]; then
+              venv/bin/pip install -r requirements.txt
+            else
+              echo "  (skip — pas de venv ou pas de requirements.txt)"
             fi
 
             echo "▶ Restart du bot via pm2..."
