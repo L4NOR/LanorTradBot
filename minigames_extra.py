@@ -892,11 +892,6 @@ class MiniGamesExtra(commands.Cog):
         finally:
             _clear_game_active(self, ctx.channel.id)
 
-    @commands.command(name="guess", hidden=True)
-    async def guess_dummy(self, ctx, *, name: str = None):
-        """Marqueur — utilisé seulement à l'intérieur d'une partie de !character."""
-        await ctx.send("ℹ️ La commande `!guess` ne s'utilise que pendant une partie de `!character`.")
-
     # ═════════════════════════════════════════════════════════════════════════
     # ⚡ CLICK / FASTCLICK
     # ═════════════════════════════════════════════════════════════════════════

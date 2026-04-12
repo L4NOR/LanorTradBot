@@ -110,7 +110,6 @@ HELP_CATEGORIES = {
             {"name": "leaderboard", "usage": "!leaderboard [page]", "desc": "Classement XP du serveur", "example": "`!leaderboard` · `!leaderboard 2`"},
             {"name": "daily", "usage": "!daily", "desc": "Récupérer votre bonus quotidien"},
             {"name": "trivia", "usage": "!trivia [difficulté]", "desc": "Jouer au quiz", "example": "`!trivia` · `!trivia hard`"},
-            {"name": "guess", "usage": "!guess", "desc": "Jeu de devinette"},
         ]
     },
     "minigames": {
@@ -119,21 +118,47 @@ HELP_CATEGORIES = {
         "description": "Jeux pour gagner de l'XP",
         "color": 0xE91E63,
         "commands": [
-            {"name": "reaction", "usage": "!reaction", "desc": "Sois le premier à réagir avec le bon emoji", "reward": "15 XP"},
+            {"name": "reaction", "usage": "!reaction [silent]", "desc": "Sois le premier à réagir avec le bon emoji", "reward": "15 XP"},
             {"name": "unscramble", "usage": "!unscramble", "desc": "[Solo] Remets les lettres dans le bon ordre", "reward": "25 XP"},
             {"name": "wordle", "usage": "!wordle", "desc": "[Solo] Devine le mot en 6 essais", "reward": "50-100 XP"},
             {"name": "hangman", "usage": "!hangman", "desc": "[Solo] Jeu du pendu", "reward": "30 XP"},
             {"name": "chain", "usage": "!chain", "desc": "Chaîne de mots — dernier debout gagne", "reward": "20 XP"},
+            {"name": "devinette", "usage": "!devinette", "desc": "[Solo] Résous une énigme manga", "reward": "35 XP"},
+            {"name": "quoteguess", "usage": "!quoteguess", "desc": "[Solo] Retrouve de quel manga vient la citation", "reward": "30 XP"},
+            {"name": "emojirebus", "usage": "!emojirebus", "desc": "[Solo] Déchiffre le rébus en emojis", "reward": "30 XP"},
+            {"name": "anagram", "usage": "!anagram", "desc": "[Solo] Retrouve le mot à partir de l'anagramme", "reward": "40 XP"},
+            {"name": "guessmanga", "usage": "!guessmanga", "desc": "[Solo] Devine le manga à partir d'une description", "reward": "30 XP"},
+            {"name": "opening", "usage": "!opening", "desc": "[Solo] Retrouve l'anime à partir d'un opening/OST", "reward": "30 XP"},
+            {"name": "character", "usage": "!character", "desc": "[Solo] 20 questions Akinator — devine le personnage", "reward": "45 XP"},
+            {"name": "click", "usage": "!click", "desc": "[Solo] Clique les 5 boutons le plus vite possible", "reward": "25 XP"},
+            {"name": "memory", "usage": "!memory", "desc": "[Solo] Retourne les cartes et fais des paires (4×4)", "reward": "35 XP"},
+            {"name": "ttt", "usage": "!ttt @user", "desc": "[1v1] Morpion via boutons", "reward": "20 XP"},
+            {"name": "connect4", "usage": "!connect4 @user", "desc": "[1v1] Puissance 4 via boutons", "reward": "30 XP"},
             {"name": "coinflip", "usage": "!coinflip <mise>", "desc": "Pile ou face — x2 ou perdu", "example": "`!coinflip 50`"},
             {"name": "slots", "usage": "!slots <mise>", "desc": "Machine à sous — jackpot x15 !", "example": "`!slots 100`"},
             {"name": "roulette", "usage": "!roulette <mise> <choix>", "desc": "Rouge/noir/vert/numéro", "example": "`!roulette 50 rouge`"},
-            {"name": "duel", "usage": "!duel @user <mise>", "desc": "Défie un membre en duel d'XP", "example": "`!duel @user 100`"},
+            {"name": "duel", "usage": "!duel @user <mise>", "desc": "⚔️ Duel Far West — tire chacun ton tour !", "example": "`!duel @user 100`"},
+            {"name": "featured", "usage": "!featured", "desc": "⭐ Voir le jeu vedette du jour (XP doublée)"},
+            {"name": "streak", "usage": "!streak", "desc": "🔥 Voir ta série de victoires actuelle"},
             {"name": "mgstats", "usage": "!mgstats [@membre]", "desc": "Tes stats de mini-jeux (V/D, winrate, XP net)", "example": "`!mgstats` · `!mgstats @user`"},
             {"name": "mgtop", "usage": "!mgtop [jeu]", "desc": "Classement des meilleurs joueurs", "example": "`!mgtop` · `!mgtop wordle`"},
             {"name": "mgcancel", "usage": "!mgcancel", "desc": "Annule ton jeu solo en cours dans le channel"},
             {"name": "mglimits", "usage": "!mglimits [@membre]", "desc": "Tes limites quotidiennes et ton usage du jour", "example": "`!mglimits` · `!mglimits @user`"},
             {"name": "boss", "usage": "!boss", "desc": "Voir l'état du boss actuel"},
             {"name": "attack", "usage": "!attack", "desc": "Attaquer le boss", "reward": "5 XP/hit, 100 XP coup fatal"},
+        ]
+    },
+    "tournaments": {
+        "emoji": "🏆",
+        "name": "Tournois",
+        "description": "Tournois à élimination directe",
+        "color": 0xFFD700,
+        "commands": [
+            {"name": "tournament list", "usage": "!tournament list", "desc": "Voir les tournois ouverts/en cours"},
+            {"name": "tournament join", "usage": "!tournament join <id>", "desc": "Rejoindre un tournoi", "example": "`!tournament join 1`"},
+            {"name": "tournament leave", "usage": "!tournament leave <id>", "desc": "Quitter un tournoi ouvert"},
+            {"name": "tournament info", "usage": "!tournament info <id>", "desc": "Détails + bracket d'un tournoi"},
+            {"name": "tournament report", "usage": "!tournament report <id> @gagnant", "desc": "Signaler le vainqueur d'un match"},
         ]
     },
     "badges": {
@@ -192,6 +217,22 @@ HELP_CATEGORIES = {
             {"name": "poll", "usage": "!poll Question | Opt1 | Opt2", "desc": "Créer un sondage", "example": "`!poll Meilleur manga ? | One Piece | Naruto`"},
             {"name": "polls", "usage": "!polls", "desc": "Voir les sondages actifs"},
             {"name": "poll_results", "usage": "!poll_results <id>", "desc": "Résultats détaillés d'un sondage"},
+        ]
+    },
+    "engagement": {
+        "emoji": "📚",
+        "name": "Engagement",
+        "description": "Quiz, challenges, prédictions, calendrier daily",
+        "color": 0x9B59B6,
+        "commands": [
+            {"name": "quizmanga", "usage": "!quizmanga", "desc": "Quiz manga à choix multiples (hint auto si acheté)", "reward": "25-75 XP"},
+            {"name": "quizstats", "usage": "!quizstats [@membre]", "desc": "Tes stats de quiz"},
+            {"name": "challenges", "usage": "!challenges", "desc": "Voir les challenges hebdomadaires"},
+            {"name": "claimchallenge", "usage": "!claimchallenge <id>", "desc": "Réclamer un challenge complété"},
+            {"name": "prediction list", "usage": "!prediction list", "desc": "Voir les prédictions ouvertes"},
+            {"name": "prediction bet", "usage": "!prediction bet <id> <opt> <xp>", "desc": "Parier sur une prédiction", "example": "`!prediction bet 1 A 100`"},
+            {"name": "prediction info", "usage": "!prediction info <id>", "desc": "Détails d'une prédiction"},
+            {"name": "reward", "usage": "!reward", "desc": "Calendrier de récompenses quotidiennes"},
         ]
     },
     "stats_serveur": {
