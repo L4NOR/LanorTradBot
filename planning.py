@@ -184,26 +184,42 @@ def get_overall_progress(entries):
 # ===============================================================================
 
 def build_calendar_grid(year, month, releases_by_day, today):
+    """Calendrier compact et mobile-friendly (27 caractères de large max).
+
+    Cellules 3 chars, séparateur 1 espace → 7*3 + 6 = 27 chars.
+    Marqueurs :
+      ` NN` — jour normal
+      `>NN` — aujourd'hui
+      `*NN` — jour de sortie
+      `#NN` — aujourd'hui ET sortie
+      `  .` — hors mois
+    """
     cal = cal_module.Calendar(firstweekday=0)
     weeks = cal.monthdayscalendar(year, month)
 
     lines = []
-    header = "  ".join(f" {j} " for j in JOURS_FR_COURT)
-    lines.append(header)
-    lines.append("─" * len(header))
+    # En-tête compacte (3 chars par jour, séparateur 1 espace)
+    lines.append(" ".join(f"{j}" for j in JOURS_FR_COURT))
+
+    is_same_month = (month == today.month and year == today.year)
 
     for week in weeks:
         row = []
         for day in week:
             if day == 0:
-                row.append("  ·  ")
-            elif day == today.day and month == today.month and year == today.year:
-                row.append(f"[{day:>2}]★" if day in releases_by_day else f"[{day:>2}] ")
-            elif day in releases_by_day:
-                row.append(f" {day:>2} ★")
+                row.append("  .")
+                continue
+            is_today = is_same_month and day == today.day
+            is_release = day in releases_by_day
+            if is_today and is_release:
+                row.append(f"#{day:>2}")
+            elif is_today:
+                row.append(f">{day:>2}")
+            elif is_release:
+                row.append(f"*{day:>2}")
             else:
-                row.append(f" {day:>2}  ")
-        lines.append("  ".join(row))
+                row.append(f" {day:>2}")
+        lines.append(" ".join(row))
 
     return "\n".join(lines)
 
@@ -248,57 +264,68 @@ def build_manga_month_embed(year, month, manga_name, manga_entries):
     else:
         color = CALENDAR_COLOR  # Prevu -> bleu
 
-    title = f"{emoji}  Planning {mois_nom} {year} — {manga_name}"
+    title = f"{emoji}  {mois_nom} {year} — {manga_name}"
 
-    # -- Calendrier --
+    # -- Calendrier compact (mobile-friendly) --
     cal_text = build_calendar_grid(year, month, releases_by_day, today)
     header_text = f"```\n{cal_text}\n```\n"
-    header_text += "```\n[XX] = Aujourd'hui    ★ = Jour de sortie\n```\n"
+    # Légende courte qui tient sur 1 ligne téléphone
+    header_text += "`>` aujourd'hui  ·  `*` sortie  ·  `#` les deux\n\n"
 
-    # -- Stats --
+    # -- Stats compactes --
     total = len(manga_entries)
     sorti = sum(1 for e in manga_entries if e.get("status") == "sorti")
-    header_text += f"**{total}** chapitre(s)"
+    stats_line = f"📖 **{total}** chapitre(s)"
     if sorti:
-        header_text += f" · **{sorti}** publié(s)"
-    header_text += f" · Progression globale : **{overall}%**\n"
+        stats_line += f" · ✅ **{sorti}** publié(s)"
+    header_text += stats_line + "\n"
 
-    # Barre globale
-    filled = overall * 20 // 100
-    bar = "█" * filled + "░" * (20 - filled)
-    header_text += f"`{bar}` {overall}%\n"
-    header_text += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    # Barre globale (12 blocs = tient facilement sur mobile)
+    filled = overall * 12 // 100
+    bar = "█" * filled + "░" * (12 - filled)
+    header_text += f"`{bar}` **{overall}%**\n"
+    header_text += "\n"
 
-    # -- Details par jour --
+    # -- Détails par jour (format compact sans quote-block) --
     day_blocks = []
     for day in sorted(releases_by_day.keys()):
         date_obj = datetime.date(year, month, day)
-        jour_nom = JOURS_FR[date_obj.weekday()]
+        jour_court = JOURS_FR_COURT[date_obj.weekday()].capitalize()
         delta = (date_obj - today).days
 
-        # Header du jour
+        # Header du jour — court pour tenir sur une seule ligne mobile
+        # Mois sur 3 lettres (Jan, Fév, Mar, Avr…)
+        mois_court = mois_nom[:3]
+        date_txt = f"{jour_court} {day:>2} {mois_court}"
         if delta == 0:
-            day_header = f"🔥 **{jour_nom} {day} {mois_nom}** — AUJOURD'HUI"
+            day_header = f"🔥 **{date_txt}** · **AUJOURD'HUI**"
         elif delta == 1:
-            day_header = f"⏰ **{jour_nom} {day} {mois_nom}** — Demain"
+            day_header = f"⏰ **{date_txt}** · Demain"
         elif delta == -1:
-            day_header = f"📆 **{jour_nom} {day} {mois_nom}** — Hier"
+            day_header = f"🕒 ~~{date_txt}~~ · Hier"
         elif delta < -1:
-            day_header = f"📆 ~~{jour_nom} {day} {mois_nom}~~"
+            day_header = f"🕒 ~~{date_txt}~~"
         elif delta <= 7:
-            day_header = f"📆 **{jour_nom} {day} {mois_nom}** — J-{delta}"
+            day_header = f"📆 **{date_txt}** · J-{delta}"
         else:
-            day_header = f"📆 **{jour_nom} {day} {mois_nom}**"
+            day_header = f"📆 **{date_txt}**"
 
         block = f"{day_header}\n"
-        for entry in releases_by_day[day]:
+        entries = releases_by_day[day]
+        for idx, entry in enumerate(entries):
             status_info = STATUTS.get(entry.get("status", "prevu"), STATUTS["prevu"])
-            block += f"> 📖 **Chapitre {entry['chapter']}**\n"
-            block += f"> {status_info['emoji']} `{status_info['label']}`  {get_progress_bar(entry.get('status', 'prevu'))}\n"
+            # Caractère de puce pour compacter — tree pour le dernier item
+            bullet = "└" if idx == len(entries) - 1 else "├"
+            # Barre courte (8 blocs) pour mobile
+            bar_short = get_progress_bar(entry.get("status", "prevu"))
+            block += (
+                f"{bullet} **Ch. {entry['chapter']}** · "
+                f"{status_info['emoji']} {status_info['label']}  `{bar_short}`\n"
+            )
             if entry.get("teaser"):
-                block += f"> 🔮 ||{entry['teaser']}||\n"
+                block += f"  ↳ 🔮 ||{entry['teaser']}||\n"
             if entry.get("notes"):
-                block += f"> 📝 *{entry['notes']}*\n"
+                block += f"  ↳ 📝 *{entry['notes']}*\n"
         block += "\n"
         day_blocks.append(block)
 

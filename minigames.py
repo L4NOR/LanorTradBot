@@ -715,6 +715,229 @@ def bonus_line(info):
 # VIEWS — Invitations par bouton
 # ═══════════════════════════════════════════════════════════════════════════════
 
+class WesternDuelView(discord.ui.View):
+    """Duel Far West tour par tour avec HP et dégâts RNG.
+
+    Chaque joueur a 100 HP. À son tour, le joueur actif clique sur **🔫 Tirer**.
+    Les dégâts varient :
+      • 10 % → miss (0 dmg)
+      •  8 % → esquive de l'adversaire
+      • 77 % → touché (10-22 dmg)
+      •  5 % → touché grave (28-42 dmg, 🎯)
+
+    Le premier à 0 HP perd. Un timer de 30 s par tour évite le blocage : si le
+    joueur actif ne tire pas à temps, son arme s'enraye et il perd son tour.
+    """
+
+    MAX_HP = 100
+    TURN_TIMEOUT = 30.0
+
+    def __init__(self, bot, p1_id: int, p2_id: int, p1_name: str, p2_name: str):
+        super().__init__(timeout=None)  # on gère nous-mêmes via asyncio
+        self.bot = bot
+        self.p1_id = p1_id
+        self.p2_id = p2_id
+        self.p1_name = p1_name
+        self.p2_name = p2_name
+        self.hp = {p1_id: self.MAX_HP, p2_id: self.MAX_HP}
+        self.turn = p1_id  # p1 commence
+        self.log = []  # liste de lignes narratives (dernières en haut)
+        self.round_num = 1
+        self.message = None
+        self.finished = False
+        self._event = asyncio.Event()
+        self._turn_task = None
+
+    # ── Helpers ─────────────────────────────────────────────────────────────
+
+    def _other(self, uid):
+        return self.p2_id if uid == self.p1_id else self.p1_id
+
+    def _name(self, uid):
+        return self.p1_name if uid == self.p1_id else self.p2_name
+
+    def _hp_bar(self, uid, length=10):
+        hp = self.hp[uid]
+        filled = int(round(length * hp / self.MAX_HP))
+        filled = max(0, min(length, filled))
+        if hp > 60:
+            full, empty = "🟩", "⬛"
+        elif hp > 30:
+            full, empty = "🟨", "⬛"
+        else:
+            full, empty = "🟥", "⬛"
+        return full * filled + empty * (length - filled)
+
+    def _render_embed(self, header_line=None):
+        title = "🤠 Duel du Far West"
+        # Sceneries par tour
+        western_scene = (
+            "```\n"
+            "         ☀️          \n"
+            "   🌵       🌵    🌵 \n"
+            "────────────────────\n"
+            "```"
+        )
+        lines = [western_scene]
+
+        # Bloc joueurs avec HP bars
+        for uid in (self.p1_id, self.p2_id):
+            tag = "🔫" if uid == self.turn and not self.finished else "  "
+            lines.append(
+                f"{tag} **{self._name(uid)}**  `{self._hp_bar(uid)}`  "
+                f"{self.hp[uid]}/{self.MAX_HP} HP"
+            )
+
+        lines.append("")
+        if header_line:
+            lines.append(header_line)
+            lines.append("")
+
+        # Derniers événements (max 6)
+        if self.log:
+            lines.append("**📜 Journal**")
+            for entry in self.log[-6:]:
+                lines.append(f"• {entry}")
+
+        desc = "\n".join(lines)
+
+        color = COLORS["warning"] if not self.finished else COLORS["success"]
+        embed = discord.Embed(title=title, description=desc, color=color)
+        if not self.finished:
+            embed.set_footer(
+                text=f"Tour {self.round_num} • C'est à {self._name(self.turn)} de tirer • "
+                     f"{int(self.TURN_TIMEOUT)}s par tour"
+            )
+        return embed
+
+    def _resolve_shot(self, shooter_id):
+        """Calcule le résultat d'un tir et met à jour le HP + le log."""
+        target_id = self._other(shooter_id)
+        roll = random.random()
+
+        if roll < 0.05:
+            # Critique
+            dmg = random.randint(28, 42)
+            self.hp[target_id] = max(0, self.hp[target_id] - dmg)
+            self.log.append(
+                f"💥 **{self._name(shooter_id)}** touche en plein cœur "
+                f"**{self._name(target_id)}** — **{dmg} dégâts** !"
+            )
+        elif roll < 0.82:
+            # Touché standard
+            dmg = random.randint(10, 22)
+            self.hp[target_id] = max(0, self.hp[target_id] - dmg)
+            self.log.append(
+                f"🎯 **{self._name(shooter_id)}** tire et touche "
+                f"**{self._name(target_id)}** — **{dmg} dégâts**."
+            )
+        elif roll < 0.92:
+            # Miss
+            self.log.append(
+                f"🤠 **{self._name(shooter_id)}** vise mal, la balle ricoche sur un cactus..."
+            )
+        else:
+            # Esquive
+            self.log.append(
+                f"💨 **{self._name(target_id)}** plonge au sol et esquive le tir !"
+            )
+
+    def _switch_turn(self):
+        self.turn = self._other(self.turn)
+        if self.turn == self.p1_id:
+            self.round_num += 1
+
+    def _check_winner(self):
+        if self.hp[self.p1_id] <= 0:
+            return self.p2_id
+        if self.hp[self.p2_id] <= 0:
+            return self.p1_id
+        return None
+
+    # ── Timer par tour ──────────────────────────────────────────────────────
+
+    async def _turn_timeout_task(self):
+        try:
+            await asyncio.sleep(self.TURN_TIMEOUT)
+        except asyncio.CancelledError:
+            return
+        if self.finished:
+            return
+        # Le joueur actif a laissé expirer son tour → arme enrayée
+        loser_of_turn = self.turn
+        self.log.append(
+            f"⏰ **{self._name(loser_of_turn)}** hésite trop longtemps… son arme s'enraye !"
+        )
+        self._switch_turn()
+        try:
+            await self.message.edit(embed=self._render_embed(), view=self)
+        except Exception:
+            pass
+        self._start_turn_timer()
+
+    def _start_turn_timer(self):
+        if self._turn_task and not self._turn_task.done():
+            self._turn_task.cancel()
+        self._turn_task = asyncio.create_task(self._turn_timeout_task())
+
+    # ── Bouton TIRER ────────────────────────────────────────────────────────
+
+    @discord.ui.button(label="TIRER", style=discord.ButtonStyle.danger, emoji="🔫")
+    async def fire(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.finished:
+            await interaction.response.send_message("Duel terminé.", ephemeral=True)
+            return
+        if interaction.user.id != self.turn:
+            if interaction.user.id in (self.p1_id, self.p2_id):
+                await interaction.response.send_message(
+                    f"❌ Ce n'est pas ton tour — attends que **{self._name(self.turn)}** tire.",
+                    ephemeral=True,
+                )
+            else:
+                await interaction.response.send_message(
+                    "❌ Tu n'es pas dans ce duel.", ephemeral=True
+                )
+            return
+
+        # Annuler le timer en cours
+        if self._turn_task and not self._turn_task.done():
+            self._turn_task.cancel()
+
+        shooter = interaction.user.id
+        self._resolve_shot(shooter)
+
+        # Vérifier victoire
+        winner_id = self._check_winner()
+        if winner_id is not None:
+            self.finished = True
+            for child in self.children:
+                child.disabled = True
+            self.log.append(
+                f"🏆 **{self._name(winner_id)}** abat son adversaire et remporte le duel !"
+            )
+            await interaction.response.edit_message(embed=self._render_embed(), view=self)
+            self._event.set()
+            self.stop()
+            return
+
+        # Changer de tour
+        self._switch_turn()
+        await interaction.response.edit_message(embed=self._render_embed(), view=self)
+        self._start_turn_timer()
+
+    async def start(self, message):
+        """À appeler après avoir attaché ce View à un message."""
+        self.message = message
+        self._start_turn_timer()
+
+    async def wait_finished(self, max_total: float = 600.0):
+        try:
+            await asyncio.wait_for(self._event.wait(), timeout=max_total)
+        except asyncio.TimeoutError:
+            pass
+        return self._check_winner()
+
+
 class DuelInviteView(discord.ui.View):
     """Boutons Accepter / Refuser pour une invitation de duel."""
 
@@ -1457,26 +1680,58 @@ class MiniGames(commands.Cog):
 
         await finalize_timer(timer_msg, status="✅ Défi accepté !", color=COLORS["success"])
 
-        # Combat ! Lancer de dés
-        roll_challenger = random.randint(1, 20)
-        roll_opponent = random.randint(1, 20)
+        # ── Combat Far West ─────────────────────────────────────────────────
+        # Intro cinématique "High Noon"
+        intro_embed = discord.Embed(
+            title="🤠 Duel du Far West",
+            description=(
+                "```\n"
+                "       ☀️  HIGH NOON  ☀️       \n"
+                "   🌵              🌵         \n"
+                "────────────────────────────\n"
+                "```\n"
+                f"**{ctx.author.display_name}** fait face à **{adversaire.display_name}**...\n"
+                f"💰 Mise : **{mise} XP** • HP : **100/100** chacun\n\n"
+                "*Le soleil tape. Le vent soulève la poussière.*\n"
+                "*Chacun son tour, cliquez sur 🔫 **TIRER** pour dégainer !*"
+            ),
+            color=COLORS["warning"],
+        )
+        await msg.edit(embed=intro_embed, view=None)
+        await asyncio.sleep(3)
 
-        # Égalité → relance
-        while roll_challenger == roll_opponent:
-            roll_challenger = random.randint(1, 20)
-            roll_opponent = random.randint(1, 20)
+        western = WesternDuelView(
+            self.bot,
+            p1_id=ctx.author.id,
+            p2_id=adversaire.id,
+            p1_name=ctx.author.display_name,
+            p2_name=adversaire.display_name,
+        )
+        await msg.edit(embed=western._render_embed(), view=western)
+        await western.start(msg)
 
-        embed = discord.Embed(title="⚔️ Duel en cours...", color=COLORS["info"])
-        embed.description = "Les dés roulent... 🎲"
-        await msg.edit(embed=embed)
-        await asyncio.sleep(2)
+        winner_id = await western.wait_finished(max_total=600.0)
 
-        if roll_challenger > roll_opponent:
+        if winner_id is None:
+            # Aucun vainqueur (timeout global) — match nul
+            draw_embed = discord.Embed(
+                title="🤠 Duel avorté",
+                description=(
+                    "Le duel s'éternise… les deux pistoleros rengainent.\n"
+                    "Aucune mise n'est transférée."
+                ),
+                color=COLORS["info"],
+            )
+            try:
+                await msg.edit(embed=draw_embed, view=None)
+            except Exception:
+                pass
+            return
+
+        if winner_id == ctx.author.id:
             winner, loser = ctx.author, adversaire
-            roll_win, roll_lose = roll_challenger, roll_opponent
         else:
             winner, loser = adversaire, ctx.author
-            roll_win, roll_lose = roll_opponent, roll_challenger
 
         # Transférer l'XP
         xp_earned, _, level_up, new_level = add_xp(winner.id, mise, "duel_win")
@@ -1484,17 +1739,24 @@ class MiniGames(commands.Cog):
         db.record_minigame(winner.id, "duel", True, xp_earned)
         db.record_minigame(loser.id, "duel", False, -mise)
 
-        embed = discord.Embed(
-            title=f"⚔️ {winner.display_name} remporte le duel !",
+        winner_hp = western.hp[winner.id]
+        win_embed = discord.Embed(
+            title=f"🏆 {winner.display_name} remporte le duel !",
             description=(
-                f"🎲 {ctx.author.display_name} : **{roll_challenger}** vs "
-                f"{adversaire.display_name} : **{roll_opponent}**\n\n"
-                f"🏆 {winner.mention} gagne **+{xp_earned} XP** !\n"
+                f"```\n"
+                f"     🤠 🔫      💀    \n"
+                f"   VAINQUEUR   ABATTU \n"
+                f"```\n"
+                f"❤️ HP restant : **{winner_hp}/100**\n"
+                f"🎯 {winner.mention} gagne **+{xp_earned} XP** !\n"
                 f"💀 {loser.display_name} perd **-{mise} XP**"
             ),
-            color=COLORS["success"]
+            color=COLORS["success"],
         )
-        await msg.edit(embed=embed)
+        try:
+            await msg.edit(embed=win_embed, view=None)
+        except Exception:
+            pass
 
         if level_up:
             await announce_level_up_safe(self.bot, winner.id, new_level)

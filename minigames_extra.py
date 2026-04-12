@@ -642,7 +642,7 @@ class MiniGamesExtra(commands.Cog):
     # 📖 GUESSMANGA (panel)
     # ═════════════════════════════════════════════════════════════════════════
 
-    @commands.command(name="guessmanga", aliases=["panel", "guess"])
+    @commands.command(name="guessmanga", aliases=["panel"])
     @commands.cooldown(1, 15, commands.BucketType.user)
     async def guessmanga(self, ctx):
         """[Solo] Devine le manga à partir d'un panel/description."""
