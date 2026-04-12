@@ -416,7 +416,7 @@ class RappelTask(commands.Cog):
             # Demander le manga
             embed = discord.Embed(
                 title="📚 Manga",
-                description="Quel manga ?\n`Tougen Anki`, `Ao No Exorcist`, `Satsudou`, `Tokyo Underworld`, `Catenaccio`, `Uzugami`",
+                description="Quel manga ?\n`Tougen Anki`, `Ao No Exorcist`, `Satsudou`, `Tokyo Underworld`, `Catenaccio`",
                 color=discord.Color.blue()
             )
             await ctx.send(embed=embed)

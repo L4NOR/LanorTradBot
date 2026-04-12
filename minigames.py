@@ -72,153 +72,24 @@ CATEGORY_LABELS = {
     "boss":      "Attaques boss",
 }
 
-# Mots pour les jeux (thème manga / traduction)
-# Utilisés par !hangman, !unscramble et !chain.
-# Chaque mot appartient à un thème → le thème est affiché dans l'embed du jeu
-# comme indice pour le joueur.
-MANGA_WORD_THEMES = {
-    "serveur_univers": {
-        "emoji": "🌀",
-        "label": "Mangas & univers LanorTrad",
-        "words": [
-            "exorciste", "demon", "satan", "flammes", "paladin",
-            "assassin", "combat", "survie", "lame", "malediction",
-            "football", "gardien", "attaquant", "defenseur", "match",
-            "yakuza", "crime", "souterrain", "gang",
-            "oni", "shiki", "transformation", "rituel", "pacte",
-        ],
-    },
-    "edition_manga": {
-        "emoji": "📖",
-        "label": "Manga & édition",
-        "words": [
-            "manga", "anime", "shonen", "seinen", "shojo", "josei", "kodomo",
-            "chapitre", "tome", "volume", "scan", "raw", "edition", "couverture",
-            "traduction", "traducteur", "correction", "relecture", "cleaning",
-            "typesetting", "redraw", "sfx", "mangaka", "studio", "serialisation",
-            "editeur", "tirage", "preview",
-        ],
-    },
-    "maitres_eleves": {
-        "emoji": "🎓",
-        "label": "Maîtres, élèves & relations",
-        "words": [
-            "sensei", "nakama", "kohai", "senpai", "shifu", "disciple",
-            "maitre", "apprenti", "mentor", "rival", "equipe", "famille",
-        ],
-    },
-    "armes_equipement": {
-        "emoji": "⚔️",
-        "label": "Armes & équipement",
-        "words": [
-            "katana", "wakizashi", "tanto", "nodachi", "tachi", "naginata",
-            "shinobi", "shuriken", "kunai", "sabre", "epee",
-            "rapiere", "dague", "fleau", "hache", "masse", "lance",
-            "bouclier", "armure", "casque", "gantelet", "arc", "fleche",
-            "arbalete", "javelot", "fronde", "fouet",
-        ],
-    },
-    "pouvoirs_techniques": {
-        "emoji": "💥",
-        "label": "Pouvoirs & techniques",
-        "words": [
-            "jutsu", "ninjutsu", "genjutsu", "taijutsu", "fuinjutsu",
-            "chakra", "haki", "bankai", "shikai", "reiatsu", "zanpakuto",
-            "sharingan", "byakugan", "rinnegan", "tsukuyomi", "amaterasu",
-            "susanoo", "rasengan", "kamehameha", "bijuu",
-            "pouvoir", "technique", "incantation", "mudra", "sceau",
-        ],
-    },
-    "magie_arcanes": {
-        "emoji": "🔮",
-        "label": "Magie & arcanes",
-        "words": [
-            "magie", "sortilege", "invocation", "portail", "dimension",
-            "alchimie", "necromancie", "elementaire", "runique", "arcane",
-            "enchantement", "malefice", "exorcisme", "purification",
-        ],
-    },
-    "aventuriers_classes": {
-        "emoji": "🏹",
-        "label": "Aventuriers & classes",
-        "words": [
-            "guerrier", "barbare", "moine", "voleur", "rodeur", "barde",
-            "druide", "necromant", "sorcier", "magicien", "invocateur",
-            "chevalier", "samourai", "ronin", "ninja", "ashigaru", "shogun", "daimyo",
-            "heros", "vilain", "tueur", "chasseur", "traqueur", "garde",
-        ],
-    },
-    "creatures_monstres": {
-        "emoji": "🐉",
-        "label": "Créatures & monstres",
-        "words": [
-            "dragon", "wyverne", "hydre", "kraken", "leviathan", "behemoth",
-            "fantome", "spectre", "revenant", "liche", "vampire", "loup",
-            "loupgarou", "phenix", "griffon", "minotaure", "centaure", "harpie",
-            "gorgone", "chimere", "basilic", "sphinx", "manticore",
-            "yokai", "tengu", "kappa", "kitsune", "tanuki", "akuma",
-            "gobelin", "orc", "troll", "ogre", "geant", "titan", "colosse",
-        ],
-    },
-    "lieux_royaumes": {
-        "emoji": "🏰",
-        "label": "Lieux & royaumes",
-        "words": [
-            "clan", "royaume", "empire", "forteresse", "donjon", "chateau",
-            "tour", "citadelle", "muraille", "temple", "sanctuaire", "monastere",
-            "village", "cite", "capitale", "taverne", "marche", "guilde",
-            "foret", "montagne", "caverne", "abime", "oasis", "desert",
-            "konoha", "soulsociety", "wano", "edo",
-        ],
-    },
-    "objets_artefacts": {
-        "emoji": "💎",
-        "label": "Objets & artefacts",
-        "words": [
-            "elixir", "poison", "antidote", "potion", "parchemin", "grimoire",
-            "amulette", "talisman", "relique", "artefact", "joyau", "cristal",
-            "rune", "totem", "anneau", "couronne", "sceptre", "orbe",
-        ],
-    },
-    "quetes_mysteres": {
-        "emoji": "🗺️",
-        "label": "Quêtes & mystères",
-        "words": [
-            "mission", "quete", "aventure", "mystere", "secret", "enigme",
-            "prophetie", "oracle", "vision", "prediction", "destin", "fatalite",
-        ],
-    },
-    "emotions_combat": {
-        "emoji": "❤️‍🔥",
-        "label": "Émotions & combat",
-        "words": [
-            "courage", "bravoure", "honneur", "fierte", "fureur", "rage",
-            "colere", "vengeance", "trahison", "loyaute", "amitie", "amour",
-            "haine", "peur", "terreur", "espoir", "douleur", "sacrifice",
-        ],
-    },
-    "culture_japonaise": {
-        "emoji": "🎎",
-        "label": "Culture japonaise",
-        "words": [
-            "ramen", "sushi", "miso", "udon", "soba", "tempura", "onigiri",
-            "matsuri", "sakura", "momiji", "kimono", "yukata", "hakama",
-            "kanji", "hiragana", "katakana", "tatami", "shoji",
-        ],
-    },
-}
+# ─── Données centralisées (voir minigames_data.py) ──────────────────────────
+from minigames_data import (
+    MANGA_WORD_THEMES, WORDLE_WORD_THEMES,
+    SLOT_EMOJIS, REACTION_EMOJIS,
+    BOSS_CATALOG, BOSS_DURATION_DAYS,
+    HANGMAN_STAGES,
+)
 
-# Flat list dérivée — conservée pour la compatibilité des endroits qui
-# n'utilisent pas encore le thème (ex: starter word de !chain).
+# Flat lists dérivées — conservées pour compatibilité.
 MANGA_WORDS = [w for theme in MANGA_WORD_THEMES.values() for w in theme["words"]]
+WORDLE_WORDS = [w for theme in WORDLE_WORD_THEMES.values() for w in theme["words"]]
 
 
 def pick_themed_manga_word(min_len=None, max_len=None):
     """Tire un mot aléatoire parmi MANGA_WORD_THEMES.
 
     Retourne (theme_key, theme_dict, word). Le tirage est équitable sur
-    l'ensemble des mots (pas par thème), pour ne pas sur-représenter
-    les petits thèmes.
+    l'ensemble des mots (pas par thème).
     """
     pool = []
     for key, theme in MANGA_WORD_THEMES.items():
@@ -229,153 +100,10 @@ def pick_themed_manga_word(min_len=None, max_len=None):
                 continue
             pool.append((key, theme, w))
     if not pool:
-        # Fallback sans contrainte
         for key, theme in MANGA_WORD_THEMES.items():
             for w in theme["words"]:
                 pool.append((key, theme, w))
     return random.choice(pool)
-
-# Mots pour Wordle. La longueur du mot tiré définit le nombre de lettres
-# que le joueur doit taper. Les mots sont regroupés par thème — le thème est
-# affiché dans l'embed comme indice. Tous les mots sont sans accents
-# (normalize() enlève les accents lors des comparaisons). NE PAS y mettre
-# des mots avec apostrophe ou tiret — la garde `isalpha()` les rejetterait.
-WORDLE_WORD_THEMES = {
-    "edition_manga": {
-        "emoji": "📖",
-        "label": "Manga & édition",
-        "words": [
-            "manga", "anime", "scans", "clean", "check", "ligne", "bulle",
-            "trame", "encre", "trait", "plume", "panel", "pages", "texte",
-            "verbe", "prose", "ecrit", "haiku", "kanji",
-        ],
-    },
-    "armes_equipement": {
-        "emoji": "⚔️",
-        "label": "Armes & équipement",
-        "words": [
-            "lame", "epee", "sabre", "lames", "epees", "lance", "armes",
-            "garde", "forge", "armee", "sabres", "lances", "casque",
-        ],
-    },
-    "magie_arcanes": {
-        "emoji": "🔮",
-        "label": "Magie & arcanes",
-        "words": [
-            "magie", "magies", "rituel", "divin", "arcane", "mages", "sages",
-            "dieux", "saint", "pieux", "prier", "grace", "foudre",
-            "tonner", "purger", "enfers", "saints",
-        ],
-    },
-    "creatures_monstres": {
-        "emoji": "🐉",
-        "label": "Créatures & monstres",
-        "words": [
-            "demon", "titan", "ange", "loup", "elfe", "nain",
-            "ogres", "morts", "anges", "tengu", "kappa", "akuma",
-            "trolls", "demons", "diable", "ourse", "loups", "lions",
-        ],
-    },
-    "aventuriers_classes": {
-        "emoji": "🏹",
-        "label": "Aventuriers & classes",
-        "words": [
-            "heros", "ninja", "ronin", "brave", "moine", "barde", "noble",
-            "tueur", "voleur", "rodeur", "mentor", "berger", "soldat",
-            "ennemi", "allies", "rival", "tueurs", "chefs", "loyaux",
-        ],
-    },
-    "combats_duels": {
-        "emoji": "🛡️",
-        "label": "Combat & duels",
-        "words": [
-            "force", "piege", "duels", "siege", "combat", "guerre",
-            "cible", "vivant", "vision", "destin", "chaos", "droit",
-        ],
-    },
-    "emotions": {
-        "emoji": "❤️‍🔥",
-        "label": "Émotions",
-        "words": [
-            "rage", "coeur", "amour", "haine", "peine",
-            "songe", "reves", "honte", "fureur", "esprit",
-        ],
-    },
-    "nature_elements": {
-        "emoji": "🌪️",
-        "label": "Nature & éléments",
-        "words": [
-            "feux", "vent", "nuage", "neige", "pluie", "brume", "vents",
-            "foret", "orage", "glace", "fumee", "vague", "monts", "mares",
-        ],
-    },
-    "temps_cycles": {
-        "emoji": "⏳",
-        "label": "Temps & cycles",
-        "words": [
-            "nuit", "jour", "jours", "soirs", "midis", "matin", "aubes",
-            "ciels", "lunes", "neufs", "cents", "mille",
-        ],
-    },
-    "lieux_royaumes": {
-        "emoji": "🏰",
-        "label": "Lieux & royaumes",
-        "words": [
-            "clan", "arena", "monde", "route", "voies", "piste", "ponts",
-            "tours", "cites", "toits", "camps", "forts", "ports", "baies",
-            "trone", "donjon", "guilde", "marche",
-        ],
-    },
-    "objets_artefacts": {
-        "emoji": "💎",
-        "label": "Objets & artefacts",
-        "words": [
-            "cles", "clefs", "bague", "croix", "perle", "outil", "objet",
-            "plans", "choix",
-        ],
-    },
-    "culture_japonaise": {
-        "emoji": "🎎",
-        "label": "Culture japonaise",
-        "words": [
-            "yari", "tabi", "sumo", "ramen", "sushi", "shiki",
-        ],
-    },
-    "corps_physique": {
-        "emoji": "🦴",
-        "label": "Corps & physique",
-        "words": [
-            "torse", "genou", "barbe", "front", "ailes", "queue", "crocs",
-            "poils", "large", "court", "tete", "epaule", "garcon",
-        ],
-    },
-    "couleurs_ombres": {
-        "emoji": "🎨",
-        "label": "Couleurs & ombres",
-        "words": [
-            "rouge", "blanc", "noir", "noirs", "verts", "bleus",
-            "noires", "rouges", "vertes", "mort", "ombre", "ombres",
-        ],
-    },
-    "ordre_justice": {
-        "emoji": "⚖️",
-        "label": "Ordre & justice",
-        "words": [
-            "rangs", "ordre", "juste", "prise", "chute", "sauts", "volee",
-            "quete",
-        ],
-    },
-    "relations_liens": {
-        "emoji": "🤝",
-        "label": "Relations & liens",
-        "words": [
-            "amis", "lien", "voie",
-        ],
-    },
-}
-
-# Flat list dérivée — conservée pour compatibilité.
-WORDLE_WORDS = [w for theme in WORDLE_WORD_THEMES.values() for w in theme["words"]]
 
 
 def pick_themed_wordle_word(min_len=None, max_len=None):
@@ -398,98 +126,8 @@ def pick_themed_wordle_word(min_len=None, max_len=None):
                 pool.append((key, theme, w))
     return random.choice(pool)
 
-# Emojis pour le slot machine
-SLOT_EMOJIS = ["🍒", "🍋", "🍊", "🍇", "⭐", "💎", "7️⃣"]
-
-# Emojis pour le jeu de réaction
-REACTION_EMOJIS = ["🔥", "⚡", "💎", "🎯", "🌟", "👑", "🎲", "🎪", "🎭", "🎨"]
 
 BOSS_FILE = "data/boss.json"
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# BOSS COMMUNAUTAIRES — Catalogue de boss
-# ═══════════════════════════════════════════════════════════════════════════════
-# Chaque boss reste actif pendant BOSS_DURATION_DAYS. Les bosses tournent
-# (manuellement avec !boss_rotate, ou automatiquement avec !boss_auto on).
-# La liste est ordonnée — c'est l'ordre de rotation. Ajouter / retirer / modifier
-# librement, l'index de rotation est sauvegardé en base et ré-ajusté au load.
-
-BOSS_DURATION_DAYS = 30  # 1 mois
-
-BOSS_CATALOG = [
-    {
-        "id": "dragon_ombres",
-        "name": "🐉 Dragon des Ombres",
-        "color": 0x4B0082,
-        "max_hp": 50000,
-        "hit_min": 15,
-        "hit_max": 60,
-        "lore": (
-            "Un dragon ancien tissé d'ombres et de cendres. Ses écailles "
-            "absorbent la lumière, et son rugissement glace les âmes."
-        ),
-    },
-    {
-        "id": "oni_supreme",
-        "name": "👹 Oni Suprême",
-        "color": 0xC0392B,
-        "max_hp": 60000,
-        "hit_min": 12,
-        "hit_max": 55,
-        "lore": (
-            "Roi des oni, descendu des montagnes interdites. Sa massue "
-            "brise les sceaux, son rire fait trembler les villages."
-        ),
-    },
-    {
-        "id": "spectre_maudit",
-        "name": "💀 Spectre Maudit",
-        "color": 0x2C3E50,
-        "max_hp": 45000,
-        "hit_min": 10,
-        "hit_max": 50,
-        "lore": (
-            "Un revenant lié à un pacte brisé. Insaisissable, il ne peut "
-            "être blessé que par la volonté collective de ses traqueurs."
-        ),
-    },
-    {
-        "id": "demon_flammes",
-        "name": "🔥 Démon des Flammes",
-        "color": 0xE74C3C,
-        "max_hp": 55000,
-        "hit_min": 18,
-        "hit_max": 65,
-        "lore": (
-            "Né d'une fournaise infernale, il transforme l'air en braise "
-            "et le sol en lave. Quiconque l'approche brûle déjà."
-        ),
-    },
-    {
-        "id": "titan_foudre",
-        "name": "⚡ Titan de Foudre",
-        "color": 0xF1C40F,
-        "max_hp": 65000,
-        "hit_min": 14,
-        "hit_max": 58,
-        "lore": (
-            "Un colosse sculpté dans l'orage. Chacun de ses pas déclenche "
-            "un éclair, chacun de ses coups un tonnerre dévastateur."
-        ),
-    },
-    {
-        "id": "leviathan_abyssal",
-        "name": "🌊 Léviathan Abyssal",
-        "color": 0x1F618D,
-        "max_hp": 70000,
-        "hit_min": 20,
-        "hit_max": 70,
-        "lore": (
-            "Surgi des fosses sans fond, ce monstre marin engloutit des "
-            "flottes entières. Ses tentacules atteignent même le rivage."
-        ),
-    },
-]
 
 
 def get_boss_by_id(boss_id):
@@ -506,18 +144,6 @@ def get_boss_index(boss_id):
         if b["id"] == boss_id:
             return i
     return -1
-
-
-# Hangman stages
-HANGMAN_STAGES = [
-    "```\n  +---+\n      |\n      |\n      |\n      |\n=========```",
-    "```\n  +---+\n  O   |\n      |\n      |\n      |\n=========```",
-    "```\n  +---+\n  O   |\n  |   |\n      |\n      |\n=========```",
-    "```\n  +---+\n  O   |\n /|   |\n      |\n      |\n=========```",
-    "```\n  +---+\n  O   |\n /|\\  |\n      |\n      |\n=========```",
-    "```\n  +---+\n  O   |\n /|\\  |\n /    |\n      |\n=========```",
-    "```\n  +---+\n  O   |\n /|\\  |\n / \\  |\n      |\n=========```",
-]
 
 
 def normalize(text):

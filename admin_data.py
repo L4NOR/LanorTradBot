@@ -586,10 +586,79 @@ class AdminData(commands.Cog):
     @commands.command(name="backup")
     @commands.has_any_role(*ADMIN_ROLES)
     async def backup_all(self, ctx):
-        """Sauvegarde et exporte TOUTES les données en une commande"""
+        """Sauvegarde et exporte TOUS les fichiers JSON du dossier data/"""
+        # 1) Sauvegarder les modules connus
         await self.save_modules(ctx, DATA_GROUPS["all"]["modules"], "Tout")
         await asyncio.sleep(1)
-        await self.export_modules(ctx, DATA_GROUPS["all"]["modules"], "Tout")
+
+        # 2) Scanner TOUS les .json dans data/ et les envoyer en MP
+        target_user = await self.bot.fetch_user(TARGET_USER_ID)
+        if not target_user:
+            await ctx.send("❌ Utilisateur cible introuvable.")
+            return
+
+        data_dir = "data"
+        json_files = sorted(
+            [f for f in os.listdir(data_dir) if f.endswith(".json")],
+            key=str.lower,
+        )
+
+        if not json_files:
+            await ctx.send("❌ Aucun fichier JSON trouvé dans `data/`.")
+            return
+
+        files_to_send = []
+        files_info = []
+        for fname in json_files:
+            fpath = os.path.join(data_dir, fname)
+            try:
+                size = os.path.getsize(fpath)
+                size_label = f"{size / 1024:.1f} KB" if size >= 1024 else f"{size} B"
+                files_to_send.append(fpath)
+                files_info.append(f"📄 `{fname}` ({size_label})")
+            except OSError:
+                continue
+
+        embed_dm = discord.Embed(
+            title="📦 Backup complet — tous les JSON",
+            description=(
+                f"**{len(files_to_send)}** fichier(s) trouvé(s) dans `data/`\n"
+                f"Demandé par **{ctx.author.name}**"
+            ),
+            color=discord.Color.blue(),
+            timestamp=datetime.now(),
+        )
+        # Afficher la liste (max 30 lignes)
+        listing = "\n".join(files_info[:30])
+        if len(files_info) > 30:
+            listing += f"\n… et {len(files_info) - 30} autres"
+        embed_dm.add_field(name="📁 Fichiers", value=listing, inline=False)
+        embed_dm.set_footer(text=f"Serveur: {ctx.guild.name}")
+
+        try:
+            # Envoyer par lots de 10 (limite Discord)
+            for i in range(0, len(files_to_send), 10):
+                batch = [discord.File(fp) for fp in files_to_send[i:i + 10]]
+                if i == 0:
+                    await target_user.send(embed=embed_dm, files=batch)
+                else:
+                    await target_user.send(
+                        f"📁 Suite du backup ({i + 1}-{i + len(batch)})…", files=batch
+                    )
+
+            embed_ok = discord.Embed(
+                title="✅ Backup terminé",
+                description=(
+                    f"**{len(files_to_send)}** fichier(s) JSON envoyé(s) en MP à {target_user.mention}"
+                ),
+                color=discord.Color.green(),
+                timestamp=datetime.now(),
+            )
+            embed_ok.set_footer(text=f"Demandé par {ctx.author.name}")
+            await ctx.send(embed=embed_ok)
+
+        except discord.Forbidden:
+            await ctx.send(f"❌ Impossible d'envoyer un MP à {target_user.mention}.")
     
     @commands.command(name="data_list")
     @commands.has_any_role(*ADMIN_ROLES)

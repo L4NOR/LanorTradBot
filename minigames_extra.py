@@ -16,9 +16,14 @@ from config import COLORS
 from database import db
 from minigames import (
     normalize,
-    MANGA_WORD_THEMES,
     pick_themed_manga_word,
     announce_level_up_safe,
+)
+from minigames_data import (
+    MANGA_WORD_THEMES,
+    RIDDLES, QUOTES, EMOJI_REBUS, ANAGRAMS,
+    PANELS, OPENINGS, CHARACTERS, CHARACTER_QUESTIONS,
+    MEMORY_EMOJIS,
 )
 from effects import apply_minigame_xp, is_featured
 import logging
@@ -44,228 +49,8 @@ EXTRA_XP = {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# DATA POOLS — devinettes, quotes, rebus, anagrams, panels, openings, characters
+# DATA POOLS — importées depuis minigames_data.py
 # ═══════════════════════════════════════════════════════════════════════════════
-# Les contenus sont inline pour démarrer rapidement. Pour étendre, déplacer
-# vers data/*.json plus tard.
-
-RIDDLES = [
-    {"q": "Je suis né démon mais je veux devenir exorciste, mon frère est mon plus grand rival. Qui suis-je ?",
-     "answer": "rin", "alts": ["rin okumura", "okumura"]},
-    {"q": "Mon père m'a transformé en oni pour sauver ma sœur. Je porte un masque blanc à cornes. Qui suis-je ?",
-     "answer": "shiki", "alts": ["shiki ichinose"]},
-    {"q": "Je suis un assassin né dans une famille de tueurs, et la survie est mon seul code. Quel manga ?",
-     "answer": "satsudou", "alts": ["satsu dou"]},
-    {"q": "Mon univers parle de football italien, de tactique et de défense de fer. Quel manga ?",
-     "answer": "catenaccio", "alts": []},
-    {"q": "Je suis un lecteur d'élite qui repère le talent avant qu'il n'éclose. Mon métier dans une team scan ?",
-     "answer": "beta reader", "alts": ["beta-reader", "betareader"]},
-    {"q": "Je suis un yakuza qui contrôle Tokyo depuis l'ombre. Quel manga ?",
-     "answer": "tokyo underworld", "alts": ["tokyo", "underworld"]},
-    {"q": "Sans moi, les bulles de manga restent vides. Quel rôle dans la team ?",
-     "answer": "traducteur", "alts": ["trad", "translator", "traduction"]},
-    {"q": "Je nettoie les pages, j'efface les textes japonais. Quel rôle ?",
-     "answer": "cleaner", "alts": ["cleaning", "clean"]},
-    {"q": "Je place le texte traduit dans les bulles avec la bonne typo. Quel rôle ?",
-     "answer": "typesetter", "alts": ["type", "typesetting"]},
-    {"q": "Je relis tout pour traquer la moindre faute. Quel rôle ?",
-     "answer": "correcteur", "alts": ["check", "checker", "correction", "relecture"]},
-    {"q": "Une lame courbe japonaise, symbole du samouraï. Quel objet ?",
-     "answer": "katana", "alts": ["sabre"]},
-    {"q": "Petit couteau de ninja qu'on lance en silence. Quel objet ?",
-     "answer": "shuriken", "alts": []},
-    {"q": "Je suis un samouraï sans maître, errant le long des routes. Quel mot ?",
-     "answer": "ronin", "alts": []},
-    {"q": "Je suis un esprit-renard à plusieurs queues, célèbre dans le folklore japonais. Quel yokai ?",
-     "answer": "kitsune", "alts": []},
-    {"q": "Manga centré sur un démon-flamme et un institut d'exorcistes. Quel manga ?",
-     "answer": "blue exorcist", "alts": ["ao no exorcist", "blueexorcist", "ao"]},
-    {"q": "Vortex, famille maudite, dieu serpentin… Quel manga ?",
-     "answer": "uzugami", "alts": []},
-    {"q": "Petite soeur de Rin, calme, observatrice. Qui ?",
-     "answer": "yukio", "alts": ["yukio okumura"]},
-    {"q": "Je suis un soldat sans visage qui marche pour le shogun. Quel guerrier ?",
-     "answer": "ashigaru", "alts": []},
-    {"q": "Pour planter du texte dans une case, je dois maîtriser cet art typographique. Quoi ?",
-     "answer": "typesetting", "alts": ["type", "typeset"]},
-    {"q": "Trois lettres qui désignent un effet sonore en BD/manga.",
-     "answer": "sfx", "alts": ["onomatopée", "onomatopee"]},
-]
-
-QUOTES = [
-    {"text": "« Je deviendrai exorciste, et je tuerai Satan ! »",
-     "answer": "blue exorcist", "alts": ["ao no exorcist", "blueexorcist", "blue", "ao"]},
-    {"text": "« La défense, c'est l'art de transformer un mur en piège. »",
-     "answer": "catenaccio", "alts": []},
-    {"text": "« Tuer, c'est la seule chose que je sais bien faire. »",
-     "answer": "satsudou", "alts": []},
-    {"text": "« Si tu veux survivre dans ce milieu, oublie ton passé. »",
-     "answer": "tokyo underworld", "alts": ["tokyo", "underworld"]},
-    {"text": "« Je porte ce masque pour ne pas oublier qui je dois sauver. »",
-     "answer": "tougen anki", "alts": ["tougen", "anki"]},
-    {"text": "« Tant qu'il reste un vortex, il reste une chance. »",
-     "answer": "uzugami", "alts": []},
-    {"text": "« Mon frère ne sait pas encore qui je suis vraiment. »",
-     "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
-    {"text": "« Le ballon ne ment jamais. »",
-     "answer": "catenaccio", "alts": []},
-    {"text": "« Un assassin n'a ni amis, ni serment. »",
-     "answer": "satsudou", "alts": []},
-    {"text": "« Le sang qui coule dans mes veines est celui d'un démon. »",
-     "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
-    {"text": "« On ne marchande pas avec un oni. »",
-     "answer": "tougen anki", "alts": ["tougen", "anki"]},
-    {"text": "« Tout Tokyo nous appartient, du sous-sol au sommet. »",
-     "answer": "tokyo underworld", "alts": ["tokyo", "underworld"]},
-    {"text": "« Mon contrat est signé avec un dieu, pas avec les hommes. »",
-     "answer": "uzugami", "alts": []},
-    {"text": "« Une équipe sans défense n'est qu'une cible. »",
-     "answer": "catenaccio", "alts": []},
-    {"text": "« Je suis le couteau dans l'ombre, le mot dans le silence. »",
-     "answer": "satsudou", "alts": []},
-]
-
-# Rebus emojis → manga (ou personnage). Le joueur doit deviner.
-EMOJI_REBUS = [
-    {"emoji": "🔵😈⛪", "answer": "blue exorcist", "alts": ["ao no exorcist", "blueexorcist", "blue", "ao"]},
-    {"emoji": "⚽🥅🇮🇹", "answer": "catenaccio", "alts": []},
-    {"emoji": "🗡️🥷💀", "answer": "satsudou", "alts": []},
-    {"emoji": "🏙️🌃🔫", "answer": "tokyo underworld", "alts": ["tokyo", "underworld"]},
-    {"emoji": "👹🍑🌀", "answer": "tougen anki", "alts": ["tougen", "anki"]},
-    {"emoji": "🌀🐍⛩️", "answer": "uzugami", "alts": []},
-    {"emoji": "🔵🔥👦👦", "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
-    {"emoji": "🥷⚔️🌸", "answer": "ronin", "alts": []},
-    {"emoji": "📖✏️🇫🇷", "answer": "traduction", "alts": ["traducteur", "trad"]},
-    {"emoji": "🧹📄✨", "answer": "cleaning", "alts": ["clean", "cleaner"]},
-    {"emoji": "✍️💬📐", "answer": "typesetting", "alts": ["typeset", "type"]},
-    {"emoji": "🦊👺🍙", "answer": "kitsune", "alts": []},
-    {"emoji": "🐉🌫️🌑", "answer": "dragon", "alts": []},
-    {"emoji": "🏰⚔️👑", "answer": "royaume", "alts": ["chateau", "empire"]},
-    {"emoji": "🌸🇯🇵🎎", "answer": "matsuri", "alts": ["festival"]},
-]
-
-# Anagrammes — phrases ou titres mélangés
-ANAGRAMS = [
-    {"clue": "Manga d'exorcistes au démon bleu", "answer": "blue exorcist"},
-    {"clue": "Manga de football italien", "answer": "catenaccio"},
-    {"clue": "Manga de yakuzas tokyoïtes", "answer": "tokyo underworld"},
-    {"clue": "Manga d'oni et de masques", "answer": "tougen anki"},
-    {"clue": "Manga d'assassinat", "answer": "satsudou"},
-    {"clue": "Manga de vortex divin", "answer": "uzugami"},
-    {"clue": "Lame courbe japonaise", "answer": "katana"},
-    {"clue": "Samouraï errant", "answer": "ronin"},
-    {"clue": "Esprit-renard japonais", "answer": "kitsune"},
-    {"clue": "Petit couteau de jet", "answer": "shuriken"},
-    {"clue": "Scan brut non traduit", "answer": "raw"},
-    {"clue": "Pose des textes dans les bulles", "answer": "typesetting"},
-    {"clue": "Nettoie les pages", "answer": "cleaning"},
-    {"clue": "Notre team de traduction", "answer": "lanortrad"},
-    {"clue": "Festival traditionnel japonais", "answer": "matsuri"},
-]
-
-# Panels manga — URLs d'images. À étendre dans data/panels.json plus tard.
-# Pour démarrer, on met juste quelques entrées texte (les images seront ajoutées
-# quand l'utilisateur fournira des URLs).
-PANELS = [
-    {"url": None, "caption": "Un démon adolescent à mèches bleues, queue agitée, sourire en coin",
-     "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
-    {"url": None, "caption": "Un oni masqué tient sa petite sœur dans ses bras dans la neige",
-     "answer": "tougen anki", "alts": ["tougen", "anki"]},
-    {"url": None, "caption": "Un footballeur italien retient un attaquant adverse au poteau de corner",
-     "answer": "catenaccio", "alts": []},
-    {"url": None, "caption": "Un assassin en costume noir tire avec deux pistolets dans une ruelle pluvieuse",
-     "answer": "satsudou", "alts": []},
-    {"url": None, "caption": "Un yakuza tatoué allume une cigarette devant un néon Shinjuku",
-     "answer": "tokyo underworld", "alts": ["tokyo", "underworld"]},
-    {"url": None, "caption": "Un prêtre shinto trace un cercle d'eau au sol avant d'invoquer un dieu serpentin",
-     "answer": "uzugami", "alts": []},
-]
-
-# Openings d'animes — pour l'instant on liste des titres, le bot pose une devinette
-# textuelle. Si tu fournis des URLs YouTube plus tard, on pourra les intégrer.
-OPENINGS = [
-    {"clip": "Core Pride — UVERworld",
-     "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
-    {"clip": "In My World — ROOKiEZ is PUNK'D",
-     "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
-    {"clip": "(devinette spoiler) Tougen Anki Opening 1",
-     "answer": "tougen anki", "alts": ["tougen", "anki"]},
-    {"clip": "(devinette spoiler) Catenaccio Opening 1",
-     "answer": "catenaccio", "alts": []},
-    {"clip": "(devinette spoiler) Tokyo Underworld Opening 1",
-     "answer": "tokyo underworld", "alts": ["tokyo", "underworld"]},
-    {"clip": "(devinette spoiler) Satsudou Opening 1",
-     "answer": "satsudou", "alts": []},
-    {"clip": "(devinette spoiler) Uzugami Opening 1",
-     "answer": "uzugami", "alts": []},
-]
-
-# Characters — base pour le 20Q. Chaque perso a un set de tags binaires.
-# Les questions du bot exploitent ces tags.
-CHARACTERS = [
-    {
-        "name": "Rin Okumura", "manga": "Blue Exorcist",
-        "tags": {"male": True, "demon": True, "exorcist": True, "swordsman": True,
-                 "human_appearance": True, "antagonist": False, "leader": False,
-                 "uses_magic": True, "japanese_name": True, "young": True},
-    },
-    {
-        "name": "Yukio Okumura", "manga": "Blue Exorcist",
-        "tags": {"male": True, "demon": False, "exorcist": True, "swordsman": False,
-                 "human_appearance": True, "antagonist": False, "leader": True,
-                 "uses_magic": True, "japanese_name": True, "young": True},
-    },
-    {
-        "name": "Shiki Ichinose", "manga": "Tougen Anki",
-        "tags": {"male": True, "demon": True, "exorcist": False, "swordsman": False,
-                 "human_appearance": True, "antagonist": False, "leader": False,
-                 "uses_magic": True, "japanese_name": True, "young": True},
-    },
-    {
-        "name": "Yamato", "manga": "Tougen Anki",
-        "tags": {"male": True, "demon": True, "exorcist": False, "swordsman": True,
-                 "human_appearance": True, "antagonist": True, "leader": True,
-                 "uses_magic": True, "japanese_name": True, "young": False},
-    },
-    {
-        "name": "Le Boss de Tokyo Underworld", "manga": "Tokyo Underworld",
-        "tags": {"male": True, "demon": False, "exorcist": False, "swordsman": False,
-                 "human_appearance": True, "antagonist": True, "leader": True,
-                 "uses_magic": False, "japanese_name": True, "young": False},
-    },
-    {
-        "name": "L'Assassin de Satsudou", "manga": "Satsudou",
-        "tags": {"male": True, "demon": False, "exorcist": False, "swordsman": False,
-                 "human_appearance": True, "antagonist": False, "leader": False,
-                 "uses_magic": False, "japanese_name": True, "young": True},
-    },
-    {
-        "name": "Le Capitaine de Catenaccio", "manga": "Catenaccio",
-        "tags": {"male": True, "demon": False, "exorcist": False, "swordsman": False,
-                 "human_appearance": True, "antagonist": False, "leader": True,
-                 "uses_magic": False, "japanese_name": False, "young": True},
-    },
-    {
-        "name": "Le Prêtre d'Uzugami", "manga": "Uzugami",
-        "tags": {"male": True, "demon": False, "exorcist": True, "swordsman": False,
-                 "human_appearance": True, "antagonist": False, "leader": True,
-                 "uses_magic": True, "japanese_name": True, "young": False},
-    },
-]
-
-# Questions du 20Q : (label, tag)
-CHARACTER_QUESTIONS = [
-    ("Est-ce un personnage masculin ?", "male"),
-    ("Est-ce un démon ?", "demon"),
-    ("Est-ce un exorciste ?", "exorcist"),
-    ("Manie-t-il une épée principalement ?", "swordsman"),
-    ("A-t-il une apparence humaine ?", "human_appearance"),
-    ("Est-ce un antagoniste ?", "antagonist"),
-    ("Est-ce un leader ?", "leader"),
-    ("Utilise-t-il une forme de magie ou pouvoir surnaturel ?", "uses_magic"),
-    ("A-t-il un nom japonais ?", "japanese_name"),
-    ("Est-il décrit comme jeune ?", "young"),
-]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1255,9 +1040,6 @@ class ClickButton(Button):
 # ═══════════════════════════════════════════════════════════════════════════════
 # MEMORY VIEW
 # ═══════════════════════════════════════════════════════════════════════════════
-
-MEMORY_EMOJIS = ["🍒", "🍋", "🍇", "⭐", "💎", "7️⃣", "🎯", "🔥"]
-
 
 class MemoryView(View):
     def __init__(self, owner_id):

@@ -71,11 +71,6 @@ QUIZ_POOL = [
      "options": ["L'art de l'assassinat", "La cuisine", "Le rugby", "La magie"], "answer": 0},
     {"manga": "Satsudou", "q": "Quel mot japonais signifie 'voie' dans Satsudou ?",
      "options": ["Do", "Ki", "Ryu", "Ha"], "answer": 0},
-    # Uzugami
-    {"manga": "Uzugami", "q": "Que signifie 'uzu' dans Uzugami ?",
-     "options": ["Vague", "Tourbillon", "Étoile", "Lune"], "answer": 1},
-    {"manga": "Uzugami", "q": "Quel élément naturel est central dans Uzugami ?",
-     "options": ["Le feu", "Le vent", "L'eau", "La terre"], "answer": 2},
     # Culture team / général
     {"manga": "Général", "q": "Comment appelle-t-on un magazine de prépublication manga ?",
      "options": ["Tankobon", "Doujin", "Magazine de serialisation", "Light novel"], "answer": 2},

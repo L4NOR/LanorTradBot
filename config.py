@@ -66,8 +66,6 @@ ROLES = {
     "ao_no_exorcist": 1465027919951958220,
     "tokyo_underworld": 1465027914050437184,
     "tougen_anki": 1465027911235928155,
-    "uzugami": 1490301634490794104,
-
     # Rôles de notification
     "partenaires_ping": 1465027864318447658,
     "annonces": 1465027871339708439,
@@ -97,7 +95,6 @@ MANGA_ROLES = {
     "Ao No Exorcist": 1465027919951958220,
     "Tokyo Underworld": 1465027914050437184,
     "Tougen Anki": 1465027911235928155,
-    "Uzugami": 1490301634490794104,
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -117,7 +114,6 @@ ROLE_CATEGORIES = {
             {"name": "Tokyo Underworld", "emoji": "🏙️", "id": ROLES["tokyo_underworld"]},
             {"name": "Tougen Anki", "emoji": "👹", "id": ROLES["tougen_anki"]},
             {"name": "Catenaccio", "emoji": "⚽", "id": ROLES["catenaccio"]},
-            {"name": "Uzugami", "emoji": "🌀", "id": ROLES["uzugami"], "coming_soon": True},
         ]
     },
     "notifications": {
@@ -222,7 +218,6 @@ MANGA_EMOJIS = {
     "Tougen Anki": "😈",
     "Catenaccio": "⚽",
     "Tokyo Underworld": "🗼",
-    "Uzugami": "🌀",
 }
 
 TASK_EMOJIS = {
