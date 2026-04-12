@@ -5,6 +5,8 @@ from config import ADMIN_ROLES, TARGET_USER_ID
 from discord.ext import commands
 import json
 import os
+import io
+import zipfile
 import asyncio
 from datetime import datetime
 from config import COLORS
@@ -586,17 +588,12 @@ class AdminData(commands.Cog):
     @commands.command(name="backup")
     @commands.has_any_role(*ADMIN_ROLES)
     async def backup_all(self, ctx):
-        """Sauvegarde et exporte TOUS les fichiers JSON du dossier data/"""
+        """Sauvegarde et exporte TOUS les fichiers JSON en un ZIP téléchargeable."""
         # 1) Sauvegarder les modules connus
         await self.save_modules(ctx, DATA_GROUPS["all"]["modules"], "Tout")
         await asyncio.sleep(1)
 
-        # 2) Scanner TOUS les .json dans data/ et les envoyer en MP
-        target_user = await self.bot.fetch_user(TARGET_USER_ID)
-        if not target_user:
-            await ctx.send("❌ Utilisateur cible introuvable.")
-            return
-
+        # 2) Scanner TOUS les .json dans data/
         data_dir = "data"
         json_files = sorted(
             [f for f in os.listdir(data_dir) if f.endswith(".json")],
@@ -607,58 +604,65 @@ class AdminData(commands.Cog):
             await ctx.send("❌ Aucun fichier JSON trouvé dans `data/`.")
             return
 
-        files_to_send = []
+        # 3) Construire le ZIP en mémoire
+        now = datetime.now()
+        zip_name = f"backup_lanortrad_{now.strftime('%Y-%m-%d_%H-%M')}.zip"
+
+        buf = io.BytesIO()
+        total_size = 0
         files_info = []
-        for fname in json_files:
-            fpath = os.path.join(data_dir, fname)
-            try:
-                size = os.path.getsize(fpath)
-                size_label = f"{size / 1024:.1f} KB" if size >= 1024 else f"{size} B"
-                files_to_send.append(fpath)
-                files_info.append(f"📄 `{fname}` ({size_label})")
-            except OSError:
-                continue
 
-        embed_dm = discord.Embed(
-            title="📦 Backup complet — tous les JSON",
-            description=(
-                f"**{len(files_to_send)}** fichier(s) trouvé(s) dans `data/`\n"
-                f"Demandé par **{ctx.author.name}**"
-            ),
-            color=discord.Color.blue(),
-            timestamp=datetime.now(),
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for fname in json_files:
+                fpath = os.path.join(data_dir, fname)
+                try:
+                    size = os.path.getsize(fpath)
+                    total_size += size
+                    size_label = f"{size / 1024:.1f} KB" if size >= 1024 else f"{size} B"
+                    files_info.append(f"📄 `{fname}` ({size_label})")
+                    zf.write(fpath, fname)  # stocké à la racine du zip
+                except OSError:
+                    continue
+
+        buf.seek(0)
+        zip_size = buf.getbuffer().nbytes
+        zip_size_label = (
+            f"{zip_size / (1024 * 1024):.2f} MB" if zip_size >= 1024 * 1024
+            else f"{zip_size / 1024:.1f} KB"
         )
-        # Afficher la liste (max 30 lignes)
-        listing = "\n".join(files_info[:30])
-        if len(files_info) > 30:
-            listing += f"\n… et {len(files_info) - 30} autres"
-        embed_dm.add_field(name="📁 Fichiers", value=listing, inline=False)
-        embed_dm.set_footer(text=f"Serveur: {ctx.guild.name}")
 
+        # 4) Embed récapitulatif
+        listing = "\n".join(files_info[:25])
+        if len(files_info) > 25:
+            listing += f"\n… et **{len(files_info) - 25}** autres"
+
+        embed = discord.Embed(
+            title="📦 Backup complet",
+            description=(
+                f"**{len(files_info)}** fichier(s) JSON compressés\n"
+                f"Poids du ZIP : **{zip_size_label}**"
+            ),
+            color=discord.Color.green(),
+            timestamp=now,
+        )
+        embed.add_field(name="📁 Contenu", value=listing, inline=False)
+        embed.set_footer(text=f"Demandé par {ctx.author.name}")
+
+        # 5) Envoyer le ZIP dans le channel + en MP
+        zip_file_channel = discord.File(fp=io.BytesIO(buf.getvalue()), filename=zip_name)
+        await ctx.send(embed=embed, file=zip_file_channel)
+
+        # Aussi en MP à l'utilisateur cible
         try:
-            # Envoyer par lots de 10 (limite Discord)
-            for i in range(0, len(files_to_send), 10):
-                batch = [discord.File(fp) for fp in files_to_send[i:i + 10]]
-                if i == 0:
-                    await target_user.send(embed=embed_dm, files=batch)
-                else:
-                    await target_user.send(
-                        f"📁 Suite du backup ({i + 1}-{i + len(batch)})…", files=batch
-                    )
-
-            embed_ok = discord.Embed(
-                title="✅ Backup terminé",
-                description=(
-                    f"**{len(files_to_send)}** fichier(s) JSON envoyé(s) en MP à {target_user.mention}"
-                ),
-                color=discord.Color.green(),
-                timestamp=datetime.now(),
-            )
-            embed_ok.set_footer(text=f"Demandé par {ctx.author.name}")
-            await ctx.send(embed=embed_ok)
-
-        except discord.Forbidden:
-            await ctx.send(f"❌ Impossible d'envoyer un MP à {target_user.mention}.")
+            target_user = await self.bot.fetch_user(TARGET_USER_ID)
+            if target_user:
+                zip_file_dm = discord.File(fp=io.BytesIO(buf.getvalue()), filename=zip_name)
+                embed_dm = embed.copy()
+                embed_dm.title = "📦 Backup complet — copie MP"
+                embed_dm.set_footer(text=f"Serveur: {ctx.guild.name} • par {ctx.author.name}")
+                await target_user.send(embed=embed_dm, file=zip_file_dm)
+        except (discord.Forbidden, discord.HTTPException):
+            pass  # pas grave si le MP échoue, le ZIP est déjà dans le channel
     
     @commands.command(name="data_list")
     @commands.has_any_role(*ADMIN_ROLES)

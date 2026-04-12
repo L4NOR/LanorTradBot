@@ -357,25 +357,9 @@
     },
     "active": true
   },
-  "uzugami_pack": {
-    "name": "🌀 Pack Uzugami",
-    "description": "Pack collector dédié à **Uzugami** !\n\n**Inclus :**\n• 🏅 Badge `Élu du Tourbillon`\n• 🔓 Accès au salon `#uzugami-discussion`\n• 🌊 +5 % de gain de points sur les activités liées à la série\n• 📌 Mention dans les remerciements de la prochaine sortie Uzugami",
-    "emoji": "🌀",
-    "category": "manga_packs",
-    "price": 800,
-    "stock": -1,
-    "type": "bundle",
-    "includes": ["uzugami_fan_badge"],
-    "manga": "uzugami",
-    "requirements": {
-      "badges": [],
-      "level": 2
-    },
-    "active": true
-  },
   "lanortrad_collector": {
     "name": "📚 Collection Complète LanorTrad",
-    "description": "Le **Graal** des fans de la team !\n\n**Inclus :**\n• 🏅 Badge ultime `Collectionneur LanorTrad` (animé)\n• 🎖️ Tous les badges des 6 séries de la team (Tougen Anki, Satsudou, Tokyo Underworld, Catenaccio, Blue Exorcist, Uzugami)\n• 🔓 Accès aux 6 salons de discussion exclusifs\n• 💎 +15 % de gain de points permanent (cumulable avec les boosts)\n• 🎤 Droit de proposer une œuvre à traduire (1×)\n• 📜 Mention permanente dans les crédits du site\n\n*Pour les vrais passionnés.*",
+    "description": "Le **Graal** des fans de la team !\n\n**Inclus :**\n• 🏅 Badge ultime `Collectionneur LanorTrad` (animé)\n• 🎖️ Tous les badges des 5 séries de la team (Tougen Anki, Satsudou, Tokyo Underworld, Catenaccio, Blue Exorcist)\n• 🔓 Accès aux 5 salons de discussion exclusifs\n• 💎 +15 % de gain de points permanent (cumulable avec les boosts)\n• 🎤 Droit de proposer une œuvre à traduire (1×)\n• 📜 Mention permanente dans les crédits du site\n\n*Pour les vrais passionnés.*",
     "emoji": "📚",
     "category": "manga_packs",
     "price": 6000,
@@ -387,7 +371,6 @@
       "satsudou_fan_badge",
       "tokyo_fan_badge",
       "catenaccio_fan_badge",
-      "uzugami_fan_badge",
       "lanortrad_collector_badge"
     ],
     "requirements": {
