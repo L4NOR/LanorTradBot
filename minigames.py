@@ -14,6 +14,12 @@ from config import COLORS, POINTS_ALLOWED_CHANNELS
 from community import add_xp, get_user_stats, sauvegarder_donnees, calculate_level, xp_progress, generate_xp_bar
 from database import db
 from utils import safe_api_call, load_json, save_json
+from effects import (
+    apply_minigame_xp,
+    is_featured,
+    get_featured_game,
+    FEATURED_MULTIPLIER,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -67,119 +73,330 @@ CATEGORY_LABELS = {
 }
 
 # Mots pour les jeux (thème manga / traduction)
-# Utilisés par !hangman et !unscramble (filtrage par longueur dans unscramble).
-MANGA_WORDS = [
-    # ─── Personnages, mangas & univers du serveur ──────────────────────────
-    "exorciste", "demon", "satan", "flammes", "paladin",
-    "assassin", "combat", "survie", "lame", "malediction",
-    "football", "gardien", "attaquant", "defenseur", "match",
-    "yakuza", "crime", "souterrain", "gang",
-    "oni", "shiki", "transformation", "rituel", "pacte",
-    # ─── Termes manga / édition ────────────────────────────────────────────
-    "manga", "anime", "shonen", "seinen", "shojo", "josei", "kodomo",
-    "chapitre", "tome", "volume", "scan", "raw", "edition", "couverture",
-    "traduction", "traducteur", "correction", "relecture", "cleaning",
-    "typesetting", "redraw", "sfx", "mangaka", "studio", "serialisation",
-    "editeur", "tirage", "preview",
-    # ─── Maîtres, élèves & relations ───────────────────────────────────────
-    "sensei", "nakama", "kohai", "senpai", "shifu", "disciple",
-    "maitre", "apprenti", "mentor", "rival", "equipe", "famille",
-    # ─── Armes blanches & équipement ───────────────────────────────────────
-    "katana", "wakizashi", "tanto", "nodachi", "tachi", "naginata",
-    "shinobi", "shuriken", "kunai", "sabre", "lame", "epee",
-    "rapiere", "dague", "fleau", "hache", "masse", "lance",
-    "bouclier", "armure", "casque", "gantelet", "arc", "fleche",
-    "arbalete", "javelot", "fronde", "fouet",
-    # ─── Pouvoirs & techniques ─────────────────────────────────────────────
-    "jutsu", "ninjutsu", "genjutsu", "taijutsu", "fuinjutsu",
-    "chakra", "haki", "bankai", "shikai", "reiatsu", "zanpakuto",
-    "sharingan", "byakugan", "rinnegan", "tsukuyomi", "amaterasu",
-    "susanoo", "rasengan", "kamehameha", "bijuu",
-    "pouvoir", "technique", "incantation", "mudra", "sceau",
-    # ─── Magie & arcanes ───────────────────────────────────────────────────
-    "magie", "sortilege", "invocation", "rituel", "portail", "dimension",
-    "alchimie", "necromancie", "elementaire", "runique", "arcane",
-    "enchantement", "malefice", "exorcisme", "purification",
-    # ─── Personnages génériques d'aventure ─────────────────────────────────
-    "guerrier", "barbare", "moine", "voleur", "rodeur", "barde",
-    "paladin", "druide", "necromant", "sorcier", "magicien", "invocateur",
-    "chevalier", "samourai", "ronin", "ninja", "ashigaru", "shogun", "daimyo",
-    "heros", "vilain", "tueur", "chasseur", "traqueur", "garde",
-    # ─── Créatures & ennemis ───────────────────────────────────────────────
-    "dragon", "wyverne", "hydre", "kraken", "leviathan", "behemoth",
-    "fantome", "spectre", "revenant", "liche", "vampire", "loup",
-    "loupgarou", "phenix", "griffon", "minotaure", "centaure", "harpie",
-    "gorgone", "chimere", "basilic", "sphinx", "manticore",
-    "yokai", "tengu", "kappa", "kitsune", "tanuki", "akuma",
-    "gobelin", "orc", "troll", "ogre", "geant", "titan", "colosse",
-    # ─── Lieux & royaumes ──────────────────────────────────────────────────
-    "clan", "royaume", "empire", "forteresse", "donjon", "chateau",
-    "tour", "citadelle", "muraille", "temple", "sanctuaire", "monastere",
-    "village", "cite", "capitale", "taverne", "marche", "guilde",
-    "foret", "montagne", "caverne", "abime", "oasis", "desert",
-    "konoha", "soulsociety", "wano", "edo",
-    # ─── Objets, potions & artefacts ───────────────────────────────────────
-    "elixir", "poison", "antidote", "potion", "parchemin", "grimoire",
-    "amulette", "talisman", "relique", "artefact", "joyau", "cristal",
-    "rune", "totem", "anneau", "couronne", "sceptre", "orbe",
-    # ─── Quêtes, missions, mystères ────────────────────────────────────────
-    "mission", "quete", "aventure", "mystere", "secret", "enigme",
-    "prophetie", "oracle", "vision", "prediction", "destin", "fatalite",
-    # ─── Combat & émotions ─────────────────────────────────────────────────
-    "courage", "bravoure", "honneur", "fierte", "fureur", "rage",
-    "colere", "vengeance", "trahison", "loyaute", "amitie", "amour",
-    "haine", "peur", "terreur", "espoir", "douleur", "sacrifice",
-    # ─── Cuisine & culture japonaise ───────────────────────────────────────
-    "ramen", "sushi", "miso", "udon", "soba", "tempura", "onigiri",
-    "matsuri", "sakura", "momiji", "kimono", "yukata", "hakama",
-    "kanji", "hiragana", "katakana", "tatami", "shoji",
-]
+# Utilisés par !hangman, !unscramble et !chain.
+# Chaque mot appartient à un thème → le thème est affiché dans l'embed du jeu
+# comme indice pour le joueur.
+MANGA_WORD_THEMES = {
+    "serveur_univers": {
+        "emoji": "🌀",
+        "label": "Mangas & univers LanorTrad",
+        "words": [
+            "exorciste", "demon", "satan", "flammes", "paladin",
+            "assassin", "combat", "survie", "lame", "malediction",
+            "football", "gardien", "attaquant", "defenseur", "match",
+            "yakuza", "crime", "souterrain", "gang",
+            "oni", "shiki", "transformation", "rituel", "pacte",
+        ],
+    },
+    "edition_manga": {
+        "emoji": "📖",
+        "label": "Manga & édition",
+        "words": [
+            "manga", "anime", "shonen", "seinen", "shojo", "josei", "kodomo",
+            "chapitre", "tome", "volume", "scan", "raw", "edition", "couverture",
+            "traduction", "traducteur", "correction", "relecture", "cleaning",
+            "typesetting", "redraw", "sfx", "mangaka", "studio", "serialisation",
+            "editeur", "tirage", "preview",
+        ],
+    },
+    "maitres_eleves": {
+        "emoji": "🎓",
+        "label": "Maîtres, élèves & relations",
+        "words": [
+            "sensei", "nakama", "kohai", "senpai", "shifu", "disciple",
+            "maitre", "apprenti", "mentor", "rival", "equipe", "famille",
+        ],
+    },
+    "armes_equipement": {
+        "emoji": "⚔️",
+        "label": "Armes & équipement",
+        "words": [
+            "katana", "wakizashi", "tanto", "nodachi", "tachi", "naginata",
+            "shinobi", "shuriken", "kunai", "sabre", "epee",
+            "rapiere", "dague", "fleau", "hache", "masse", "lance",
+            "bouclier", "armure", "casque", "gantelet", "arc", "fleche",
+            "arbalete", "javelot", "fronde", "fouet",
+        ],
+    },
+    "pouvoirs_techniques": {
+        "emoji": "💥",
+        "label": "Pouvoirs & techniques",
+        "words": [
+            "jutsu", "ninjutsu", "genjutsu", "taijutsu", "fuinjutsu",
+            "chakra", "haki", "bankai", "shikai", "reiatsu", "zanpakuto",
+            "sharingan", "byakugan", "rinnegan", "tsukuyomi", "amaterasu",
+            "susanoo", "rasengan", "kamehameha", "bijuu",
+            "pouvoir", "technique", "incantation", "mudra", "sceau",
+        ],
+    },
+    "magie_arcanes": {
+        "emoji": "🔮",
+        "label": "Magie & arcanes",
+        "words": [
+            "magie", "sortilege", "invocation", "portail", "dimension",
+            "alchimie", "necromancie", "elementaire", "runique", "arcane",
+            "enchantement", "malefice", "exorcisme", "purification",
+        ],
+    },
+    "aventuriers_classes": {
+        "emoji": "🏹",
+        "label": "Aventuriers & classes",
+        "words": [
+            "guerrier", "barbare", "moine", "voleur", "rodeur", "barde",
+            "druide", "necromant", "sorcier", "magicien", "invocateur",
+            "chevalier", "samourai", "ronin", "ninja", "ashigaru", "shogun", "daimyo",
+            "heros", "vilain", "tueur", "chasseur", "traqueur", "garde",
+        ],
+    },
+    "creatures_monstres": {
+        "emoji": "🐉",
+        "label": "Créatures & monstres",
+        "words": [
+            "dragon", "wyverne", "hydre", "kraken", "leviathan", "behemoth",
+            "fantome", "spectre", "revenant", "liche", "vampire", "loup",
+            "loupgarou", "phenix", "griffon", "minotaure", "centaure", "harpie",
+            "gorgone", "chimere", "basilic", "sphinx", "manticore",
+            "yokai", "tengu", "kappa", "kitsune", "tanuki", "akuma",
+            "gobelin", "orc", "troll", "ogre", "geant", "titan", "colosse",
+        ],
+    },
+    "lieux_royaumes": {
+        "emoji": "🏰",
+        "label": "Lieux & royaumes",
+        "words": [
+            "clan", "royaume", "empire", "forteresse", "donjon", "chateau",
+            "tour", "citadelle", "muraille", "temple", "sanctuaire", "monastere",
+            "village", "cite", "capitale", "taverne", "marche", "guilde",
+            "foret", "montagne", "caverne", "abime", "oasis", "desert",
+            "konoha", "soulsociety", "wano", "edo",
+        ],
+    },
+    "objets_artefacts": {
+        "emoji": "💎",
+        "label": "Objets & artefacts",
+        "words": [
+            "elixir", "poison", "antidote", "potion", "parchemin", "grimoire",
+            "amulette", "talisman", "relique", "artefact", "joyau", "cristal",
+            "rune", "totem", "anneau", "couronne", "sceptre", "orbe",
+        ],
+    },
+    "quetes_mysteres": {
+        "emoji": "🗺️",
+        "label": "Quêtes & mystères",
+        "words": [
+            "mission", "quete", "aventure", "mystere", "secret", "enigme",
+            "prophetie", "oracle", "vision", "prediction", "destin", "fatalite",
+        ],
+    },
+    "emotions_combat": {
+        "emoji": "❤️‍🔥",
+        "label": "Émotions & combat",
+        "words": [
+            "courage", "bravoure", "honneur", "fierte", "fureur", "rage",
+            "colere", "vengeance", "trahison", "loyaute", "amitie", "amour",
+            "haine", "peur", "terreur", "espoir", "douleur", "sacrifice",
+        ],
+    },
+    "culture_japonaise": {
+        "emoji": "🎎",
+        "label": "Culture japonaise",
+        "words": [
+            "ramen", "sushi", "miso", "udon", "soba", "tempura", "onigiri",
+            "matsuri", "sakura", "momiji", "kimono", "yukata", "hakama",
+            "kanji", "hiragana", "katakana", "tatami", "shoji",
+        ],
+    },
+}
+
+# Flat list dérivée — conservée pour la compatibilité des endroits qui
+# n'utilisent pas encore le thème (ex: starter word de !chain).
+MANGA_WORDS = [w for theme in MANGA_WORD_THEMES.values() for w in theme["words"]]
+
+
+def pick_themed_manga_word(min_len=None, max_len=None):
+    """Tire un mot aléatoire parmi MANGA_WORD_THEMES.
+
+    Retourne (theme_key, theme_dict, word). Le tirage est équitable sur
+    l'ensemble des mots (pas par thème), pour ne pas sur-représenter
+    les petits thèmes.
+    """
+    pool = []
+    for key, theme in MANGA_WORD_THEMES.items():
+        for w in theme["words"]:
+            if min_len is not None and len(w) < min_len:
+                continue
+            if max_len is not None and len(w) > max_len:
+                continue
+            pool.append((key, theme, w))
+    if not pool:
+        # Fallback sans contrainte
+        for key, theme in MANGA_WORD_THEMES.items():
+            for w in theme["words"]:
+                pool.append((key, theme, w))
+    return random.choice(pool)
 
 # Mots pour Wordle. La longueur du mot tiré définit le nombre de lettres
-# que le joueur doit taper. On regroupe les mots par longueur pour faciliter
-# l'ajout futur. Tous les mots sont sans accents (la fonction normalize()
-# les enlève dans les comparaisons). NE PAS y mettre des mots avec apostrophe
-# ou tiret — la garde `isalpha()` les rejetterait.
-WORDLE_WORDS = [
-    # ─── 4 lettres ─────────────────────────────────────────────────────────
-    "lame", "epee", "ange", "mort", "noir", "rage", "lien", "voie",
-    "cles", "loup", "tete", "nuit", "jour", "feux", "vent", "clan",
-    "amis", "elfe", "nain", "neko", "yari", "tabi", "sumo", "tabi",
-    # ─── 5 lettres (cœur du jeu) ───────────────────────────────────────────
-    "manga", "anime", "demon", "sabre", "magie", "force",
-    "lames", "flame", "heros", "shiki", "garde", "armes",
-    "monde", "coeur", "piege", "noble", "titan", "chaos",
-    "divin", "epees", "ombre", "quete", "rival",
-    "lance", "duels", "arena", "glace", "ninja", "ronin",
-    "droit", "encre", "trait", "plume", "panel",
-    "trame", "scans", "clean", "check", "ligne", "bulle",
-    "amour", "haine", "peine", "songe", "reves", "nuage",
-    "neige", "pluie", "brume", "vents", "forge", "armee",
-    "siege", "tueur", "cible", "mages", "sages", "dieux",
-    "saint", "pieux", "prier", "ecrit", "pages", "texte",
-    "verbe", "prose", "torse", "genou", "barbe", "front",
-    "ailes", "queue", "crocs", "poils", "ourse", "loups",
-    "lions", "fumee", "trone", "large", "court", "brave",
-    "honte", "rouge", "blanc", "noirs", "verts", "bleus",
-    "jours", "soirs", "midis", "foret", "monts", "mares",
-    "vague", "orage", "volee", "prise", "chute", "sauts",
-    "choix", "plans", "objet", "outil", "clefs", "chefs",
-    "rangs", "ordre", "juste", "grace", "ciels", "lunes",
-    "matin", "aubes", "neufs", "cents", "mille", "perle",
-    "bague", "croix", "route", "voies", "piste", "ponts",
-    "tours", "cites", "toits", "camps", "forts", "ports",
-    "baies", "kanji", "ramen", "sushi", "moine", "barde",
-    "ogres", "morts", "anges", "tengu", "kappa", "akuma",
-    "haiku",
-    # ─── 6 lettres (plus dur) ──────────────────────────────────────────────
-    "guerre", "combat", "rituel", "magies", "sabres", "lances",
-    "ennemi", "allies", "garcon", "noires", "rouges", "vertes",
-    "vivant", "enfers", "saints", "demons", "diable",
-    "donjon", "guilde", "foudre", "tonner", "purger", "trolls",
-    "fureur", "esprit", "vision", "destin", "tueurs",
-    "loyaux", "marche", "berger", "ombres", "soldat",
-    "voleur", "rodeur", "mentor", "epaule", "casque",
-]
+# que le joueur doit taper. Les mots sont regroupés par thème — le thème est
+# affiché dans l'embed comme indice. Tous les mots sont sans accents
+# (normalize() enlève les accents lors des comparaisons). NE PAS y mettre
+# des mots avec apostrophe ou tiret — la garde `isalpha()` les rejetterait.
+WORDLE_WORD_THEMES = {
+    "edition_manga": {
+        "emoji": "📖",
+        "label": "Manga & édition",
+        "words": [
+            "manga", "anime", "scans", "clean", "check", "ligne", "bulle",
+            "trame", "encre", "trait", "plume", "panel", "pages", "texte",
+            "verbe", "prose", "ecrit", "haiku", "kanji",
+        ],
+    },
+    "armes_equipement": {
+        "emoji": "⚔️",
+        "label": "Armes & équipement",
+        "words": [
+            "lame", "epee", "sabre", "lames", "epees", "lance", "armes",
+            "garde", "forge", "armee", "sabres", "lances", "casque",
+        ],
+    },
+    "magie_arcanes": {
+        "emoji": "🔮",
+        "label": "Magie & arcanes",
+        "words": [
+            "magie", "magies", "rituel", "divin", "arcane", "mages", "sages",
+            "dieux", "saint", "pieux", "prier", "grace", "foudre",
+            "tonner", "purger", "enfers", "saints",
+        ],
+    },
+    "creatures_monstres": {
+        "emoji": "🐉",
+        "label": "Créatures & monstres",
+        "words": [
+            "demon", "titan", "ange", "loup", "elfe", "nain",
+            "ogres", "morts", "anges", "tengu", "kappa", "akuma",
+            "trolls", "demons", "diable", "ourse", "loups", "lions",
+        ],
+    },
+    "aventuriers_classes": {
+        "emoji": "🏹",
+        "label": "Aventuriers & classes",
+        "words": [
+            "heros", "ninja", "ronin", "brave", "moine", "barde", "noble",
+            "tueur", "voleur", "rodeur", "mentor", "berger", "soldat",
+            "ennemi", "allies", "rival", "tueurs", "chefs", "loyaux",
+        ],
+    },
+    "combats_duels": {
+        "emoji": "🛡️",
+        "label": "Combat & duels",
+        "words": [
+            "force", "piege", "duels", "siege", "combat", "guerre",
+            "cible", "vivant", "vision", "destin", "chaos", "droit",
+        ],
+    },
+    "emotions": {
+        "emoji": "❤️‍🔥",
+        "label": "Émotions",
+        "words": [
+            "rage", "coeur", "amour", "haine", "peine",
+            "songe", "reves", "honte", "fureur", "esprit",
+        ],
+    },
+    "nature_elements": {
+        "emoji": "🌪️",
+        "label": "Nature & éléments",
+        "words": [
+            "feux", "vent", "nuage", "neige", "pluie", "brume", "vents",
+            "foret", "orage", "glace", "fumee", "vague", "monts", "mares",
+        ],
+    },
+    "temps_cycles": {
+        "emoji": "⏳",
+        "label": "Temps & cycles",
+        "words": [
+            "nuit", "jour", "jours", "soirs", "midis", "matin", "aubes",
+            "ciels", "lunes", "neufs", "cents", "mille",
+        ],
+    },
+    "lieux_royaumes": {
+        "emoji": "🏰",
+        "label": "Lieux & royaumes",
+        "words": [
+            "clan", "arena", "monde", "route", "voies", "piste", "ponts",
+            "tours", "cites", "toits", "camps", "forts", "ports", "baies",
+            "trone", "donjon", "guilde", "marche",
+        ],
+    },
+    "objets_artefacts": {
+        "emoji": "💎",
+        "label": "Objets & artefacts",
+        "words": [
+            "cles", "clefs", "bague", "croix", "perle", "outil", "objet",
+            "plans", "choix",
+        ],
+    },
+    "culture_japonaise": {
+        "emoji": "🎎",
+        "label": "Culture japonaise",
+        "words": [
+            "yari", "tabi", "sumo", "ramen", "sushi", "shiki",
+        ],
+    },
+    "corps_physique": {
+        "emoji": "🦴",
+        "label": "Corps & physique",
+        "words": [
+            "torse", "genou", "barbe", "front", "ailes", "queue", "crocs",
+            "poils", "large", "court", "tete", "epaule", "garcon",
+        ],
+    },
+    "couleurs_ombres": {
+        "emoji": "🎨",
+        "label": "Couleurs & ombres",
+        "words": [
+            "rouge", "blanc", "noir", "noirs", "verts", "bleus",
+            "noires", "rouges", "vertes", "mort", "ombre", "ombres",
+        ],
+    },
+    "ordre_justice": {
+        "emoji": "⚖️",
+        "label": "Ordre & justice",
+        "words": [
+            "rangs", "ordre", "juste", "prise", "chute", "sauts", "volee",
+            "quete",
+        ],
+    },
+    "relations_liens": {
+        "emoji": "🤝",
+        "label": "Relations & liens",
+        "words": [
+            "amis", "lien", "voie",
+        ],
+    },
+}
+
+# Flat list dérivée — conservée pour compatibilité.
+WORDLE_WORDS = [w for theme in WORDLE_WORD_THEMES.values() for w in theme["words"]]
+
+
+def pick_themed_wordle_word(min_len=None, max_len=None):
+    """Tire un mot Wordle aléatoire parmi WORDLE_WORD_THEMES.
+
+    Retourne (theme_key, theme_dict, word). Tirage équitable sur
+    l'ensemble des mots.
+    """
+    pool = []
+    for key, theme in WORDLE_WORD_THEMES.items():
+        for w in theme["words"]:
+            if min_len is not None and len(w) < min_len:
+                continue
+            if max_len is not None and len(w) > max_len:
+                continue
+            pool.append((key, theme, w))
+    if not pool:
+        for key, theme in WORDLE_WORD_THEMES.items():
+            for w in theme["words"]:
+                pool.append((key, theme, w))
+    return random.choice(pool)
 
 # Emojis pour le slot machine
 SLOT_EMOJIS = ["🍒", "🍋", "🍊", "🍇", "⭐", "💎", "7️⃣"]
@@ -458,6 +675,94 @@ async def announce_level_up_safe(bot, user_id, new_level):
         logger.warning(f"announce_level_up failed: {e}")
 
 
+def apply_win_xp(user_id, base_xp, source):
+    """Helper local : applique l'XP gagnée avec streak + featured via effects.
+
+    Retourne (xp_earned, level_up, new_level, info) — info contient
+    {streak, streak_mult, featured, shielded, frozen} pour affichage.
+    """
+    final, _total_mult, level_up, new_level, info = apply_minigame_xp(
+        user_id, base_xp, won=True, source=source
+    )
+    return final, level_up, new_level, info
+
+
+def apply_loss_xp(user_id, base_xp, source):
+    """Helper local : applique la défaite (reset streak, éventuel freeze)."""
+    final, _total_mult, level_up, new_level, info = apply_minigame_xp(
+        user_id, base_xp, won=False, source=source
+    )
+    return final, level_up, new_level, info
+
+
+def bonus_line(info):
+    """Construit une petite ligne résumant streak + featured à afficher après une victoire."""
+    parts = []
+    streak = info.get("streak", 0)
+    mult = info.get("streak_mult", 1.0)
+    if streak >= 3:
+        parts.append(f"🔥 **Streak x{streak}** (x{mult:g} XP)")
+    if info.get("featured"):
+        parts.append(f"⭐ **Jeu vedette** (x{FEATURED_MULTIPLIER:g} XP)")
+    if info.get("shielded"):
+        parts.append("🛡️ Bouclier consommé")
+    if info.get("frozen"):
+        parts.append("🧊 Perte annulée (Level Freeze)")
+    return " • ".join(parts) if parts else ""
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VIEWS — Invitations par bouton
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class DuelInviteView(discord.ui.View):
+    """Boutons Accepter / Refuser pour une invitation de duel."""
+
+    def __init__(self, challenger_id: int, target_id: int, timeout: float = 60):
+        super().__init__(timeout=timeout)
+        self.challenger_id = challenger_id
+        self.target_id = target_id
+        self.result = None  # "accept" | "refuse" | None (timeout)
+        self._event = asyncio.Event()
+
+    async def _only_target(self, interaction):
+        if interaction.user.id != self.target_id:
+            await interaction.response.send_message(
+                "❌ Seule la personne défiée peut répondre.", ephemeral=True
+            )
+            return False
+        return True
+
+    @discord.ui.button(label="Accepter", style=discord.ButtonStyle.success, emoji="✅")
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await self._only_target(interaction):
+            return
+        self.result = "accept"
+        for child in self.children:
+            child.disabled = True
+        await interaction.response.edit_message(view=self)
+        self._event.set()
+        self.stop()
+
+    @discord.ui.button(label="Refuser", style=discord.ButtonStyle.danger, emoji="❌")
+    async def refuse(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await self._only_target(interaction):
+            return
+        self.result = "refuse"
+        for child in self.children:
+            child.disabled = True
+        await interaction.response.edit_message(view=self)
+        self._event.set()
+        self.stop()
+
+    async def wait_result(self, timeout: float):
+        try:
+            await asyncio.wait_for(self._event.wait(), timeout=timeout)
+        except asyncio.TimeoutError:
+            return None
+        return self.result
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # COG PRINCIPAL
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -475,15 +780,85 @@ class MiniGames(commands.Cog):
         self.boss_data.setdefault("auto_rotate", False)
         self.boss_data.setdefault("history", [])
         self.attack_cooldowns = {}  # user_id -> datetime
+        # Dernier jeu vedette annoncé — pour n'annoncer qu'une fois par jour
+        self._last_featured_announced = None
         # Tâche d'arrière-plan : check toutes les heures si le boss a expiré
         # ou si un nouveau doit spawn (auto rotation).
         self.boss_rotation_task.start()
+        self.featured_rotation_task.start()
 
     def cog_unload(self):
         try:
             self.boss_rotation_task.cancel()
         except Exception:
             pass
+        try:
+            self.featured_rotation_task.cancel()
+        except Exception:
+            pass
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Daily featured minigame — rotation & annonce
+    # ─────────────────────────────────────────────────────────────────────────
+
+    @tasks.loop(hours=1)
+    async def featured_rotation_task(self):
+        """Vérifie chaque heure si un nouveau jeu vedette doit être annoncé.
+
+        Appelle simplement `get_featured_game()` — la logique de rotation est
+        dans effects.py (un seul tirage par jour). Si le jeu a changé par
+        rapport à la dernière annonce, on poste dans le premier channel de
+        `POINTS_ALLOWED_CHANNELS`.
+        """
+        try:
+            game = get_featured_game()
+            today = datetime.now().date().isoformat()
+            key = f"{today}:{game}"
+            if key == self._last_featured_announced:
+                return
+            self._last_featured_announced = key
+
+            channel = None
+            for cid in POINTS_ALLOWED_CHANNELS:
+                ch = self.bot.get_channel(cid)
+                if ch:
+                    channel = ch
+                    break
+            if not channel:
+                return
+
+            cmd_hint = {
+                "reaction": "!reaction",
+                "unscramble": "!unscramble",
+                "wordle": "!wordle",
+                "hangman": "!hangman",
+                "chain": "!chain",
+                "devinette": "!devinette",
+                "quoteguess": "!quoteguess",
+                "emojirebus": "!emojirebus",
+                "anagram": "!anagram",
+                "guessmanga": "!guessmanga",
+                "opening": "!opening",
+                "click": "!click",
+                "memory": "!memory",
+            }.get(game, f"!{game}")
+
+            embed = discord.Embed(
+                title="⭐ Jeu vedette du jour !",
+                description=(
+                    f"Aujourd'hui, **{game}** rapporte **x{FEATURED_MULTIPLIER:g} XP** !\n"
+                    f"Lance-le avec `{cmd_hint}`"
+                ),
+                color=COLORS["info"],
+            )
+            embed.set_footer(text="Remis à zéro chaque jour à minuit")
+            await channel.send(embed=embed)
+        except Exception as e:
+            logger.warning(f"featured_rotation_task error: {e}")
+
+    @featured_rotation_task.before_loop
+    async def before_featured_rotation_task(self):
+        await self.bot.wait_until_ready()
 
     def _is_game_active(self, channel_id):
         return channel_id in self.active_games
@@ -564,8 +939,12 @@ class MiniGames(commands.Cog):
 
     @commands.command(name="reaction")
     @commands.cooldown(1, 30, commands.BucketType.channel)
-    async def reaction_game(self, ctx):
-        """Sois le premier à réagir avec le bon emoji !"""
+    async def reaction_game(self, ctx, mode: str = None):
+        """Sois le premier à réagir avec le bon emoji !
+
+        `!reaction silent` pour lancer sans ping et sans mention bruyante.
+        """
+        silent = bool(mode and mode.lower() in ("silent", "silencieux", "mute", "quiet"))
         if self._is_game_active(ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
 
@@ -581,16 +960,19 @@ class MiniGames(commands.Cog):
             target_emoji = random.choice(REACTION_EMOJIS)
             delay = random.uniform(2, 6)
 
+            launcher = "🕶️ *Mode silencieux*" if silent else f"Lancé par {ctx.author.mention}"
+            featured_tag = " ⭐" if is_featured("reaction") else ""
             embed = discord.Embed(
-                title="🎯 Jeu de Réaction",
+                title=f"🎯 Jeu de Réaction{featured_tag}",
                 description=(
-                    f"Lancé par {ctx.author.mention}\n"
+                    f"{launcher}\n"
                     "Préparez-vous... Un emoji va apparaître !\n"
                     "Soyez le **premier** à réagir avec le bon emoji !"
                 ),
                 color=COLORS["info"]
             )
-            msg = await ctx.send(embed=embed)
+            allowed_mentions = discord.AllowedMentions.none() if silent else None
+            msg = await ctx.send(embed=embed, allowed_mentions=allowed_mentions)
 
             await asyncio.sleep(delay)
 
@@ -626,17 +1008,19 @@ class MiniGames(commands.Cog):
                 await stop_countdown(countdown_task, state)
                 countdown_task = None
                 elapsed = time.time() - start_time
-                xp_earned, _, level_up, new_level = add_xp(winner.id, MINIGAME_XP["reaction"], "reaction_game")
+                xp_earned, level_up, new_level, info = apply_win_xp(winner.id, MINIGAME_XP["reaction"], "reaction")
                 db.record_minigame(winner.id, "reaction", True, xp_earned, duration_seconds=elapsed)
 
                 await finalize_timer(timer_msg, status=f"✅ {winner.display_name} a réagi en {elapsed:.2f}s", color=COLORS["success"])
 
+                bline = bonus_line(info)
                 embed = discord.Embed(
                     title="🎯 Réaction — Victoire !",
                     description=(
                         f"{winner.mention} a été le plus rapide !\n"
                         f"⚡ **{elapsed:.2f}s** de réaction\n"
                         f"**+{xp_earned} XP** gagnés !"
+                        + (f"\n\n{bline}" if bline else "")
                     ),
                     color=COLORS["success"]
                 )
@@ -680,7 +1064,7 @@ class MiniGames(commands.Cog):
         timer_msg = None
         state = {"deadline": 0, "ended": False}
         try:
-            word = random.choice(MANGA_WORDS)
+            _theme_key, theme, word = pick_themed_manga_word()
             scrambled = list(word)
             attempts = 0
             while ''.join(scrambled) == word and attempts < 10:
@@ -691,9 +1075,10 @@ class MiniGames(commands.Cog):
             state["deadline"] = time.time() + total_timeout
 
             game_embed = discord.Embed(
-                title="🔤 Unscramble",
+                title=f"🔤 Unscramble — {theme['emoji']} {theme['label']}",
                 description=(
-                    f"👤 Joueur : {ctx.author.mention}\n\n"
+                    f"👤 Joueur : {ctx.author.mention}\n"
+                    f"💡 **Thème :** {theme['emoji']} *{theme['label']}*\n\n"
                     f"# `{scrambled}`\n\n"
                     f"*{len(word)} lettres — réponds dans le chat !*"
                 ),
@@ -725,17 +1110,20 @@ class MiniGames(commands.Cog):
                 countdown_task = None
 
                 elapsed = time.time() - start
-                xp_earned, _, level_up, new_level = add_xp(ctx.author.id, MINIGAME_XP["unscramble"], "unscramble")
+                xp_earned, level_up, new_level, info = apply_win_xp(ctx.author.id, MINIGAME_XP["unscramble"], "unscramble")
                 db.record_minigame(ctx.author.id, "unscramble", True, xp_earned, duration_seconds=elapsed)
 
                 await finalize_timer(timer_msg, status=f"✅ Trouvé en {elapsed:.1f}s", color=COLORS["success"])
 
+                bline = bonus_line(info)
                 win_embed = discord.Embed(
                     title="🔤 Unscramble — Bravo !",
                     description=(
                         f"{ctx.author.mention} a trouvé le mot **{word.upper()}** !\n"
+                        f"💡 Thème : {theme['emoji']} *{theme['label']}*\n"
                         f"⚡ Résolu en **{elapsed:.1f}s**\n"
                         f"**+{xp_earned} XP** gagnés !"
+                        + (f"\n\n{bline}" if bline else "")
                     ),
                     color=COLORS["success"],
                 )
@@ -748,10 +1136,14 @@ class MiniGames(commands.Cog):
                 await stop_countdown(countdown_task, state)
                 countdown_task = None
                 db.record_minigame(ctx.author.id, "unscramble", False, 0)
+                apply_loss_xp(ctx.author.id, 0, "unscramble")
                 await finalize_timer(timer_msg, status="⌛ Temps écoulé !", color=COLORS["error"])
                 lose_embed = discord.Embed(
                     title="🔤 Unscramble — Temps écoulé !",
-                    description=f"{ctx.author.mention}, le mot était **{word.upper()}**",
+                    description=(
+                        f"{ctx.author.mention}, le mot était **{word.upper()}**\n"
+                        f"💡 Thème : {theme['emoji']} *{theme['label']}*"
+                    ),
                     color=COLORS["error"],
                 )
                 await game_msg.edit(embed=lose_embed)
@@ -1014,21 +1406,22 @@ class MiniGames(commands.Cog):
         if not await self._check_daily_limit(ctx, "duel"):
             return
 
-        # Demander l'acceptation — avec countdown dans un message à part
+        # Demander l'acceptation — via boutons (plus besoin de réactions)
         accept_timeout = 60
         duel_state = {"deadline": time.time() + accept_timeout, "ended": False}
 
-        msg = await ctx.send(embed=discord.Embed(
+        view = DuelInviteView(ctx.author.id, adversaire.id, timeout=accept_timeout)
+
+        invite_embed = discord.Embed(
             title="⚔️ Défi en Duel !",
             description=(
                 f"{ctx.author.mention} défie {adversaire.mention} !\n"
                 f"💰 Mise : **{mise} XP**\n\n"
-                f"{adversaire.mention}, réagis avec ✅ pour accepter ou ❌ pour refuser."
+                f"{adversaire.mention}, clique sur un bouton ci-dessous."
             ),
             color=COLORS["warning"],
-        ))
-        await msg.add_reaction("✅")
-        await msg.add_reaction("❌")
+        )
+        msg = await ctx.send(embed=invite_embed, view=view)
 
         timer_msg = await ctx.send(embed=build_timer_embed(accept_timeout, accept_timeout, title="⏱️ Temps pour accepter"))
         duel_countdown = asyncio.create_task(
@@ -1039,37 +1432,30 @@ class MiniGames(commands.Cog):
             )
         )
 
-        def check(reaction, user):
-            return (
-                reaction.message.id == msg.id
-                and user.id == adversaire.id
-                and str(reaction.emoji) in ("✅", "❌")
-            )
+        result = await view.wait_result(accept_timeout)
+        await stop_countdown(duel_countdown, duel_state)
 
-        try:
-            reaction, _ = await self.bot.wait_for("reaction_add", check=check, timeout=accept_timeout)
-            await stop_countdown(duel_countdown, duel_state)
-
-            if str(reaction.emoji) == "❌":
-                await finalize_timer(timer_msg, status="❌ Duel refusé", color=COLORS["error"])
-                refused = discord.Embed(
-                    title="⚔️ Duel refusé",
-                    description=f"{adversaire.display_name} a refusé le duel.",
-                    color=COLORS["error"],
-                )
-                return await msg.edit(embed=refused)
-
-            await finalize_timer(timer_msg, status="✅ Défi accepté !", color=COLORS["success"])
-
-        except asyncio.TimeoutError:
-            await stop_countdown(duel_countdown, duel_state)
+        if result is None:
             await finalize_timer(timer_msg, status="⌛ Pas de réponse", color=COLORS["error"])
+            for child in view.children:
+                child.disabled = True
             expired = discord.Embed(
                 title="⚔️ Duel expiré",
                 description="Pas de réponse... Le duel est annulé.",
                 color=COLORS["error"],
             )
-            return await msg.edit(embed=expired)
+            return await msg.edit(embed=expired, view=view)
+
+        if result == "refuse":
+            await finalize_timer(timer_msg, status="❌ Duel refusé", color=COLORS["error"])
+            refused = discord.Embed(
+                title="⚔️ Duel refusé",
+                description=f"{adversaire.display_name} a refusé le duel.",
+                color=COLORS["error"],
+            )
+            return await msg.edit(embed=refused, view=view)
+
+        await finalize_timer(timer_msg, status="✅ Défi accepté !", color=COLORS["success"])
 
         # Combat ! Lancer de dés
         roll_challenger = random.randint(1, 20)
@@ -1138,7 +1524,7 @@ class MiniGames(commands.Cog):
             "remaining_attempts": 6,
         }
         try:
-            word = random.choice(WORDLE_WORDS)
+            _theme_key, theme, word = pick_themed_wordle_word()
             word_normalized = normalize(word)
             word_len = len(word_normalized)
             max_attempts = 6
@@ -1151,6 +1537,7 @@ class MiniGames(commands.Cog):
             def render_embed(title=None, color=None, status_line=None):
                 desc_lines = [
                     f"👤 Joueur : {ctx.author.mention}",
+                    f"💡 **Thème :** {theme['emoji']} *{theme['label']}*",
                     f"📏 **{word_len} lettres** — **{state['remaining_attempts']}/{max_attempts}** essais restants",
                     "",
                 ]
@@ -1162,7 +1549,7 @@ class MiniGames(commands.Cog):
                     desc_lines.append("")
                     desc_lines.append(status_line)
                 e = discord.Embed(
-                    title=title or "🟩 Wordle Manga",
+                    title=title or f"🟩 Wordle — {theme['emoji']} {theme['label']}",
                     description="\n".join(desc_lines),
                     color=color if color is not None else COLORS["info"],
                 )
@@ -1227,7 +1614,7 @@ class MiniGames(commands.Cog):
                 if guess == word_normalized:
                     elapsed = time.time() - start_time
                     bonus = max(10, MINIGAME_XP["wordle"] + (max_attempts - attempt_num) * 10)
-                    xp_earned, _, level_up, new_level = add_xp(ctx.author.id, bonus, "wordle")
+                    xp_earned, level_up, new_level, info = apply_win_xp(ctx.author.id, bonus, "wordle")
                     db.record_minigame(ctx.author.id, "wordle", True, xp_earned, duration_seconds=elapsed)
 
                     await stop_countdown(countdown_task, state)
@@ -1235,12 +1622,14 @@ class MiniGames(commands.Cog):
                     state["remaining_attempts"] = max_attempts - attempt_num
                     await finalize_timer(timer_msg, status=f"✅ Trouvé en {elapsed:.1f}s", color=COLORS["success"])
 
+                    bline = bonus_line(info)
                     await game_msg.edit(embed=render_embed(
                         title="🟩 Wordle — Bravo !",
                         color=COLORS["success"],
                         status_line=(
                             f"🎉 Trouvé en **{attempt_num}/{max_attempts}** essais "
                             f"(⚡ {elapsed:.1f}s) — **+{xp_earned} XP** !"
+                            + (f"\n{bline}" if bline else "")
                         ),
                     ))
 
@@ -1259,6 +1648,7 @@ class MiniGames(commands.Cog):
             countdown_task = None
             state["remaining_attempts"] = 0
             db.record_minigame(ctx.author.id, "wordle", False, 0)
+            apply_loss_xp(ctx.author.id, 0, "wordle")
             await finalize_timer(timer_msg, status="❌ Tous les essais épuisés", color=COLORS["error"])
             await game_msg.edit(embed=render_embed(
                 title="🟩 Wordle — Perdu !",
@@ -1296,7 +1686,7 @@ class MiniGames(commands.Cog):
             "max_wrong": len(HANGMAN_STAGES) - 1,
         }
         try:
-            word = random.choice(MANGA_WORDS)
+            _theme_key, theme, word = pick_themed_manga_word()
             word_normalized = normalize(word)
             guessed_letters = set()
             start_time = time.time()
@@ -1314,6 +1704,7 @@ class MiniGames(commands.Cog):
                 max_wrong = state["max_wrong"]
                 desc_lines = [
                     f"👤 Joueur : {ctx.author.mention}",
+                    f"💡 **Thème :** {theme['emoji']} *{theme['label']}*",
                     f"❤️ Vies : **{max_wrong - wrong}/{max_wrong}**",
                 ]
                 desc_lines.append(HANGMAN_STAGES[wrong])
@@ -1322,7 +1713,7 @@ class MiniGames(commands.Cog):
                     desc_lines.append("")
                     desc_lines.append(status_line)
                 e = discord.Embed(
-                    title=title or "💀 Pendu",
+                    title=title or f"💀 Pendu — {theme['emoji']} {theme['label']}",
                     description="\n".join(desc_lines),
                     color=color if color is not None else COLORS["info"],
                 )
@@ -1383,19 +1774,21 @@ class MiniGames(commands.Cog):
                 if letter in word_normalized:
                     if all(normalize(c) in guessed_letters for c in word):
                         elapsed = time.time() - start_time
-                        xp_earned, _, level_up, new_level = add_xp(ctx.author.id, MINIGAME_XP["hangman"], "hangman")
+                        xp_earned, level_up, new_level, info = apply_win_xp(ctx.author.id, MINIGAME_XP["hangman"], "hangman")
                         db.record_minigame(ctx.author.id, "hangman", True, xp_earned, duration_seconds=elapsed)
 
                         await stop_countdown(countdown_task, state)
                         countdown_task = None
                         await finalize_timer(timer_msg, status=f"✅ Trouvé en {elapsed:.1f}s", color=COLORS["success"])
 
+                        bline = bonus_line(info)
                         await game_msg.edit(embed=build_embed(
                             title="💀 Pendu — Victoire !",
                             color=COLORS["success"],
                             status_line=(
                                 f"🎉 Mot trouvé : **{word.upper()}** "
                                 f"(⚡ {elapsed:.1f}s) — **+{xp_earned} XP** !"
+                                + (f"\n{bline}" if bline else "")
                             ),
                         ))
 
@@ -1413,6 +1806,7 @@ class MiniGames(commands.Cog):
             await stop_countdown(countdown_task, state)
             countdown_task = None
             db.record_minigame(ctx.author.id, "hangman", False, 0)
+            apply_loss_xp(ctx.author.id, 0, "hangman")
             await finalize_timer(timer_msg, status="💀 Pendu", color=COLORS["error"])
             await game_msg.edit(embed=build_embed(
                 title="💀 Pendu — Défaite !",
@@ -1445,23 +1839,17 @@ class MiniGames(commands.Cog):
         timer_msg = None
         state = {"deadline": 0, "ended": False}
         try:
-            start_word = random.choice([
-                "manga", "anime", "combat", "magie", "epee", "demon",
-                "sabre", "ninja", "ronin", "ombre", "force", "rituel",
-                "guerre", "bouclier", "armure", "katana", "guilde",
-                "donjon", "esprit", "flamme", "tempete", "oracle",
-                "nakama", "sensei", "shogun", "yokai", "arcane",
-                "guerrier", "mystere", "potion", "talisman", "phenix",
-            ])
+            _theme_key, theme, start_word = pick_themed_manga_word(min_len=4)
             used_words = {start_word}
             current_letter = normalize(start_word[-1])
             last_player = None
             participants = {}  # user_id -> count
 
             embed = discord.Embed(
-                title="🔗 Chaîne de Mots",
+                title=f"🔗 Chaîne de Mots — {theme['emoji']} {theme['label']}",
                 description=(
                     f"Lancée par {ctx.author.mention}\n"
+                    f"💡 **Thème du mot de départ :** {theme['emoji']} *{theme['label']}*\n"
                     f"Le premier mot est : **{start_word.upper()}**\n\n"
                     f"Tapez un mot qui commence par la lettre **`{current_letter.upper()}`** !\n"
                     f"⏱️ **{turn_timeout}s** par tour — dernier debout gagne !\n\n"
@@ -1513,12 +1901,14 @@ class MiniGames(commands.Cog):
                     winner_id = max(participants, key=participants.get)
                     winner = ctx.guild.get_member(winner_id)
 
-                    xp_earned, _, level_up, new_level = add_xp(winner_id, MINIGAME_XP["chain"], "chain")
+                    xp_earned, level_up, new_level, info = apply_win_xp(winner_id, MINIGAME_XP["chain"], "chain")
                     db.record_minigame(winner_id, "chain", True, xp_earned)
                     for pid in participants:
                         if pid != winner_id:
                             db.record_minigame(pid, "chain", False, 0)
+                            apply_loss_xp(pid, 0, "chain")
 
+                    bline = bonus_line(info)
                     embed = discord.Embed(
                         title="🔗 Chaîne — Temps écoulé !",
                         description=(
@@ -1526,6 +1916,7 @@ class MiniGames(commands.Cog):
                             f"🏆 {winner.mention if winner else f'User {winner_id}'} gagne avec "
                             f"**{participants[winner_id]} mots** !\n"
                             f"**+{xp_earned} XP** gagnés !"
+                            + (f"\n\n{bline}" if bline else "")
                         ),
                         color=COLORS["success"]
                     )

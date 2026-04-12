@@ -173,13 +173,46 @@ def setup(bot):
             )
             await ctx.send(embed=embed)
         elif isinstance(error, commands.CommandOnCooldown):
-            remaining = round(error.retry_after, 1)
+            remaining = float(error.retry_after)
+            total = float(getattr(error.cooldown, "per", remaining)) if getattr(error, "cooldown", None) else remaining
+            if total <= 0:
+                total = remaining
+
+            # Barre de progression visuelle
+            bar_length = 12
+            elapsed = max(0.0, total - remaining)
+            filled = int(round(bar_length * (elapsed / total))) if total > 0 else 0
+            filled = max(0, min(bar_length, filled))
+            bar = "🟩" * filled + "⬜" * (bar_length - filled)
+            pct = int((elapsed / total) * 100) if total > 0 else 0
+
+            # Temps restant formaté
+            if remaining >= 60:
+                mins = int(remaining // 60)
+                secs = int(remaining % 60)
+                time_txt = f"{mins}m {secs:02d}s"
+            else:
+                time_txt = f"{remaining:.1f}s"
+
+            # Timestamp absolu pour l'affichage dynamique de Discord
+            retry_at = int(datetime.datetime.now().timestamp() + remaining)
+
             embed = discord.Embed(
-                title="⏳ Cooldown",
-                description=f"Cette commande est en cooldown. Réessayez dans **{remaining}** seconde(s).",
-                color=discord.Color.orange()
+                title="⏳ Commande en cooldown",
+                description=(
+                    f"`{bar}` **{pct}%**\n"
+                    f"⏱️ Temps restant : **{time_txt}** "
+                    f"(prêt <t:{retry_at}:R>)"
+                ),
+                color=discord.Color.orange(),
             )
-            await ctx.send(embed=embed, delete_after=5)
+            cmd_name = getattr(ctx.command, "name", None)
+            if cmd_name:
+                embed.set_footer(text=f"Commande : !{cmd_name}")
+            try:
+                await ctx.send(embed=embed, delete_after=min(10, max(3, int(remaining))))
+            except Exception:
+                pass
         elif isinstance(error, commands.CommandInvokeError) and isinstance(error.original, discord.HTTPException):
             if error.original.status == 429:
                 retry_after = getattr(error.original, 'retry_after', 5)

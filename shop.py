@@ -1179,6 +1179,90 @@ class ShopSystem(commands.Cog):
         embed.set_footer(text="Utilisez !use <article> pour utiliser un consommable")
         await ctx.send(embed=embed)
     
+    async def _use_powerup(self, ctx, inv, item_id, item_data, extra_args):
+        """Handler dédié pour les power-ups persistants (via effects.py)."""
+        if item_id == "streak_shield":
+            from effects import add_streak_shield, has_streak_shield
+            if has_streak_shield(ctx.author.id):
+                await ctx.send("🛡️ Tu as déjà un bouclier de streak actif !")
+                return
+            add_streak_shield(ctx.author.id)
+            embed = discord.Embed(
+                title="🛡️ Bouclier de Streak activé !",
+                description=(
+                    "Ta prochaine défaite de mini-jeu n'interrompra **pas** ta série.\n"
+                    "Le bouclier est automatiquement consommé lors de la prochaine perte."
+                ),
+                color=discord.Color.blue(),
+            )
+
+        elif item_id == "quiz_hint":
+            from effects import add_hint_charge
+            add_hint_charge(ctx.author.id, 1)
+            embed = discord.Embed(
+                title="💡 Indice Quiz débloqué !",
+                description=(
+                    "Tu as gagné **1 charge d'indice**. Lors de ton prochain "
+                    "`!quizmanga`, le quiz sera réduit à 2 choix."
+                ),
+                color=discord.Color.yellow(),
+            )
+
+        elif item_id == "challenge_skip":
+            from effects import add_skip_charge
+            add_skip_charge(ctx.author.id, 1)
+            embed = discord.Embed(
+                title="⏭️ Skip de Challenge débloqué !",
+                description=(
+                    "Tu as gagné **1 charge de skip**. Réclame un challenge "
+                    "hebdomadaire sans l'avoir terminé avec "
+                    "`!claim <challenge_id>`."
+                ),
+                color=discord.Color.purple(),
+            )
+
+        elif item_id == "prediction_insurance":
+            if len(extra_args) < 1:
+                await ctx.send("❌ Utilisation : `!use prediction_insurance <pred_id>`")
+                return
+            pred_id = extra_args[0]
+            from effects import add_prediction_insurance
+            if not add_prediction_insurance(ctx.author.id, pred_id):
+                await ctx.send("⚠️ Cette prédiction est déjà assurée pour toi.")
+                return
+            embed = discord.Embed(
+                title="📜 Assurance Prédiction activée !",
+                description=(
+                    f"Ta mise sur la prédiction `{pred_id}` sera **remboursée à 50%** "
+                    f"si tu perds."
+                ),
+                color=discord.Color.teal(),
+            )
+
+        elif item_id == "level_freeze":
+            from effects import set_level_freeze, get_level_freeze_remaining
+            hours = int(item_data.get("duration_hours", 72))
+            set_level_freeze(ctx.author.id, hours=hours)
+            remaining = get_level_freeze_remaining(ctx.author.id)
+            embed = discord.Embed(
+                title="🧊 Gel de Niveau activé !",
+                description=(
+                    f"Pendant **{remaining:.0f}h**, toute perte d'XP en mini-jeu "
+                    f"est annulée. Tu peux jouer sans risque."
+                ),
+                color=discord.Color.from_rgb(135, 206, 250),
+            )
+        else:
+            await ctx.send("⚠️ Power-up inconnu.")
+            return
+
+        # Consomme 1 charge et sauvegarde
+        inv["items"][item_id] -= 1
+        if inv["items"][item_id] <= 0:
+            del inv["items"][item_id]
+        sauvegarder_shop()
+        await ctx.send(embed=embed)
+
     @commands.command(name="use", aliases=["utiliser"])
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def use_item(self, ctx, *, item_name: str):
@@ -1218,6 +1302,14 @@ class ShopSystem(commands.Cog):
             await ctx.send("❌ Cet article n'est pas un consommable.")
             return
         
+        # Power-ups persistants — interceptés avant le traitement générique
+        # "boosts" car ils nécessitent une logique dédiée via effects.py.
+        POWERUP_IDS = {"streak_shield", "quiz_hint", "challenge_skip",
+                       "prediction_insurance", "level_freeze"}
+        if item_id in POWERUP_IDS:
+            await self._use_powerup(ctx, inv, item_id, item_data, extra_args)
+            return
+
         # Utiliser l'item
         if item_data.get("category") == "boosts":
             activate_boost(ctx.author.id, item_id, item_data)

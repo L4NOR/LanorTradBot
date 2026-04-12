@@ -187,16 +187,33 @@ def update_challenge_progress(user_id, ctype, amount=1):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class QuizView(View):
-    def __init__(self, author_id, question, timeout=25):
+    def __init__(self, author_id, question, timeout=25, hint=False):
         super().__init__(timeout=timeout)
         self.author_id = author_id
         self.question = question
         self.answered = False
         self.chosen = None
         self.message = None
+        self.hint_used = hint
+
+        # Si hint : on désactive 2 mauvaises réponses pour ne laisser
+        # que la bonne + 1 leurre. On garde la bonne et on supprime 2
+        # des (n-1) mauvaises options.
+        disabled_indices = set()
+        if hint and len(question["options"]) >= 3:
+            correct = question["answer"]
+            wrong = [i for i in range(len(question["options"])) if i != correct]
+            random.shuffle(wrong)
+            # On désactive toutes les mauvaises sauf 1 (ne laisse que 2 choix)
+            for idx in wrong[:-1]:
+                disabled_indices.add(idx)
 
         for i, opt in enumerate(question["options"]):
-            self.add_item(QuizButton(label=f"{chr(65+i)}. {opt[:75]}", index=i))
+            btn = QuizButton(label=f"{chr(65+i)}. {opt[:75]}", index=i)
+            if i in disabled_indices:
+                btn.disabled = True
+                btn.style = discord.ButtonStyle.secondary
+            self.add_item(btn)
 
     async def on_timeout(self):
         if self.answered or self.message is None:
@@ -506,17 +523,36 @@ class EngagementSystem(commands.Cog):
     @commands.command(name="quizmanga", aliases=["qm", "quizm"])
     @commands.cooldown(1, 20, commands.BucketType.user)
     async def quiz_manga(self, ctx):
-        """Lance un quiz à choix multiples sur les mangas de la team."""
+        """Lance un quiz à choix multiples sur les mangas de la team.
+
+        Si tu as acheté et utilisé `quiz_hint`, une charge sera consommée
+        automatiquement pour réduire le quiz à 2 choix.
+        """
         question = random.choice(QUIZ_POOL)
+
+        # Charge d'indice disponible ?
+        hint = False
+        try:
+            from effects import has_hint, consume_hint
+            if has_hint(ctx.author.id):
+                if consume_hint(ctx.author.id):
+                    hint = True
+        except Exception as e:
+            logger.warning(f"hint consume error: {e}")
+
+        title = "🧠 Quiz Manga LanorTrad" + (" 💡" if hint else "")
         embed = discord.Embed(
-            title="🧠 Quiz Manga LanorTrad",
+            title=title,
             description=f"**{question['q']}**\n\n"
                         + "\n".join(f"**{chr(65+i)}.** {opt}" for i, opt in enumerate(question["options"])),
             color=COLORS["info"],
         )
-        embed.set_footer(text=f"Manga : {question['manga']} · Tu as 25 secondes pour répondre")
+        footer = f"Manga : {question['manga']} · Tu as 25 secondes pour répondre"
+        if hint:
+            footer += " · 💡 Indice actif (2 choix)"
+        embed.set_footer(text=footer)
 
-        view = QuizView(ctx.author.id, question, timeout=25)
+        view = QuizView(ctx.author.id, question, timeout=25, hint=hint)
         msg = await ctx.send(embed=embed, view=view)
         view.message = msg
 
@@ -660,9 +696,24 @@ class EngagementSystem(commands.Cog):
             return
 
         cur = user_prog.get(challenge_id, 0)
+        skipped = False
         if cur < challenge["goal"]:
-            await ctx.send(f"🔒 Tu n'as pas encore complété ce challenge (`{cur}/{challenge['goal']}`).")
-            return
+            # Peut-on consommer une charge de skip ?
+            try:
+                from effects import has_skip, consume_skip
+                if has_skip(ctx.author.id) and consume_skip(ctx.author.id):
+                    skipped = True
+                    # On force la progression à goal pour l'affichage
+                    user_prog[challenge_id] = challenge["goal"]
+            except Exception as e:
+                logger.warning(f"skip consume error: {e}")
+
+            if not skipped:
+                await ctx.send(
+                    f"🔒 Tu n'as pas encore complété ce challenge (`{cur}/{challenge['goal']}`).\n"
+                    f"💡 Tu peux l'obtenir avec un ⏭️ `challenge_skip` si tu en as un en inventaire."
+                )
+                return
 
         user_claimed.append(challenge_id)
         sauvegarder()
@@ -673,9 +724,10 @@ class EngagementSystem(commands.Cog):
             final_xp, mult, level_up, new_level = challenge["reward_xp"], 1.0, False, 0
 
         embed = discord.Embed(
-            title="🎁 Challenge Réclamé !",
+            title="🎁 Challenge Réclamé !" + (" ⏭️" if skipped else ""),
             description=f"Tu as complété **{challenge['name']}** !\n+ **{final_xp} XP**"
-                        + (f" *(x{mult:.1f})*" if mult > 1 else ""),
+                        + (f" *(x{mult:.1f})*" if mult > 1 else "")
+                        + ("\n\n⏭️ *Charge de skip consommée*" if skipped else ""),
             color=COLORS["success"],
         )
         await ctx.send(embed=embed)
@@ -901,6 +953,7 @@ class EngagementSystem(commands.Cog):
         total_pot = sum(b["xp"] for b in pred["bets"].values())
 
         winners_lines = []
+        insured_refunds = []  # (uid, refund)
         if winners_pot > 0:
             for uid, b in pred["bets"].items():
                 if b["option"] == win_idx:
@@ -912,6 +965,26 @@ class EngagementSystem(commands.Cog):
                     except Exception:
                         pass
                     winners_lines.append(f"<@{uid}> → **+{payout} XP** (mise : {b['xp']})")
+
+        # Assurance : les perdants ayant une prediction_insurance active
+        # récupèrent 50% de leur mise.
+        try:
+            from effects import has_prediction_insurance, consume_prediction_insurance
+            from community import add_xp as comm_add_xp
+            for uid, b in pred["bets"].items():
+                if b["option"] == win_idx:
+                    continue  # c'est un gagnant
+                if has_prediction_insurance(int(uid), pred_id):
+                    refund = int(b["xp"] * 0.5)
+                    if refund > 0:
+                        try:
+                            comm_add_xp(int(uid), refund, f"prediction_insurance_{pred_id}")
+                            insured_refunds.append((uid, refund))
+                        except Exception:
+                            pass
+                    consume_prediction_insurance(int(uid), pred_id)
+        except Exception as e:
+            logger.warning(f"prediction insurance error: {e}")
 
         pred["resolved"] = True
         pred["winning_option"] = win_idx
@@ -929,6 +1002,9 @@ class EngagementSystem(commands.Cog):
             embed.add_field(name="📜 Distribution", value="\n".join(winners_lines[:15]) or "—", inline=False)
         else:
             embed.add_field(name="📭 Aucun gagnant", value="Personne n'avait misé sur la bonne option, la cagnotte est perdue.", inline=False)
+        if insured_refunds:
+            lines = [f"<@{uid}> → **+{refund} XP** *(50%)*" for uid, refund in insured_refunds[:15]]
+            embed.add_field(name="📜 Assurances remboursées", value="\n".join(lines), inline=False)
         await ctx.send(embed=embed)
 
     @prediction_group.command(name="cancel")

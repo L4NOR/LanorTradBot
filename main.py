@@ -86,9 +86,20 @@ async def setup_modules(bot):
     await planning.setup(bot)
     logging.info("✅ Module Planning chargé")
 
+    import effects  # noqa: F401  (initialisation paresseuse, pas de setup)
+    logging.info("✅ Module Effects initialisé")
+
     import minigames
     await minigames.setup(bot)
     logging.info("✅ Module MiniGames chargé")
+
+    import minigames_extra
+    await minigames_extra.setup(bot)
+    logging.info("✅ Module MiniGames Extra chargé")
+
+    import tournaments
+    await tournaments.setup(bot)
+    logging.info("✅ Module Tournaments chargé")
 
     import engagement
     await engagement.setup(bot)
