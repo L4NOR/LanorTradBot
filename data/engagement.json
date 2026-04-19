@@ -1,0 +1,82 @@
+{
+    "daily_calendar": {
+        "691766186790092800": {
+            "day": 1,
+            "last_claim": "2026-04-16",
+            "cycles_completed": 0
+        },
+        "1164939271166238811": {
+            "day": 1,
+            "last_claim": "2026-04-13",
+            "cycles_completed": 0
+        },
+        "433305136975183882": {
+            "day": 1,
+            "last_claim": "2026-04-13",
+            "cycles_completed": 0
+        }
+    },
+    "quiz_stats": {},
+    "challenges": {
+        "week_iso": "2026-W16",
+        "active": [
+            {
+                "id": "messages_50",
+                "type": "messages",
+                "name": "📝 Bavard du Royaume",
+                "desc": "Envoie 50 messages dans les salons manga",
+                "goal": 50,
+                "reward_xp": 300
+            },
+            {
+                "id": "reward_3",
+                "type": "reward",
+                "name": "🎁 Collectionneur de cadeaux",
+                "desc": "Réclame 3 récompenses du calendrier `!reward`",
+                "goal": 3,
+                "reward_xp": 350
+            },
+            {
+                "id": "quiz_5",
+                "type": "quiz",
+                "name": "🧠 Cerveau de la team",
+                "desc": "Réponds correctement à 5 quiz manga",
+                "goal": 5,
+                "reward_xp": 400
+            }
+        ],
+        "progress": {
+            "691766186790092800": {
+                "messages_50": 12,
+                "reward_3": 3
+            },
+            "1164939271166238811": {
+                "messages_50": 20,
+                "reward_3": 2
+            },
+            "608234789564186644": {
+                "messages_50": 1
+            },
+            "433305136975183882": {
+                "messages_50": 8,
+                "reward_3": 2
+            },
+            "1274462286920290414": {
+                "messages_50": 1
+            },
+            "978752934856765441": {
+                "messages_50": 1
+            }
+        },
+        "claimed": {}
+    },
+    "predictions": {},
+    "next_pred_id": 1,
+    "birthdays": {},
+    "birthday_celebrated_year": 2026,
+    "birthday_celebrated": [],
+    "countdown_message": {
+        "channel_id": 1332363693174034472,
+        "message_id": 1492618700661198908
+    }
+}

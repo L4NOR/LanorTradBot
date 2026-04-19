@@ -1,7 +1,11 @@
 {
   "608234789564186644": {
-    "badges": [],
-    "badge_dates": {},
+    "badges": [
+      "community_star"
+    ],
+    "badge_dates": {
+      "community_star": "2026-04-18T19:42:48.149126"
+    },
     "stats": {
       "tasks_completed": 0,
       "tasks_today": 0,
@@ -12,7 +16,7 @@
       "chapters_checked": 0,
       "roles_contributed": [],
       "manga_contributions": {},
-      "messages_count": 464,
+      "messages_count": 502,
       "members_helped": 0,
       "members_mentored": 0,
       "events_participated": 0,
@@ -34,7 +38,7 @@
       "chapters_checked": 0,
       "roles_contributed": [],
       "manga_contributions": {},
-      "messages_count": 68,
+      "messages_count": 71,
       "members_helped": 0,
       "members_mentored": 0,
       "events_participated": 0,
@@ -44,8 +48,12 @@
     }
   },
   "691766186790092800": {
-    "badges": [],
-    "badge_dates": {},
+    "badges": [
+      "community_star"
+    ],
+    "badge_dates": {
+      "community_star": "2026-04-13T21:19:36.978275"
+    },
     "stats": {
       "tasks_completed": 0,
       "tasks_today": 0,
@@ -56,7 +64,7 @@
       "chapters_checked": 0,
       "roles_contributed": [],
       "manga_contributions": {},
-      "messages_count": 444,
+      "messages_count": 540,
       "members_helped": 0,
       "members_mentored": 0,
       "events_participated": 0,
@@ -78,7 +86,7 @@
       "chapters_checked": 0,
       "roles_contributed": [],
       "manga_contributions": {},
-      "messages_count": 67,
+      "messages_count": 400,
       "members_helped": 0,
       "members_mentored": 0,
       "events_participated": 0,
