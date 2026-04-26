@@ -105,6 +105,10 @@ async def setup_modules(bot):
     await engagement.setup(bot)
     logging.info("✅ Module Engagement chargé")
 
+    import weekly_challenges
+    await weekly_challenges.setup(bot)
+    logging.info("✅ Module Weekly Challenges chargé")
+
 
 # ═══════════════════════════════════════════════════════════════
 # BOT CLASS

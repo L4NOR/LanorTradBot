@@ -548,6 +548,20 @@ class Database:
         finally:
             conn.close()
 
+        # Hook : notifier les défis hebdo (import différé pour éviter circulaire).
+        # On récupère le streak courant si dispo (utile pour le défi "streak").
+        try:
+            from weekly_challenges import record_event
+            current_streak = None
+            try:
+                from effects import get_streak
+                current_streak = get_streak(user_id).get("count")
+            except Exception:
+                pass
+            record_event(user_id, game, won, duration_seconds, current_streak)
+        except Exception as e:
+            logger.warning(f"weekly_challenges hook error: {e}")
+
     def get_minigame_stats(self, user_id, game=None):
         """Récupère les stats de mini-jeux d'un utilisateur."""
         if game:

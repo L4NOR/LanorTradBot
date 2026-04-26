@@ -1,1 +1,30 @@
-{}
+{
+    "Tokyo Underworld_39_edit_608234789564186644": {
+        "user_id": 608234789564186644,
+        "manga": "Tokyo Underworld",
+        "chapitres": [
+            39,
+            40,
+            41,
+            42
+        ],
+        "task": "edit",
+        "date_limite": "2026-04-26"
+    },
+    "Tougen Anki_240_edit_433305136975183882": {
+        "user_id": 433305136975183882,
+        "manga": "Tougen Anki",
+        "chapitres": [
+            240,
+            241,
+            242,
+            243,
+            244,
+            245,
+            246,
+            247
+        ],
+        "task": "edit",
+        "date_limite": "2026-05-10"
+    }
+}

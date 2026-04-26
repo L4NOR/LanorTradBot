@@ -18,55 +18,40 @@
     },
     "quiz_stats": {},
     "challenges": {
-        "week_iso": "2026-W16",
+        "week_iso": "2026-W17",
         "active": [
             {
-                "id": "messages_50",
-                "type": "messages",
-                "name": "📝 Bavard du Royaume",
-                "desc": "Envoie 50 messages dans les salons manga",
-                "goal": 50,
-                "reward_xp": 300
+                "id": "predict_1",
+                "type": "prediction",
+                "name": "🔮 Devin",
+                "desc": "Place au moins 1 pari dans une `!prediction`",
+                "goal": 1,
+                "reward_xp": 200
             },
             {
-                "id": "reward_3",
-                "type": "reward",
-                "name": "🎁 Collectionneur de cadeaux",
-                "desc": "Réclame 3 récompenses du calendrier `!reward`",
-                "goal": 3,
-                "reward_xp": 350
-            },
-            {
-                "id": "quiz_5",
-                "type": "quiz",
-                "name": "🧠 Cerveau de la team",
-                "desc": "Réponds correctement à 5 quiz manga",
+                "id": "daily_5",
+                "type": "daily",
+                "name": "🔥 Fidèle Lecteur",
+                "desc": "Réclame ta `!daily` 5 jours différents",
                 "goal": 5,
                 "reward_xp": 400
+            },
+            {
+                "id": "daily_7",
+                "type": "daily",
+                "name": "👑 Lecteur Suprême",
+                "desc": "Réclame ta `!daily` chaque jour de la semaine (7/7)",
+                "goal": 7,
+                "reward_xp": 800
             }
         ],
         "progress": {
-            "691766186790092800": {
-                "messages_50": 12,
-                "reward_3": 3
-            },
-            "1164939271166238811": {
-                "messages_50": 20,
-                "reward_3": 2
-            },
-            "608234789564186644": {
-                "messages_50": 1
-            },
-            "433305136975183882": {
-                "messages_50": 8,
-                "reward_3": 2
-            },
-            "1274462286920290414": {
-                "messages_50": 1
-            },
-            "978752934856765441": {
-                "messages_50": 1
-            }
+            "1164939271166238811": {},
+            "548654313094905908": {},
+            "433305136975183882": {},
+            "608234789564186644": {},
+            "937386825562062858": {},
+            "691766186790092800": {}
         },
         "claimed": {}
     },

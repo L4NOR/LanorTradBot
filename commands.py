@@ -3140,6 +3140,115 @@ def setup(bot):
         # Log l'action
         logging.info(f"List member IDs: {target_type} {target_name} ({len(members_list)} members) by {ctx.author.name}")
 
+    @bot.command(name="listmember", aliases=["listmembers", "list_members"])
+    @commands.has_any_role(*ADMIN_ROLES)
+    @commands.cooldown(1, 10, commands.BucketType.guild)
+    async def listmember(ctx):
+        """Liste les IDs de tous les membres du serveur (hors bots).
+
+        Usage: !listmember
+        Si la liste est trop longue pour un embed, un fichier .txt est joint.
+        """
+        guild = ctx.guild
+        if guild is None:
+            return await ctx.send("❌ Cette commande doit être utilisée dans un serveur.")
+
+        members_list = [m for m in guild.members if not m.bot]
+        if not members_list:
+            embed = discord.Embed(
+                color=THEME_COLORS["warning"],
+                description="⚠️ Aucun membre humain trouvé sur ce serveur.",
+                timestamp=datetime.now(),
+            )
+            return await ctx.send(embed=embed)
+
+        members_list.sort(key=lambda m: m.display_name.lower())
+        ids_list = [str(m.id) for m in members_list]
+        ids_formatted = " ".join(ids_list)
+
+        result_embed = discord.Embed(
+            color=THEME_COLORS["success"],
+            timestamp=datetime.now(),
+        )
+        result_embed.description = (
+            "```ansi\n"
+            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
+            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Membres du serveur\u001b[0m         \u001b[1;32m║\u001b[0m\n"
+            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
+            "```"
+        )
+        result_embed.add_field(
+            name="🏷️ Serveur",
+            value=f"**{guild.name}** (`{guild.id}`)",
+            inline=False,
+        )
+        result_embed.add_field(
+            name="📊 Total",
+            value=f"`{len(members_list)}` membre(s) (hors bots)",
+            inline=False,
+        )
+
+        # Aperçu des 15 premiers
+        preview_lines = []
+        for member in members_list[:15]:
+            display = member.display_name
+            if display != member.name:
+                preview_lines.append(f"• **{display}** (@{member.name}) → `{member.id}`")
+            else:
+                preview_lines.append(f"• **{display}** → `{member.id}`")
+        preview_text = "\n".join(preview_lines)
+        if len(members_list) > 15:
+            preview_text += f"\n\n*... et {len(members_list) - 15} autre(s)*"
+        result_embed.add_field(
+            name="👥 Aperçu",
+            value=preview_text,
+            inline=False,
+        )
+
+        # Si la liste tient dans un embed, l'inclure ; sinon créer un fichier
+        if len(ids_formatted) <= 1000:
+            result_embed.add_field(
+                name="📋 IDs (copier-coller)",
+                value=f"```\n{ids_formatted}\n```",
+                inline=False,
+            )
+            result_embed.set_footer(
+                text=f"Exécuté par {ctx.author.name} • {len(members_list)} membre(s)",
+                icon_url=ctx.author.avatar.url if ctx.author.avatar else None,
+            )
+            await ctx.send(embed=result_embed)
+        else:
+            file_content = f"# Membres du serveur {guild.name} ({guild.id})\n"
+            file_content += f"# Total: {len(members_list)} membre(s) (hors bots)\n"
+            file_content += f"# Généré le: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            file_content += "# Format détaillé (un par ligne)\n"
+            for member in members_list:
+                display = member.display_name
+                if display != member.name:
+                    file_content += f"{member.id}  # {display} (@{member.name})\n"
+                else:
+                    file_content += f"{member.id}  # {display}\n"
+            file_content += "\n# Format ligne unique\n"
+            file_content += ids_formatted + "\n"
+
+            filename = f"server_members_{guild.id}.txt"
+            filepath = os.path.join("data", filename)
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(file_content)
+
+            result_embed.add_field(
+                name="📄 Fichier généré",
+                value="Liste complète disponible dans le fichier joint ci-dessous.",
+                inline=False,
+            )
+            result_embed.set_footer(
+                text=f"Exécuté par {ctx.author.name} • {len(members_list)} membre(s)",
+                icon_url=ctx.author.avatar.url if ctx.author.avatar else None,
+            )
+            await ctx.send(embed=result_embed, file=discord.File(filepath, filename=filename))
+
+        logging.info(f"!listmember: {len(members_list)} members listed by {ctx.author.name}")
+
     @bot.command(name="multi_bulk_remove_role", aliases=["remove_multi_roles"])
     @commands.has_any_role(*ADMIN_ROLES)
     async def multi_bulk_remove_role(ctx, *args):

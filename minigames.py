@@ -29,13 +29,13 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 MINIGAME_XP = {
-    "reaction": 15,
-    "unscramble": 25,
-    "wordle": 50,
-    "hangman": 30,
-    "chain": 20,
-    "boss_hit": 5,
-    "boss_kill": 100,
+    "reaction": 8,
+    "unscramble": 12,
+    "wordle": 20,
+    "hangman": 15,
+    "chain": 10,
+    "boss_hit": 3,
+    "boss_kill": 50,
     "duel_min_bet": 10,
 }
 
@@ -49,12 +49,15 @@ MINIGAME_XP = {
 # Le compteur est stocké en SQLite via la "catégorie" comme clé (pas par jeu).
 
 CATEGORY_LIMITS = {
-    "minigames": 15,
+    "minigames": 20,
     "boss":      1,
 }
 
 # Mapping nom du jeu → catégorie partagée
+# IMPORTANT : tout nouveau mini-jeu DOIT être référencé ici, sinon il
+# échappera à la limite quotidienne partagée.
 GAME_CATEGORIES = {
+    # Mini-jeux historiques (minigames.py)
     "reaction":   "minigames",
     "unscramble": "minigames",
     "wordle":     "minigames",
@@ -64,6 +67,19 @@ GAME_CATEGORIES = {
     "slots":      "minigames",
     "roulette":   "minigames",
     "duel":       "minigames",
+    # Mini-jeux supplémentaires (minigames_extra.py)
+    "devinette":  "minigames",
+    "quoteguess": "minigames",
+    "emojirebus": "minigames",
+    "anagram":    "minigames",
+    "guessmanga": "minigames",
+    "opening":    "minigames",
+    "character":  "minigames",
+    "click":      "minigames",
+    "memory":     "minigames",
+    "ttt":        "minigames",
+    "connect4":   "minigames",
+    # Boss (pool dédié)
     "boss":       "boss",
 }
 
@@ -1501,7 +1517,7 @@ class MiniGames(commands.Cog):
 
                 if guess == word_normalized:
                     elapsed = time.time() - start_time
-                    bonus = max(10, MINIGAME_XP["wordle"] + (max_attempts - attempt_num) * 10)
+                    bonus = max(5, MINIGAME_XP["wordle"] + (max_attempts - attempt_num) * 4)
                     xp_earned, level_up, new_level, info = apply_win_xp(ctx.author.id, bonus, "wordle")
                     db.record_minigame(ctx.author.id, "wordle", True, xp_earned, duration_seconds=elapsed)
 
@@ -2483,8 +2499,11 @@ class MiniGames(commands.Cog):
         embed.add_field(
             name="ℹ️ Détail",
             value=(
-                "• **Mini-jeux** : pool partagé entre `reaction`, `unscramble`, "
-                "`wordle`, `hangman`, `chain`, `coinflip`, `slots`, `roulette`, `duel`.\n"
+                "• **Mini-jeux** : pool partagé entre tous les mini-jeux — "
+                "`reaction`, `unscramble`, `wordle`, `hangman`, `chain`, "
+                "`coinflip`, `slots`, `roulette`, `duel`, `devinette`, "
+                "`quoteguess`, `emojirebus`, `anagram`, `guessmanga`, "
+                "`opening`, `character`, `click`, `memory`, `ttt`, `connect4`.\n"
                 "• **Attaques boss** : 1 `!attack` par jour."
             ),
             inline=False,

@@ -35,17 +35,17 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 EXTRA_XP = {
-    "devinette":  35,
-    "quoteguess": 30,
-    "emojirebus": 30,
-    "anagram":    40,
-    "guessmanga": 30,
-    "opening":    30,
-    "character":  45,
-    "click":      25,
-    "memory":     35,
-    "ttt":        20,
-    "connect4":   30,
+    "devinette":  18,
+    "quoteguess": 15,
+    "emojirebus": 15,
+    "anagram":    20,
+    "guessmanga": 15,
+    "opening":    15,
+    "character":  22,
+    "click":      12,
+    "memory":     18,
+    "ttt":        10,
+    "connect4":   15,
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -86,6 +86,18 @@ def _is_game_active(cog, channel_id):
     if mg:
         return mg._is_game_active(channel_id)
     return False
+
+
+async def _consume_daily_slot(cog, ctx, game_name):
+    """Décrémente le pool quotidien partagé via le cog MiniGames.
+
+    Retourne True si le joueur peut jouer, False si la limite est atteinte
+    (un message d'erreur a déjà été envoyé par MiniGames._check_daily_limit).
+    """
+    mg = cog.bot.get_cog("MiniGames")
+    if mg is None:
+        return True  # cog principal pas chargé : ne pas bloquer
+    return await mg._check_daily_limit(ctx, game_name)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -190,6 +202,8 @@ class MiniGamesExtra(commands.Cog):
         """[Solo] Devine la réponse à une énigme manga."""
         if _is_game_active(self, ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
+        if not await _consume_daily_slot(self, ctx, "devinette"):
+            return
         _set_game_active(self, ctx.channel.id, "devinette", owner_id=ctx.author.id)
         try:
             riddle = random.choice(RIDDLES)
@@ -248,6 +262,8 @@ class MiniGamesExtra(commands.Cog):
         """[Solo] Devine de quel manga vient cette réplique."""
         if _is_game_active(self, ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
+        if not await _consume_daily_slot(self, ctx, "quoteguess"):
+            return
         _set_game_active(self, ctx.channel.id, "quoteguess", owner_id=ctx.author.id)
         try:
             quote = random.choice(QUOTES)
@@ -307,6 +323,8 @@ class MiniGamesExtra(commands.Cog):
         """[Solo] Devine le manga/personnage codé en emojis."""
         if _is_game_active(self, ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
+        if not await _consume_daily_slot(self, ctx, "emojirebus"):
+            return
         _set_game_active(self, ctx.channel.id, "emojirebus", owner_id=ctx.author.id)
         try:
             rebus = random.choice(EMOJI_REBUS)
@@ -366,6 +384,8 @@ class MiniGamesExtra(commands.Cog):
         """[Solo] Démêle l'anagramme — un titre/mot dont les lettres sont mélangées."""
         if _is_game_active(self, ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
+        if not await _consume_daily_slot(self, ctx, "anagram"):
+            return
         _set_game_active(self, ctx.channel.id, "anagram", owner_id=ctx.author.id)
         try:
             entry = random.choice(ANAGRAMS)
@@ -433,6 +453,8 @@ class MiniGamesExtra(commands.Cog):
         """[Solo] Devine le manga à partir d'un panel/description."""
         if _is_game_active(self, ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
+        if not await _consume_daily_slot(self, ctx, "guessmanga"):
+            return
         _set_game_active(self, ctx.channel.id, "guessmanga", owner_id=ctx.author.id)
         try:
             panel = random.choice(PANELS)
@@ -494,6 +516,8 @@ class MiniGamesExtra(commands.Cog):
         """[Solo] Devine l'anime à partir d'un opening."""
         if _is_game_active(self, ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
+        if not await _consume_daily_slot(self, ctx, "opening"):
+            return
         _set_game_active(self, ctx.channel.id, "opening", owner_id=ctx.author.id)
         try:
             opening = random.choice(OPENINGS)
@@ -553,6 +577,8 @@ class MiniGamesExtra(commands.Cog):
         """[Solo] Le bot pense à un personnage et tu poses des questions Oui/Non."""
         if _is_game_active(self, ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
+        if not await _consume_daily_slot(self, ctx, "character"):
+            return
         _set_game_active(self, ctx.channel.id, "character", owner_id=ctx.author.id)
         try:
             target = random.choice(CHARACTERS)
@@ -630,7 +656,7 @@ class MiniGamesExtra(commands.Cog):
                     if normalize(guess_name) == normalize(target["name"]) or normalize(guess_name) in normalize(target["name"]):
                         # Bonus pour avoir deviné en peu de questions
                         bonus = max(1, max_questions - q_num + 1)
-                        base = EXTRA_XP["character"] + bonus * 5
+                        base = EXTRA_XP["character"] + bonus * 2
                         win = discord.Embed(
                             title="🎭 Akinator — Tu as deviné !",
                             description=(
@@ -687,6 +713,8 @@ class MiniGamesExtra(commands.Cog):
         """[Solo] Clique sur les 5 boutons dans l'ordre le plus vite possible."""
         if _is_game_active(self, ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
+        if not await _consume_daily_slot(self, ctx, "click"):
+            return
         _set_game_active(self, ctx.channel.id, "click", owner_id=ctx.author.id)
         try:
             view = ClickView(ctx.author.id, total=5)
@@ -717,7 +745,7 @@ class MiniGamesExtra(commands.Cog):
                 await self._finish_loss(ctx, "click", lose)
             elif view.completed:
                 elapsed = view.end_time - view.start_time
-                bonus = max(0, int((5.0 - elapsed) * 5))
+                bonus = max(0, int((5.0 - elapsed) * 2))
                 win = discord.Embed(
                     title="⚡ Fast Click — Réussi !",
                     description=f"⚡ Temps : **{elapsed:.2f}s** (+{bonus} XP bonus de vitesse)",
@@ -744,6 +772,8 @@ class MiniGamesExtra(commands.Cog):
         """[Solo] Memory — retrouve les paires d'emojis cachés (grille 4x4)."""
         if _is_game_active(self, ctx.channel.id):
             return await ctx.send("❌ Un jeu est déjà en cours dans ce channel !")
+        if not await _consume_daily_slot(self, ctx, "memory"):
+            return
         _set_game_active(self, ctx.channel.id, "memory", owner_id=ctx.author.id)
         try:
             view = MemoryView(ctx.author.id)
@@ -768,9 +798,9 @@ class MiniGamesExtra(commands.Cog):
             if view.completed:
                 elapsed = view.end_time - view.start_time
                 # Bonus d'XP en fonction du temps et des essais
-                speed_bonus = max(0, int((120 - elapsed) * 0.3))
+                speed_bonus = max(0, int((120 - elapsed) * 0.15))
                 tries_penalty = max(0, view.tries - 12)
-                bonus = max(0, speed_bonus - tries_penalty * 2)
+                bonus = max(0, speed_bonus - tries_penalty * 1)
                 win = discord.Embed(
                     title="🃏 Memory — Toutes les paires trouvées !",
                     description=(
@@ -803,6 +833,9 @@ class MiniGamesExtra(commands.Cog):
             return await ctx.send("❌ Usage : `!ttt @adversaire`")
         if adversaire.bot or adversaire.id == ctx.author.id:
             return await ctx.send("❌ Tu ne peux pas jouer contre toi-même ou un bot.")
+
+        if not await _consume_daily_slot(self, ctx, "ttt"):
+            return
 
         # Invitation par bouton
         accepted = await self._invite(ctx, adversaire, game_label="Morpion")
@@ -849,6 +882,9 @@ class MiniGamesExtra(commands.Cog):
             return await ctx.send("❌ Usage : `!connect4 @adversaire`")
         if adversaire.bot or adversaire.id == ctx.author.id:
             return await ctx.send("❌ Tu ne peux pas jouer contre toi-même ou un bot.")
+
+        if not await _consume_daily_slot(self, ctx, "connect4"):
+            return
 
         accepted = await self._invite(ctx, adversaire, game_label="Puissance 4")
         if not accepted:

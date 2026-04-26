@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m py_compile minigames.py minigames_extra.py commands.py)",
+      "Bash(python -m py_compile weekly_challenges.py database.py main.py minigames.py minigames_extra.py commands.py)"
+    ]
+  }
+}

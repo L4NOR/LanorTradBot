@@ -2,7 +2,7 @@
     "users": {
         "608234789564186644": {
             "streak": {
-                "count": 2,
+                "count": 3,
                 "best": 3,
                 "shielded": false
             },
@@ -28,8 +28,8 @@
         },
         "1164939271166238811": {
             "streak": {
-                "count": 73,
-                "best": 73,
+                "count": 74,
+                "best": 74,
                 "shielded": false
             },
             "active": {
@@ -54,7 +54,7 @@
         }
     },
     "featured": {
-        "date": "2026-04-19",
-        "game": "wordle"
+        "date": "2026-04-25",
+        "game": "opening"
     }
 }
