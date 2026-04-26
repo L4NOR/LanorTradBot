@@ -859,49 +859,83 @@ ANAGRAMS = [
 # ─── Panels manga (deviner le manga d'après une description) ────────────────
 
 PANELS = [
-    {"url": None, "caption": "Un démon adolescent à mèches bleues, queue agitée, sourire en coin",
+    # Blue Exorcist
+    {"url": None, "caption": "Un adolescent aux yeux bleus dégaine un katana qui s'embrase de flammes bleues, deux petites cornes pointant dans ses cheveux",
      "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
-    {"url": None, "caption": "Un oni masqué tient sa petite soeur dans ses bras dans la neige",
+    {"url": None, "caption": "Deux frères jumeaux face à face : l'un les cheveux en bataille et une queue de démon, l'autre lunettes rondes et deux pistolets",
+     "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
+    {"url": None, "caption": "Une jeune fille blonde en kimono invoque un esprit-fleur (Nee-chan) sortant du sol près d'un jardin clos",
+     "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
+    {"url": None, "caption": "Un homme excentrique en haut-de-forme et redingote violette, sourire de chat, tenant un parapluie devant une académie en hauteur",
+     "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
+
+    # Tougen Anki — Shiki, Naito, Jin, Homare, l'Académie Rasetsu
+    {"url": None, "caption": "Un lycéen aux cheveux noirs et yeux rouges sent une corne pousser sur son front en hurlant de rage, du sang ruisselant sur sa joue",
      "answer": "tougen anki", "alts": ["tougen", "anki"]},
-    {"url": None, "caption": "Un footballeur italien retient un attaquant adverse au poteau de corner",
+    {"url": None, "caption": "Un jeune oni court sur le toit d'une académie tandis qu'un Momotarou armé d'un pieu blanc le poursuit",
+     "answer": "tougen anki", "alts": ["tougen", "anki"]},
+    {"url": None, "caption": "Une élève brune libère une silhouette gigantesque et difforme évoquant sa sœur — un Blood Titan grondant au-dessus d'elle",
+     "answer": "tougen anki", "alts": ["tougen", "anki"]},
+    {"url": None, "caption": "Un professeur taciturne en costume sombre, cigarette aux lèvres, observe un combat sans broncher dans la cour de l'Académie Rasetsu",
+     "answer": "tougen anki", "alts": ["tougen", "anki"]},
+
+    # Catenaccio — Yataro Araki, Tojo High → FC Olivero, rival Asahi Sakakibara
+    {"url": None, "caption": "Un défenseur central de lycée japonais bloque un attaquant prodige d'un tacle propre, ballon roulant en dehors du terrain",
      "answer": "catenaccio", "alts": []},
-    {"url": None, "caption": "Un assassin en costume noir tire avec deux pistolets dans une ruelle pluvieuse",
+    {"url": None, "caption": "Un jeune Japonais en maillot italien noir et bleu observe une tactique au tableau, le mot CATENACCIO inscrit en grand",
+     "answer": "catenaccio", "alts": []},
+    {"url": None, "caption": "Un milieu de terrain aux cheveux clairs sourit à son rival sur le terrain de l'Aiumi High, lui rappelant leur match de collège perdu",
+     "answer": "catenaccio", "alts": []},
+
+    # Satsudou — Akamori Rokuo, salaryman génie meurtrier
+    {"url": None, "caption": "Un jeune homme en costume cravate de salaryman, l'air banal, esquive et brise le bras d'un voyou dans une ruelle d'un seul geste",
      "answer": "satsudou", "alts": []},
-    {"url": None, "caption": "Un yakuza tatoué allume une cigarette devant un néon Shinjuku",
+    {"url": None, "caption": "Akamori, son badge d'employé de bureau encore accroché, tient un katana dans une cave remplie de yakuzas tombés à terre",
+     "answer": "satsudou", "alts": []},
+    {"url": None, "caption": "Un héritier d'une famille pratiquant l'art ancestral du meurtre soupire devant son CV : il voulait juste être salaryman",
+     "answer": "satsudou", "alts": []},
+
+    # Tokyo Underworld — Yami & Yomi Kanda (jumeaux), Haine Saikawa, jeu de survie
+    {"url": None, "caption": "Deux jumeaux en uniforme du lycée Daiba tombent dans un tunnel souterrain rempli de monstres grotesques et de pièges mortels",
      "answer": "tokyo underworld", "alts": ["tokyo", "underworld"]},
-    # — Nouveaux panels —
-    {"url": None, "caption": "Deux frères jumeaux se font face, l'un avec des flammes bleues, l'autre avec un pistolet",
-     "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
-    {"url": None, "caption": "Un jeune homme masqué court sur les toits d'un village japonais en flammes",
-     "answer": "tougen anki", "alts": ["tougen", "anki"]},
-    {"url": None, "caption": "Un gardien de but plonge dans la boue pour arrêter un tir puissant",
-     "answer": "catenaccio", "alts": []},
-    {"url": None, "caption": "Une silhouette sombre nettoie son arme dans un appartement vide de Shinjuku",
-     "answer": "satsudou", "alts": []},
-    {"url": None, "caption": "Des hommes en costume sombre échangent une mallette dans un parking souterrain de Tokyo",
+    {"url": None, "caption": "Une lycéenne en uniforme de Toyosu tient une arme improvisée face à une créature monstrueuse dans les souterrains de Tokyo",
+     "answer": "tokyo underworld", "alts": ["tokyo", "underworld"]},
+    {"url": None, "caption": "Un panneau rouillé indique « bienvenue au jugement » au-dessus d'un escalier qui s'enfonce dans un Tokyo souterrain peuplé de pécheurs condamnés",
      "answer": "tokyo underworld", "alts": ["tokyo", "underworld"]},
 ]
 
 # ─── Openings / OST ─────────────────────────────────────────────────────────
+# Note : Catenaccio, Satsudou et Tokyo Underworld n'ont pas d'anime, donc pas
+# d'opening. Seuls Blue Exorcist (Ao no Exorcist) et Tougen Anki en ont.
 
 OPENINGS = [
-    {"clip": "Core Pride — UVERworld",
+    # Blue Exorcist — Saison 1 (2011)
+    {"clip": "Core Pride — UVERworld (S1 OP1)",
      "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
-    {"clip": "In My World — ROOKiEZ is PUNK'D",
+    {"clip": "In My World — ROOKiEZ is PUNK'D (S1 OP2)",
      "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
-    {"clip": "(devinette spoiler) Tougen Anki Opening 1",
+    # Blue Exorcist — Saison 2 : Kyoto Saga (2017)
+    {"clip": "Itteki no Eikyou — UVERworld (Kyoto Saga OP)",
+     "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
+    # Blue Exorcist — Saison 3 : Shimane Illuminati Saga (2024)
+    {"clip": "Eye's Sentry — UVERworld (Shimane Illuminati Saga OP)",
+     "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
+    # Blue Exorcist — Saison 4 (2024-2025)
+    {"clip": "Re Rescue — Reol (Beyond the Snow Saga OP)",
+     "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
+    {"clip": "Tsuukaku — Amazarashi (Blue Night Saga OP)",
+     "answer": "blue exorcist", "alts": ["ao no exorcist", "blue", "ao"]},
+    # Tougen Anki — anime depuis juillet 2025 (Studio Hibari)
+    {"clip": "OVERNIGHT — THE ORAL CIGARETTES (Cour 1 OP)",
      "answer": "tougen anki", "alts": ["tougen", "anki"]},
-    {"clip": "(devinette spoiler) Catenaccio Opening 1",
-     "answer": "catenaccio", "alts": []},
-    {"clip": "(devinette spoiler) Tokyo Underworld Opening 1",
-     "answer": "tokyo underworld", "alts": ["tokyo", "underworld"]},
-    {"clip": "(devinette spoiler) Satsudou Opening 1",
-     "answer": "satsudou", "alts": []},
+    {"clip": "Amidakuji — Chogakusei (Cour 2 / Nerima Arc OP)",
+     "answer": "tougen anki", "alts": ["tougen", "anki"]},
 ]
 
 # ─── Personnages (20 Questions) ─────────────────────────────────────────────
 
 CHARACTERS = [
+    # ─── Blue Exorcist ──────────────────────────────────────────────────────
     {
         "name": "Rin Okumura", "manga": "Blue Exorcist",
         "tags": {"male": True, "demon": True, "exorcist": True, "swordsman": True,
@@ -915,34 +949,90 @@ CHARACTERS = [
                  "uses_magic": True, "japanese_name": True, "young": True},
     },
     {
+        "name": "Shiemi Moriyama", "manga": "Blue Exorcist",
+        "tags": {"male": False, "demon": False, "exorcist": True, "swordsman": False,
+                 "human_appearance": True, "antagonist": False, "leader": False,
+                 "uses_magic": True, "japanese_name": True, "young": True},
+    },
+    {
+        "name": "Mephisto Pheles", "manga": "Blue Exorcist",
+        "tags": {"male": True, "demon": True, "exorcist": False, "swordsman": False,
+                 "human_appearance": True, "antagonist": True, "leader": True,
+                 "uses_magic": True, "japanese_name": False, "young": False},
+    },
+    {
+        "name": "Shiro Fujimoto", "manga": "Blue Exorcist",
+        "tags": {"male": True, "demon": False, "exorcist": True, "swordsman": False,
+                 "human_appearance": True, "antagonist": False, "leader": True,
+                 "uses_magic": True, "japanese_name": True, "young": False},
+    },
+
+    # ─── Tougen Anki ────────────────────────────────────────────────────────
+    {
         "name": "Shiki Ichinose", "manga": "Tougen Anki",
         "tags": {"male": True, "demon": True, "exorcist": False, "swordsman": False,
                  "human_appearance": True, "antagonist": False, "leader": False,
                  "uses_magic": True, "japanese_name": True, "young": True},
     },
     {
-        "name": "Yamato", "manga": "Tougen Anki",
-        "tags": {"male": True, "demon": True, "exorcist": False, "swordsman": True,
-                 "human_appearance": True, "antagonist": True, "leader": True,
+        "name": "Naito Mudano", "manga": "Tougen Anki",
+        "tags": {"male": True, "demon": True, "exorcist": False, "swordsman": False,
+                 "human_appearance": True, "antagonist": False, "leader": True,
                  "uses_magic": True, "japanese_name": True, "young": False},
     },
     {
-        "name": "Le Boss de Tokyo Underworld", "manga": "Tokyo Underworld",
-        "tags": {"male": True, "demon": False, "exorcist": False, "swordsman": False,
-                 "human_appearance": True, "antagonist": True, "leader": True,
-                 "uses_magic": False, "japanese_name": True, "young": False},
+        "name": "Jin Kougasaki", "manga": "Tougen Anki",
+        "tags": {"male": True, "demon": True, "exorcist": False, "swordsman": False,
+                 "human_appearance": True, "antagonist": False, "leader": False,
+                 "uses_magic": True, "japanese_name": True, "young": True},
     },
     {
-        "name": "L'Assassin de Satsudou", "manga": "Satsudou",
+        "name": "Homare Byobugaura", "manga": "Tougen Anki",
+        "tags": {"male": False, "demon": True, "exorcist": False, "swordsman": False,
+                 "human_appearance": True, "antagonist": False, "leader": False,
+                 "uses_magic": True, "japanese_name": True, "young": True},
+    },
+
+    # ─── Tokyo Underworld ───────────────────────────────────────────────────
+    {
+        "name": "Yami Kanda", "manga": "Tokyo Underworld",
         "tags": {"male": True, "demon": False, "exorcist": False, "swordsman": False,
                  "human_appearance": True, "antagonist": False, "leader": False,
                  "uses_magic": False, "japanese_name": True, "young": True},
     },
     {
-        "name": "Le Capitaine de Catenaccio", "manga": "Catenaccio",
+        "name": "Yomi Kanda", "manga": "Tokyo Underworld",
         "tags": {"male": True, "demon": False, "exorcist": False, "swordsman": False,
-                 "human_appearance": True, "antagonist": False, "leader": True,
-                 "uses_magic": False, "japanese_name": False, "young": True},
+                 "human_appearance": True, "antagonist": False, "leader": False,
+                 "uses_magic": False, "japanese_name": True, "young": True},
+    },
+    {
+        "name": "Haine Saikawa", "manga": "Tokyo Underworld",
+        "tags": {"male": False, "demon": False, "exorcist": False, "swordsman": False,
+                 "human_appearance": True, "antagonist": False, "leader": False,
+                 "uses_magic": False, "japanese_name": True, "young": True},
+    },
+
+    # ─── Satsudou ───────────────────────────────────────────────────────────
+    {
+        "name": "Akamori Rokuo", "manga": "Satsudou",
+        "tags": {"male": True, "demon": False, "exorcist": False, "swordsman": False,
+                 "human_appearance": True, "antagonist": False, "leader": False,
+                 "uses_magic": False, "japanese_name": True, "young": True},
+    },
+
+    # ─── Catenaccio ─────────────────────────────────────────────────────────
+    {
+        "name": "Yatarō Araki", "manga": "Catenaccio",
+        "tags": {"male": True, "demon": False, "exorcist": False, "swordsman": False,
+                 "human_appearance": True, "antagonist": False, "leader": False,
+                 "uses_magic": False, "japanese_name": True, "young": True},
+    },
+    {
+        "name": "Asahi Sakakibara", "manga": "Catenaccio",
+        "tags": {"male": True, "demon": False, "exorcist": False, "swordsman": False,
+                 "human_appearance": True, "antagonist": True, "leader": True,
+                 "uses_magic": False, "japanese_name": True, "young": True},
     },
 ]
 

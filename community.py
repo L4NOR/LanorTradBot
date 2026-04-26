@@ -47,14 +47,24 @@ TRIVIA_QUESTIONS = {
             "hints": ["Rin Okumura", "Flammes bleues", "Satan"]
         },
         {
-            "question": "Dans quel manga le héros utilise des maldictions ?",
+            "question": "Dans quel manga le héros est un Oni qui s'éveille en lycéen ?",
             "answer": "tougen anki",
-            "hints": ["Shiki", "Oni", "Maldictions"]
+            "hints": ["Shiki Ichinose", "Académie Rasetsu", "Momotarou"]
         },
         {
-            "question": "Quel manga se déroule dans les bas-fonds de Tokyo ?",
+            "question": "Quel manga se déroule dans un Tokyo souterrain où les coupables sont jugés ?",
             "answer": "tokyo underworld",
-            "hints": ["Yakuza", "Gangs", "Survie"]
+            "hints": ["Jumeaux Kanda", "Survie", "Légende urbaine"]
+        },
+        {
+            "question": "Quel manga met en scène un salaryman génie de l'art du meurtre ?",
+            "answer": "satsudou",
+            "hints": ["Akamori Rokuo", "Arts martiaux mortels", "Yukinaga Chicchi"]
+        },
+        {
+            "question": "Quel manga raconte le parcours d'un défenseur central japonais qui rêve de l'Italie ?",
+            "answer": "catenaccio",
+            "hints": ["Yatarō Araki", "Football", "Daisuke Morimoto"]
         },
     ],
     "medium": [
@@ -64,16 +74,36 @@ TRIVIA_QUESTIONS = {
             "hints": ["Frère de Yukio", "Fils de Satan", "Flammes bleues"]
         },
         {
-            "question": "Comment s'appelle l'équipe de foot dans Catenaccio ?",
-            "answer": "inter",
-            "hints": ["Milan", "Italie", "Football"]
+            "question": "Dans quel club de lycée évolue Yatarō Araki au début de Catenaccio ?",
+            "answer": "tojo",
+            "hints": ["Lycée japonais", "Centre-back", "Club de soccer"]
+        },
+        {
+            "question": "Quel est le nom de famille des frères jumeaux protagonistes de Tokyo Underworld ?",
+            "answer": "kanda",
+            "hints": ["Yami et Yomi", "Lycée Daiba", "Jumeaux"]
+        },
+        {
+            "question": "Quel est le nom de l'académie où sont formés les Oni dans Tougen Anki ?",
+            "answer": "rasetsu",
+            "hints": ["École d'Oni", "Shiki y est élève", "Forme aux Jingi"]
         },
     ],
     "hard": [
         {
-            "question": "Quel est le nom de la technique de combat principale dans Tougen Anki ?",
+            "question": "Quel est le nom du pouvoir héréditaire des Oni dans Tougen Anki ?",
             "answer": "jingi",
-            "hints": ["Maldictions", "Transformation", "Pouvoir oni"]
+            "hints": ["Hérité du sang", "Capacité unique par Oni", "Technique de combat"]
+        },
+        {
+            "question": "Comment s'appelle le rival prodige de Yatarō Araki au collège dans Catenaccio ?",
+            "answer": "asahi",
+            "hints": ["Sakakibara", "Milieu de terrain", "Aiumi High"]
+        },
+        {
+            "question": "Quel est le nom du père adoptif de Shiki Ichinose, ancien Momotarou ?",
+            "answer": "tsuyoshi",
+            "hints": ["Ancien chasseur d'Oni", "A élevé Shiki", "Attaqué au début du manga"]
         },
     ]
 }

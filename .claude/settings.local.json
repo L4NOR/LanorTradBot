@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(python -m py_compile minigames.py minigames_extra.py commands.py)",
-      "Bash(python -m py_compile weekly_challenges.py database.py main.py minigames.py minigames_extra.py commands.py)"
+      "Bash(python -m py_compile weekly_challenges.py database.py main.py minigames.py minigames_extra.py commands.py)",
+      "WebSearch",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('minigames_data.py', encoding='utf-8'\\).read\\(\\)\\); print\\('minigames_data.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('community.py', encoding='utf-8'\\).read\\(\\)\\); print\\('community.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('engagement.py', encoding='utf-8'\\).read\\(\\)\\); print\\('engagement.py OK'\\)\")"
     ]
   }
 }
