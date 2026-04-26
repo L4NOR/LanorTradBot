@@ -43,18 +43,20 @@ MINIGAME_XP = {
 # LIMITES QUOTIDIENNES — pool partagé par catégorie
 # ═══════════════════════════════════════════════════════════════════════════════
 # Les admins (rôles dans ADMIN_ROLES) ne sont pas soumis à ces limites.
-# Chaque utilisateur dispose d'un pool partagé :
-#   • "minigames" : 15 parties/jour réparties librement entre les 9 mini-jeux
-#   • "boss"      : 1 attaque/jour
+# Chaque utilisateur dispose de pools partagés :
+#   • "minigames"  : 20 parties/jour réparties librement entre les 20 mini-jeux
+#   • "boss"       : 1 attaque/jour
+#   • "engagement" : 30 actions/jour (quizmanga + paris prédictions)
 # Le compteur est stocké en SQLite via la "catégorie" comme clé (pas par jeu).
 
 CATEGORY_LIMITS = {
-    "minigames": 20,
-    "boss":      1,
+    "minigames":  20,
+    "boss":       1,
+    "engagement": 30,
 }
 
 # Mapping nom du jeu → catégorie partagée
-# IMPORTANT : tout nouveau mini-jeu DOIT être référencé ici, sinon il
+# IMPORTANT : tout nouveau mini-jeu/action DOIT être référencé ici, sinon il
 # échappera à la limite quotidienne partagée.
 GAME_CATEGORIES = {
     # Mini-jeux historiques (minigames.py)
@@ -81,11 +83,15 @@ GAME_CATEGORIES = {
     "connect4":   "minigames",
     # Boss (pool dédié)
     "boss":       "boss",
+    # Engagement (engagement.py)
+    "quizmanga":     "engagement",
+    "prediction_bet": "engagement",
 }
 
 CATEGORY_LABELS = {
-    "minigames": "Mini-jeux",
-    "boss":      "Attaques boss",
+    "minigames":  "Mini-jeux",
+    "boss":       "Attaques boss",
+    "engagement": "Engagement (quiz/paris)",
 }
 
 # ─── Données centralisées (voir minigames_data.py) ──────────────────────────
@@ -2433,6 +2439,7 @@ class MiniGames(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="mgcancel", aliases=["cancel_game"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def mgcancel(self, ctx):
         """Annule le mini-jeu actif dans ce channel (uniquement le lanceur ou un admin)"""
         game = self._get_game(ctx.channel.id)
@@ -2453,8 +2460,9 @@ class MiniGames(commands.Cog):
         await ctx.send(f"✅ Mini-jeu **{game.get('type', '?')}** annulé. Tu peux en relancer un.")
 
     @commands.command(name="mglimits", aliases=["mglimit", "minigame_limits"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def mglimits(self, ctx, member: discord.Member = None):
-        """Affiche les pools quotidiens (mini-jeux + boss) et ton usage du jour."""
+        """Affiche les pools quotidiens (mini-jeux + boss + engagement) et ton usage du jour."""
         target = member or ctx.author
         usage = db.get_all_daily_usage(target.id)
         is_admin_target = self._is_admin(target)
@@ -2504,7 +2512,9 @@ class MiniGames(commands.Cog):
                 "`coinflip`, `slots`, `roulette`, `duel`, `devinette`, "
                 "`quoteguess`, `emojirebus`, `anagram`, `guessmanga`, "
                 "`opening`, `character`, `click`, `memory`, `ttt`, `connect4`.\n"
-                "• **Attaques boss** : 1 `!attack` par jour."
+                "• **Attaques boss** : 1 `!attack` par jour.\n"
+                "• **Engagement** : pool partagé pour `!quizmanga` "
+                "et `!prediction bet`."
             ),
             inline=False,
         )

@@ -8,7 +8,9 @@
       "Bash(python -c \"import ast; ast.parse\\(open\\('community.py', encoding='utf-8'\\).read\\(\\)\\); print\\('community.py OK'\\)\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\('engagement.py', encoding='utf-8'\\).read\\(\\)\\); print\\('engagement.py OK'\\)\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\('commands.py', encoding='utf-8'\\).read\\(\\)\\); print\\('commands.py OK'\\)\")",
-      "Bash(python -c \"import ast; ast.parse\\(open\\('weekly_challenges.py', encoding='utf-8'\\).read\\(\\)\\); print\\('weekly_challenges.py OK'\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\('weekly_challenges.py', encoding='utf-8'\\).read\\(\\)\\); print\\('weekly_challenges.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('minigames.py', encoding='utf-8'\\).read\\(\\)\\); print\\('minigames.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('minigames_extra.py', encoding='utf-8'\\).read\\(\\)\\); print\\('minigames_extra.py OK'\\)\")"
     ]
   }
 }

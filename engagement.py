@@ -388,6 +388,20 @@ class EngagementSystem(commands.Cog):
             return
         update_challenge_progress(payload.user_id, "reaction", 1)
 
+    # ───────────────────────────────────────────────────────────────────────────
+    # Helper : limite quotidienne partagée via le cog MiniGames
+    # ───────────────────────────────────────────────────────────────────────────
+    async def _consume_daily_slot(self, ctx, action_name):
+        """Décrémente le pool quotidien partagé via le cog MiniGames.
+
+        Retourne True si l'utilisateur peut continuer, False si la limite est
+        atteinte (un message d'erreur a déjà été envoyé par MiniGames).
+        """
+        mg = self.bot.get_cog("MiniGames")
+        if mg is None:
+            return True  # cog principal pas chargé : ne pas bloquer
+        return await mg._check_daily_limit(ctx, action_name)
+
     # ═══════════════════════════════════════════════════════════════════════════
     # 🎁 DAILY REWARD CALENDAR — !reward
     # ═══════════════════════════════════════════════════════════════════════════
@@ -527,6 +541,9 @@ class EngagementSystem(commands.Cog):
         Si tu as acheté et utilisé `quiz_hint`, une charge sera consommée
         automatiquement pour réduire le quiz à 2 choix.
         """
+        if not await self._consume_daily_slot(ctx, "quizmanga"):
+            return
+
         question = random.choice(QUIZ_POOL)
 
         # Charge d'indice disponible ?
@@ -556,6 +573,7 @@ class EngagementSystem(commands.Cog):
         view.message = msg
 
     @commands.command(name="quizstats", aliases=["qms"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def quiz_stats(self, ctx, member: discord.Member = None):
         """Affiche tes statistiques de quiz."""
         target = member or ctx.author
@@ -582,6 +600,7 @@ class EngagementSystem(commands.Cog):
     # ═══════════════════════════════════════════════════════════════════════════
 
     @commands.group(name="prediction", aliases=["predict", "pari"], invoke_without_command=True)
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def prediction_group(self, ctx):
         """Gestion des prédictions communautaires."""
         embed = discord.Embed(
@@ -656,6 +675,9 @@ class EngagementSystem(commands.Cog):
             await ctx.send("❌ Mise minimum : 10 XP.")
             return
 
+        if not await self._consume_daily_slot(ctx, "prediction_bet"):
+            return
+
         # Convertir option (lettre ou numéro) en index
         opt_idx = None
         if len(option) == 1 and option.upper().isalpha():
@@ -704,6 +726,7 @@ class EngagementSystem(commands.Cog):
         update_challenge_progress(ctx.author.id, "prediction", 1)
 
     @prediction_group.command(name="list")
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def prediction_list(self, ctx):
         """Liste les prédictions ouvertes."""
         opens = [p for p in data["predictions"].values() if not p["resolved"]]
@@ -725,6 +748,7 @@ class EngagementSystem(commands.Cog):
         await ctx.send(embed=embed)
 
     @prediction_group.command(name="info")
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def prediction_info(self, ctx, pred_id: str):
         """Détails d'une prédiction."""
         pred = data["predictions"].get(pred_id)
@@ -902,6 +926,7 @@ class EngagementSystem(commands.Cog):
     # ═══════════════════════════════════════════════════════════════════════════
 
     @commands.group(name="birthday", aliases=["bday", "anniv"], invoke_without_command=True)
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def birthday_group(self, ctx):
         """Gestion des anniversaires."""
         embed = discord.Embed(
@@ -919,6 +944,7 @@ class EngagementSystem(commands.Cog):
         await ctx.send(embed=embed)
 
     @birthday_group.command(name="set")
+    @commands.cooldown(1, 30, commands.BucketType.user)
     async def bday_set(self, ctx, date_str: str):
         """Enregistre ton anniversaire (format JJ-MM)."""
         try:
@@ -944,6 +970,7 @@ class EngagementSystem(commands.Cog):
         await ctx.send(embed=embed)
 
     @birthday_group.command(name="remove", aliases=["delete"])
+    @commands.cooldown(1, 30, commands.BucketType.user)
     async def bday_remove(self, ctx):
         """Supprime ton anniversaire."""
         uid = _user_key(ctx.author.id)
@@ -955,6 +982,7 @@ class EngagementSystem(commands.Cog):
             await ctx.send("❌ Tu n'avais pas enregistré d'anniversaire.")
 
     @birthday_group.command(name="me")
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def bday_me(self, ctx):
         """Affiche ta date d'anniversaire enregistrée."""
         uid = _user_key(ctx.author.id)
@@ -966,6 +994,7 @@ class EngagementSystem(commands.Cog):
         await ctx.send(f"🎂 Ton anniversaire est le **{d}/{m}**.")
 
     @birthday_group.command(name="upcoming", aliases=["next", "list"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def bday_upcoming(self, ctx):
         """Affiche les 10 prochains anniversaires."""
         if not data["birthdays"]:

@@ -928,6 +928,7 @@ class MiniGamesExtra(commands.Cog):
     # ═════════════════════════════════════════════════════════════════════════
 
     @commands.command(name="featured", aliases=["jeuvedette"])
+    @commands.cooldown(1, 10, commands.BucketType.user)
     async def featured_cmd(self, ctx):
         """Affiche le mini-jeu vedette du jour (XP doublée)."""
         from effects import get_featured_game, FEATURED_MULTIPLIER
@@ -949,6 +950,7 @@ class MiniGamesExtra(commands.Cog):
     # ═════════════════════════════════════════════════════════════════════════
 
     @commands.command(name="streak", aliases=["combo"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def streak_cmd(self, ctx, member: discord.Member = None):
         """Affiche le streak (combo de victoires) d'un joueur."""
         from effects import get_streak, get_streak_multiplier, STREAK_TIERS
