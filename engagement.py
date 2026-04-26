@@ -321,21 +321,19 @@ class QuizButton(Button):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class EngagementSystem(commands.Cog):
-    """Daily reward calendar, Quiz, Challenges hebdo, Prédictions, Anniversaires, Countdown sorties."""
+    """Daily reward calendar, Quiz, Prédictions, Anniversaires, Countdown sorties."""
 
     def __init__(self, bot):
         self.bot = bot
         charger()
 
     async def cog_load(self):
-        self.weekly_challenge_loop.start()
         self.birthday_loop.start()
         self.countdown_loop.start()
         self.prediction_cleanup_loop.start()
         logger.info("✅ Tâches engagement démarrées")
 
     def cog_unload(self):
-        self.weekly_challenge_loop.cancel()
         self.birthday_loop.cancel()
         self.countdown_loop.cancel()
         self.prediction_cleanup_loop.cancel()
@@ -578,168 +576,6 @@ class EngagementSystem(commands.Cog):
         embed.add_field(name="⚡ Série actuelle", value=f"**{stats.get('current_streak', 0)}**", inline=True)
         embed.set_thumbnail(url=target.avatar.url if target.avatar else None)
         await ctx.send(embed=embed)
-
-    # ═══════════════════════════════════════════════════════════════════════════
-    # 🏆 READING CHALLENGES HEBDOMADAIRES — !challenges
-    # ═══════════════════════════════════════════════════════════════════════════
-
-    def _current_week_iso(self):
-        y, w, _ = datetime.now().isocalendar()
-        return f"{y}-W{w:02d}"
-
-    def _ensure_weekly_challenges(self):
-        """Génère 3 nouveaux challenges si on a changé de semaine."""
-        challenges = data["challenges"]
-        current = self._current_week_iso()
-        if challenges.get("week_iso") != current:
-            challenges["week_iso"] = current
-            challenges["active"] = random.sample(CHALLENGE_TEMPLATES, k=min(3, len(CHALLENGE_TEMPLATES)))
-            challenges["progress"] = {}
-            challenges["claimed"] = {}
-            sauvegarder()
-            logger.info(f"🏆 Nouveaux challenges hebdo générés ({current})")
-            return True
-        return False
-
-    @tasks.loop(hours=1)
-    async def weekly_challenge_loop(self):
-        try:
-            if self._ensure_weekly_challenges():
-                # Annoncer dans un salon général si possible
-                from config import CHANNELS
-                channel = self.bot.get_channel(CHANNELS.get("general"))
-                if channel:
-                    embed = discord.Embed(
-                        title="🏆 Nouveaux Challenges de la Semaine !",
-                        description="Trois nouveaux défis sont disponibles ! Tape `!challenges` pour les voir.",
-                        color=COLORS["info"],
-                    )
-                    for c in data["challenges"]["active"]:
-                        embed.add_field(
-                            name=c["name"],
-                            value=f"{c['desc']}\n💎 **{c['reward_xp']} XP**",
-                            inline=False,
-                        )
-                    try:
-                        await channel.send(embed=embed)
-                    except Exception:
-                        pass
-        except Exception:
-            logger.exception("weekly_challenge_loop")
-
-    @weekly_challenge_loop.before_loop
-    async def before_weekly_challenge(self):
-        await self.bot.wait_until_ready()
-
-    @commands.command(name="challenges", aliases=["challenge", "defis"])
-    async def challenges_cmd(self, ctx):
-        """Affiche les challenges hebdo en cours et ta progression."""
-        self._ensure_weekly_challenges()
-        challenges = data["challenges"]
-        active = challenges.get("active", [])
-        if not active:
-            await ctx.send("❌ Aucun challenge actif pour le moment. Reviens lundi !")
-            return
-
-        uid = _user_key(ctx.author.id)
-        user_prog = challenges.get("progress", {}).get(uid, {})
-        user_claimed = challenges.get("claimed", {}).get(uid, [])
-
-        embed = discord.Embed(
-            title=f"🏆 Challenges Hebdo — Semaine {challenges['week_iso']}",
-            description=f"*Progression de {ctx.author.mention}*\n"
-                        f"Tape `!claimchallenge <id>` pour réclamer un challenge complété.",
-            color=COLORS["info"],
-            timestamp=datetime.now(),
-        )
-
-        for c in active:
-            cur = user_prog.get(c["id"], 0)
-            done = cur >= c["goal"]
-            claimed = c["id"] in user_claimed
-            bar_filled = int((cur / c["goal"]) * 10) if c["goal"] else 10
-            bar = "🟩" * bar_filled + "⬜" * (10 - bar_filled)
-
-            if claimed:
-                status = "✅ **Réclamé**"
-            elif done:
-                status = "🎁 **Prêt à réclamer !**"
-            else:
-                status = f"{bar} `{cur}/{c['goal']}`"
-
-            embed.add_field(
-                name=f"{c['name']}  ·  `{c['id']}`",
-                value=f"{c['desc']}\n{status}\n💎 **{c['reward_xp']} XP**",
-                inline=False,
-            )
-
-        embed.set_footer(text="Les challenges se renouvellent chaque lundi")
-        await ctx.send(embed=embed)
-
-    @commands.command(name="claimchallenge", aliases=["cc"])
-    async def claim_challenge(self, ctx, challenge_id: str):
-        """Réclame la récompense d'un challenge complété."""
-        self._ensure_weekly_challenges()
-        challenges = data["challenges"]
-        active = challenges.get("active", [])
-
-        challenge = next((c for c in active if c["id"] == challenge_id), None)
-        if challenge is None:
-            await ctx.send(f"❌ Aucun challenge actif avec l'id `{challenge_id}`. Tape `!challenges` pour voir la liste.")
-            return
-
-        uid = _user_key(ctx.author.id)
-        user_prog = challenges.setdefault("progress", {}).setdefault(uid, {})
-        user_claimed = challenges.setdefault("claimed", {}).setdefault(uid, [])
-
-        if challenge_id in user_claimed:
-            await ctx.send("⚠️ Tu as déjà réclamé ce challenge cette semaine.")
-            return
-
-        cur = user_prog.get(challenge_id, 0)
-        skipped = False
-        if cur < challenge["goal"]:
-            # Peut-on consommer une charge de skip ?
-            try:
-                from effects import has_skip, consume_skip
-                if has_skip(ctx.author.id) and consume_skip(ctx.author.id):
-                    skipped = True
-                    # On force la progression à goal pour l'affichage
-                    user_prog[challenge_id] = challenge["goal"]
-            except Exception as e:
-                logger.warning(f"skip consume error: {e}")
-
-            if not skipped:
-                await ctx.send(
-                    f"🔒 Tu n'as pas encore complété ce challenge (`{cur}/{challenge['goal']}`).\n"
-                    f"💡 Tu peux l'obtenir avec un ⏭️ `challenge_skip` si tu en as un en inventaire."
-                )
-                return
-
-        user_claimed.append(challenge_id)
-        sauvegarder()
-
-        try:
-            final_xp, mult, level_up, new_level = add_xp(ctx.author.id, challenge["reward_xp"], "challenge")
-        except Exception:
-            final_xp, mult, level_up, new_level = challenge["reward_xp"], 1.0, False, 0
-
-        embed = discord.Embed(
-            title="🎁 Challenge Réclamé !" + (" ⏭️" if skipped else ""),
-            description=f"Tu as complété **{challenge['name']}** !\n+ **{final_xp} XP**"
-                        + (f" *(x{mult:.1f})*" if mult > 1 else "")
-                        + ("\n\n⏭️ *Charge de skip consommée*" if skipped else ""),
-            color=COLORS["success"],
-        )
-        await ctx.send(embed=embed)
-
-        if level_up:
-            cog = self.bot.get_cog("CommunitySystem")
-            if cog:
-                try:
-                    await cog.announce_level_up(ctx.author.id, new_level, ctx.channel)
-                except Exception:
-                    pass
 
     # ═══════════════════════════════════════════════════════════════════════════
     # 🔮 PRÉDICTIONS — !prediction

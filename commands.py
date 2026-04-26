@@ -227,8 +227,9 @@ HELP_CATEGORIES = {
         "commands": [
             {"name": "quizmanga", "usage": "!quizmanga", "desc": "Quiz manga à choix multiples (hint auto si acheté)", "reward": "25-75 XP"},
             {"name": "quizstats", "usage": "!quizstats [@membre]", "desc": "Tes stats de quiz"},
-            {"name": "challenges", "usage": "!challenges", "desc": "Voir les challenges hebdomadaires"},
-            {"name": "claimchallenge", "usage": "!claimchallenge <id>", "desc": "Réclamer un challenge complété"},
+            {"name": "challenges", "usage": "!challenges [@membre]", "desc": "Voir les défis hebdomadaires et la progression"},
+            {"name": "challenges_top", "usage": "!challenges_top", "desc": "Classement des défis complétés cette semaine"},
+            {"name": "challenges_history", "usage": "!challenges_history", "desc": "Historique des semaines passées"},
             {"name": "prediction list", "usage": "!prediction list", "desc": "Voir les prédictions ouvertes"},
             {"name": "prediction bet", "usage": "!prediction bet <id> <opt> <xp>", "desc": "Parier sur une prédiction", "example": "`!prediction bet 1 A 100`"},
             {"name": "prediction info", "usage": "!prediction info <id>", "desc": "Détails d'une prédiction"},
