@@ -746,39 +746,68 @@ class CommunitySystem(commands.Cog):
 
             # Construire l'embed
             medals = ["🥇", "🥈", "🥉"]
+            winner = top_users[0][2]
+            winner_xp = top_users[0][3]
+
             embed = discord.Embed(
-                title=f"🏆 CLASSEMENT DU MOIS — {month_name} {last_year}",
+                title=f"🏆 GAGNANT·E DU MOIS — {month_name} {last_year} : {winner.display_name}",
                 description=(
-                    f"Voici les **membres les plus actifs** du mois de {month_name} !\n"
-                    f"Bravo à tous pour votre participation 🎉"
+                    f"Félicitations à {winner.mention} qui remporte la **récompense mensuelle** "
+                    f"de {month_name} avec **{winner_xp:,} XP** !\n"
+                    f"Une preuve d'achat sera envoyée par MP aux membres dès que la récompense "
+                    f"aura été commandée 📦\n\n"
+                    f"Voici aussi les autres membres les plus actifs du mois 🎉"
                 ),
                 color=0xFFD700,
                 timestamp=datetime.now()
             )
 
-            for i, (user_id_str, stats, member, monthly_xp) in enumerate(top_users):
-                level = calculate_level(stats.get("total_xp", 0))
+            # Bloc gagnant mis en valeur
+            winner_stats = top_users[0][1]
+            winner_level = calculate_level(winner_stats.get("total_xp", 0))
+            embed.add_field(
+                name=f"🎁 RÉCOMPENSE MENSUELLE — {winner.display_name}",
+                value=(
+                    f"{medals[0]} **Gagnant·e officiel·le du mois de {month_name}**\n"
+                    f"⭐ Nv. {winner_level} • 📊 **{winner_xp:,} XP** ce mois\n"
+                    f"💬 {winner_stats.get('messages_count', 0):,} messages • "
+                    f"🎤 {winner_stats.get('voice_minutes', 0):,} min vocal"
+                ),
+                inline=False
+            )
+
+            # Podium (2e et 3e)
+            if len(top_users) > 1:
+                podium_lines = []
+                for i, (user_id_str, stats, member, monthly_xp) in enumerate(top_users[1:], start=1):
+                    level = calculate_level(stats.get("total_xp", 0))
+                    podium_lines.append(
+                        f"{medals[i]} **#{i+1} {member.display_name}** — Nv. {level} • "
+                        f"📊 {monthly_xp:,} XP"
+                    )
                 embed.add_field(
-                    name=f"{medals[i]} #{i+1} — {member.display_name}",
-                    value=(
-                        f"⭐ **Nv. {level}** — 📊 **{monthly_xp:,} XP** ce mois\n"
-                        f"💬 {stats.get('messages_count', 0):,} messages • 🎤 {stats.get('voice_minutes', 0):,} min vocal"
-                    ),
+                    name="🥈 Podium",
+                    value="\n".join(podium_lines),
                     inline=False
                 )
 
-            # Mettre le gagnant en thumbnail
-            winner = top_users[0][2]
             embed.set_thumbnail(url=winner.display_avatar.url)
             embed.set_footer(text="Nouveau mois, nouveau classement — c'est reparti ! 🔥")
 
-            # Envoyer dans le channel configuré
+            # Envoyer dans le channel configuré (mention du gagnant pour notif)
             recap_channel_id = CHANNELS.get("monthly_recap")
             if recap_channel_id:
                 recap_channel = self.bot.get_channel(recap_channel_id)
                 if recap_channel:
-                    await safe_api_call(recap_channel.send, embed=embed)
-                    logging.info(f"📊 Récap mensuel envoyé dans #{recap_channel.name}")
+                    await safe_api_call(
+                        recap_channel.send,
+                        content=f"🎉 Bravo {winner.mention} !",
+                        embed=embed
+                    )
+                    logging.info(
+                        f"📊 Récap mensuel envoyé dans #{recap_channel.name} "
+                        f"(gagnant: {winner.display_name})"
+                    )
                 else:
                     logging.warning(f"⚠️ Channel monthly_recap introuvable (ID: {recap_channel_id})")
             else:
@@ -1319,6 +1348,142 @@ class CommunitySystem(commands.Cog):
 
         if level_up:
             await self.announce_level_up(member.id, new_level, ctx.channel)
+
+    @commands.command(name="preuve_gagnant", aliases=["proof_winner", "preuve_achat"])
+    @commands.has_any_role(*ADMIN_ROLES)
+    async def preuve_gagnant(self, ctx, winner: discord.Member, *, message: str = ""):
+        """(ADMIN) Envoie en MP à tous les autres membres la preuve d'achat de la
+        récompense mensuelle.
+
+        Usage : !preuve_gagnant @membre [texte facultatif]
+        IMPORTANT : joindre au moins une image au message (la preuve d'achat).
+        """
+        # Récupérer les pièces jointes (preuve image)
+        attachments = ctx.message.attachments
+        image_urls = [a.url for a in attachments if a.content_type and a.content_type.startswith("image/")]
+
+        if not image_urls:
+            await ctx.send(
+                "❌ Tu dois joindre **au moins une image** au message comme preuve d'achat."
+            )
+            return
+
+        guild = ctx.guild
+        if guild is None:
+            await ctx.send("❌ Cette commande doit être utilisée dans un serveur.")
+            return
+
+        # Confirmation avant broadcast (le DM massif est une action lourde)
+        recipients = [
+            m for m in guild.members
+            if not m.bot and m.id != winner.id
+        ]
+        total = len(recipients)
+
+        confirm = await ctx.send(
+            f"⚠️ Tu vas envoyer un MP à **{total} membres** avec la preuve d'achat "
+            f"de la récompense de {winner.mention}.\n"
+            f"Réagis avec ✅ dans les 30s pour confirmer, ❌ pour annuler."
+        )
+        await confirm.add_reaction("✅")
+        await confirm.add_reaction("❌")
+
+        def check(reaction, user):
+            return (
+                user.id == ctx.author.id
+                and reaction.message.id == confirm.id
+                and str(reaction.emoji) in ("✅", "❌")
+            )
+
+        try:
+            reaction, _ = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
+        except asyncio.TimeoutError:
+            await confirm.edit(content="⏱️ Confirmation expirée — broadcast annulé.")
+            return
+
+        if str(reaction.emoji) == "❌":
+            await confirm.edit(content="❌ Broadcast annulé.")
+            return
+
+        # Construction de l'embed envoyé en MP
+        month_names = {
+            1: "Janvier", 2: "Février", 3: "Mars", 4: "Avril",
+            5: "Mai", 6: "Juin", 7: "Juillet", 8: "Août",
+            9: "Septembre", 10: "Octobre", 11: "Novembre", 12: "Décembre"
+        }
+        current_month = month_names[datetime.now().month]
+
+        dm_embed = discord.Embed(
+            title=f"📦 Preuve d'achat — Récompense mensuelle",
+            description=(
+                f"Salut !\n\n"
+                f"La récompense mensuelle de **{guild.name}** a bien été commandée pour "
+                f"**{winner.display_name}**, gagnant·e du mois de **{current_month}**.\n\n"
+                + (f"📝 **Message du staff :**\n{message}\n\n" if message else "")
+                + f"Tu trouveras la preuve d'achat ci-dessous 👇\n"
+                f"Merci à tous pour votre participation et à très vite pour le prochain "
+                f"classement !"
+            ),
+            color=COLORS.get("success", 0x57F287),
+            timestamp=datetime.now()
+        )
+        dm_embed.set_image(url=image_urls[0])
+        if winner.display_avatar:
+            dm_embed.set_thumbnail(url=winner.display_avatar.url)
+        dm_embed.set_footer(text=f"Envoyé par le staff de {guild.name}")
+
+        extra_images_text = None
+        if len(image_urls) > 1:
+            extra_images_text = "**Preuves supplémentaires :**\n" + "\n".join(image_urls[1:])
+
+        # Status message progressif
+        status = await ctx.send(
+            f"📤 Envoi en cours... 0/{total} membres notifiés."
+        )
+
+        sent = 0
+        failed = 0
+        update_interval = max(5, total // 20)  # update ~20x
+
+        for idx, member in enumerate(recipients, start=1):
+            try:
+                await safe_api_call(member.send, embed=dm_embed)
+                if extra_images_text:
+                    await safe_api_call(member.send, content=extra_images_text)
+                sent += 1
+            except discord.Forbidden:
+                failed += 1  # MPs fermés
+            except Exception as e:
+                failed += 1
+                logging.warning(f"preuve_gagnant: échec DM à {member.id}: {e}")
+
+            # Throttle pour éviter les rate limits Discord
+            await asyncio.sleep(0.6)
+
+            if idx % update_interval == 0 or idx == total:
+                try:
+                    await status.edit(
+                        content=(
+                            f"📤 Envoi en cours... {idx}/{total} membres traités "
+                            f"(✅ {sent} • ❌ {failed})."
+                        )
+                    )
+                except Exception:
+                    pass
+
+        # Récap final
+        recap = discord.Embed(
+            title="✅ Preuve d'achat diffusée",
+            description=(
+                f"Récompense mensuelle de {winner.mention} — diffusion terminée."
+            ),
+            color=COLORS.get("success", 0x57F287)
+        )
+        recap.add_field(name="✅ Envoyés", value=str(sent), inline=True)
+        recap.add_field(name="❌ Échecs", value=str(failed), inline=True)
+        recap.add_field(name="👥 Total", value=str(total), inline=True)
+        recap.set_footer(text="Les échecs viennent généralement de MPs fermés.")
+        await ctx.send(embed=recap)
 
     @commands.command(name="reset_xp", aliases=["reset_points"])
     @commands.has_any_role(*ADMIN_ROLES)

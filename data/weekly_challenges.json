@@ -1,0 +1,104 @@
+{
+    "week_id": "2026-W18",
+    "started_at": "2026-04-27T00:00:00",
+    "ends_at": "2026-05-04T00:00:00",
+    "channel_id": null,
+    "challenges": [
+        {
+            "id": "win_memory_3",
+            "title": "🃏 Mémoire d'éléphant",
+            "desc": "Termine **{target}** parties de Memory.",
+            "type": "win_game",
+            "game": "memory",
+            "target": 3,
+            "reward_xp": 80
+        },
+        {
+            "id": "win_any_25",
+            "title": "⚔️ Vétéran",
+            "desc": "Gagne **{target}** parties de mini-jeux dans la semaine.",
+            "type": "win_any",
+            "target": 25,
+            "reward_xp": 180
+        },
+        {
+            "id": "win_unscramble_8",
+            "title": "🔤 Démêleur",
+            "desc": "Gagne **{target}** parties d'Unscramble.",
+            "type": "win_game",
+            "game": "unscramble",
+            "target": 8,
+            "reward_xp": 70
+        }
+    ],
+    "progress": {
+        "691766186790092800": {
+            "win_memory_3": {
+                "count": 0,
+                "completed": false,
+                "completed_at": null
+            },
+            "win_any_25": {
+                "count": 3,
+                "completed": false,
+                "completed_at": null
+            },
+            "win_unscramble_8": {
+                "count": 0,
+                "completed": false,
+                "completed_at": null
+            }
+        },
+        "608234789564186644": {
+            "win_memory_3": {
+                "count": 0,
+                "completed": false,
+                "completed_at": null
+            },
+            "win_any_25": {
+                "count": 2,
+                "completed": false,
+                "completed_at": null
+            },
+            "win_unscramble_8": {
+                "count": 0,
+                "completed": false,
+                "completed_at": null
+            }
+        },
+        "1233443045886787604": {
+            "win_memory_3": {
+                "count": 0,
+                "completed": false,
+                "completed_at": null
+            },
+            "win_any_25": {
+                "count": 0,
+                "completed": false,
+                "completed_at": null
+            },
+            "win_unscramble_8": {
+                "count": 0,
+                "completed": false,
+                "completed_at": null
+            }
+        }
+    },
+    "perfect_week": {},
+    "history": [
+        {
+            "week_id": "2026-W17",
+            "started_at": "2026-04-20T00:00:00",
+            "ends_at": "2026-04-27T00:00:00",
+            "challenges": [
+                "diversity_5",
+                "win_any_15",
+                "win_emojirebus_5"
+            ],
+            "completions": {
+                "608234789564186644": 0
+            },
+            "perfect": []
+        }
+    ]
+}
