@@ -126,26 +126,33 @@ def load_json(filepath, default=None):
 
 
 def save_json(filepath, data, create_dir=True):
-    """Sauvegarde des données dans un fichier JSON.
-    
-    Args:
-        filepath: Chemin vers le fichier JSON
-        data: Données à sauvegarder
-        create_dir: Si True, crée le dossier parent si nécessaire
-        
-    Returns:
-        True si succès, False sinon
+    """Sauvegarde des données dans un fichier JSON (écriture atomique).
+
+    Écrit dans un fichier temporaire puis remplace l'original via os.replace
+    pour éviter les corruptions en cas de crash en pleine écriture.
     """
     try:
         if create_dir:
             dir_path = os.path.dirname(filepath)
             if dir_path:
                 os.makedirs(dir_path, exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
+        tmp_path = f"{filepath}.tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
+            f.flush()
+            try:
+                os.fsync(f.fileno())
+            except OSError:
+                pass
+        os.replace(tmp_path, filepath)
         return True
     except Exception as e:
         logging.error(f"Erreur sauvegarde {filepath}: {e}")
+        try:
+            if os.path.exists(f"{filepath}.tmp"):
+                os.remove(f"{filepath}.tmp")
+        except OSError:
+            pass
         return False
 
 
@@ -161,7 +168,7 @@ def save_with_meta(filepath, data, meta_filepath=None):
     
     if success and meta_filepath:
         meta = {
-            "last_saved": datetime.datetime.utcnow().isoformat() + "Z",
+            "last_saved": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "item_count": len(data) if isinstance(data, (dict, list)) else 0,
         }
         save_json(meta_filepath, meta)
@@ -317,6 +324,39 @@ def get_role_by_id(guild, role_id):
 # FONCTIONS D'AIDE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+_BANNER_ANSI = {
+    "cyan":   "1;36",
+    "blue":   "1;34",
+    "purple": "1;35",
+    "green":  "1;32",
+    "yellow": "1;33",
+    "red":    "1;31",
+}
+
+
+def make_banner(title: str, color: str = "cyan", width: int = 39) -> str:
+    """Génère une bannière ANSI encadrée pour les embeds Discord.
+
+    Évite la duplication des blocs ╔═══╗ ║ ║ ╚═══╝ copiés dans chaque commande.
+    """
+    code = _BANNER_ANSI.get(color, _BANNER_ANSI["cyan"])
+    border = "═" * width
+    text = f" {title} "
+    if len(text) > width:
+        text = text[:width]
+    pad = width - len(text)
+    left = pad // 2
+    right = pad - left
+    centered = " " * left + text + " " * right
+    return (
+        "```ansi\n"
+        f"[{code}m╔{border}╗[0m\n"
+        f"[{code}m║[0m[1;37m{centered}[0m[{code}m║[0m\n"
+        f"[{code}m╚{border}╝[0m\n"
+        "```\n"
+    )
+
+
 def format_help(command):
     """Formate l'aide d'une commande en embed.
     
@@ -354,7 +394,7 @@ def get_user_info(user):
     embed = discord.Embed(
         title=f"Informations sur {user.name}",
         color=discord.Color(COLORS["info"]),
-        timestamp=datetime.datetime.utcnow()
+        timestamp=datetime.datetime.now(datetime.timezone.utc)
     )
     embed.set_thumbnail(url=user.avatar.url if user.avatar else user.default_avatar.url)
     embed.add_field(name="ID", value=user.id, inline=True)

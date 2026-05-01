@@ -65,38 +65,41 @@ def setup(bot):
     async def on_member_join(member):
         """Événement déclenché quand un membre rejoint le serveur."""
         welcome_channel = bot.get_channel(CHANNELS["welcome"])
-        if welcome_channel:
-            # Message de mention avant l'embed
-            welcome_message = f"👋 Hey tout le monde ! Accueillons chaleureusement {member.mention} qui vient de nous rejoindre ! 🎉"
-            await welcome_channel.send(welcome_message)
-            
-            embed = discord.Embed(
-                title=f"🌟 Bienvenue sur {member.guild.name} !",
-                description=(
-                    f"Hey {member.mention}, bienvenue dans notre communauté !\n\n"
-                    "🎉 **Nous sommes ravis de t'accueillir parmi nous !**\n\n"
-                    "Pour bien commencer :\n"
-                    f"📜 Lis le règlement dans <#{CHANNELS['rules']}>\n"
-                    f"🎯 Choisis tes rôles dans <#{CHANNELS.get('roles', 1326212401036529665)}>\n"
-                    f"💬 Présente-toi dans <#{CHANNELS['general']}>\n"
-                    "🎮 Amuse-toi et fais de belles rencontres !"
-                ),
-                color=discord.Color.blue()
-            )
-            embed.add_field(
-                name="📊 Statistiques",
-                value=f"Tu es notre {len(member.guild.members)} ème membre !",
-                inline=True
-            )
-            embed.add_field(
-                name="📅 Date d'arrivée",
-                value=f"<t:{int(datetime.datetime.now().timestamp())}:F>",
-                inline=True
-            )
-            if member.avatar:
-                embed.set_thumbnail(url=member.avatar.url)
-            embed.set_footer(text="Nous espérons que tu te plairas parmi nous ! 🎮✨")
-            await welcome_channel.send(embed=embed)
+        if not welcome_channel:
+            return
+
+        embed = discord.Embed(
+            title=f"🌟 Bienvenue sur {member.guild.name} !",
+            description=(
+                f"Hey {member.mention}, bienvenue dans notre communauté !\n\n"
+                "🎉 **Nous sommes ravis de t'accueillir parmi nous !**\n\n"
+                "Pour bien commencer :\n"
+                f"📜 Lis le règlement dans <#{CHANNELS['rules']}>\n"
+                f"🎯 Choisis tes rôles dans <#{CHANNELS.get('roles', 1326212401036529665)}>\n"
+                f"💬 Présente-toi dans <#{CHANNELS['general']}>\n"
+                "🎮 Amuse-toi et fais de belles rencontres !"
+            ),
+            color=discord.Color.blue()
+        )
+        embed.add_field(
+            name="📊 Statistiques",
+            value=f"Tu es notre {len(member.guild.members)} ème membre !",
+            inline=True
+        )
+        embed.add_field(
+            name="📅 Date d'arrivée",
+            value=f"<t:{int(datetime.datetime.now().timestamp())}:F>",
+            inline=True
+        )
+        if member.avatar:
+            embed.set_thumbnail(url=member.avatar.url)
+        embed.set_footer(text="Nous espérons que tu te plairas parmi nous ! 🎮✨")
+
+        # Un seul message : mention + embed (au lieu de deux)
+        await welcome_channel.send(
+            content=f"👋 {member.mention} vient de nous rejoindre ! 🎉",
+            embed=embed,
+        )
     
     @bot.event
     async def on_message(message):
@@ -138,14 +141,6 @@ def setup(bot):
                 except Exception as e:
                     logging.error(f"Erreur lors de l'envoi du ping pour les partenaires : {e}")
         
-        # Vérifier si c'est une des commandes autorisées pour LanorTrad
-        allowed_commands = ["!help", "!info", "!userinfo", "!avatar", "!ping", "!poll", "!planning", "!next_release", "!prochaine_sortie", "!serverstats", "!dashboard", "!membercount", "!mc", "!topcontrib", "!polls", "!poll_results"]
-        is_allowed_command = any(message.content.startswith(cmd) for cmd in allowed_commands)
-        
-        # Si c'est LanorTrad et ce n'est pas une commande autorisée, ne pas traiter la commande
-        if message.author.name == "LanorTrad" and not is_allowed_command:
-            return
-        
         # CORRECTION CRITIQUE : Nécessaire pour que les commandes fonctionnent
         await bot.process_commands(message)
     
@@ -153,7 +148,7 @@ def setup(bot):
     async def on_command_error(ctx, error):
         """Gestion globale des erreurs de commandes."""
         if isinstance(error, commands.CommandNotFound):
-            await ctx.send(f"Commande inconnue. Utilisez `{bot.command_prefix}help` pour voir la liste des commandes.")
+            return  # silencieux : ne pas polluer le chat sur frappe libre
         elif isinstance(error, commands.MissingRequiredArgument):
             await ctx.send(f"Il manque un argument requis. Utilisez `{bot.command_prefix}help {ctx.command.name}` pour plus d'informations.")
         elif isinstance(error, commands.BadArgument):

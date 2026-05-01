@@ -198,6 +198,11 @@ COLORS = {
     "warning": 0xF1C40F,
     "boost": 0x9B59B6,
     "giveaway": 0xff6b6b,
+    "moderation": 0x9B59B6,
+    "tasks": 0x1ABC9C,
+    "manga": 0xE91E63,
+    "gold": 0xF1C40F,
+    "server": 0x5865F2,
 }
 
 RARITY_COLORS = {

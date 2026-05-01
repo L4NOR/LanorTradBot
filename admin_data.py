@@ -8,7 +8,7 @@ import os
 import io
 import zipfile
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from config import COLORS
 
 # ID de l'utilisateur qui recevra les fichiers
@@ -194,7 +194,7 @@ def save_module_data(module_key):
         # Créer le fichier meta
         data, count = get_module_data(module_key)
         meta = {
-            "last_saved": datetime.utcnow().isoformat() + "Z",
+            "last_saved": datetime.now(timezone.utc).isoformat(),
             "item_count": count,
             "module": module_key
         }

@@ -54,8 +54,8 @@
         },
         "1233443045886787604": {
             "streak": {
-                "count": 0,
-                "best": 0,
+                "count": 1,
+                "best": 1,
                 "shielded": false
             },
             "active": {
@@ -67,7 +67,7 @@
         }
     },
     "featured": {
-        "date": "2026-04-30",
-        "game": "hangman"
+        "date": "2026-05-01",
+        "game": "emojirebus"
     }
 }

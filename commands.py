@@ -2,19 +2,23 @@
 import discord
 from discord.ext import commands
 from datetime import datetime
-from config import CHANNELS, ROLES, COLORS, ADMIN_ROLES, MANGA_CHANNELS, MANGA_ROLES, TASK_ROLES, TASK_EMOJIS
+from config import (
+    CHANNELS, ROLES, COLORS, ADMIN_ROLES, MANGA_CHANNELS, MANGA_ROLES,
+    TASK_ROLES, TASK_EMOJIS, DATA_FILES
+)
 import logging
 import asyncio
-import json
 import os
 import random
-from utils import safe_api_call, batch_api_calls
+from utils import (
+    safe_api_call, batch_api_calls, load_json, save_with_meta, make_banner,
+    generate_progress_bar,
+)
 
 bot_instance = None
 
-TASKS_FILE = "data/etat_taches.json"
-META_FILE = "data/etat_taches_meta.json"
-os.makedirs("data", exist_ok=True)
+TASKS_FILE = DATA_FILES["tasks"]
+META_FILE = DATA_FILES["tasks_meta"]
 
 # Dictionnaire pour stocker les chapitres planifiés
 chapitres_planifies = []
@@ -34,29 +38,14 @@ MESSAGES_ALEATOIRES = [
     "Quelqu'un a bossé dur ! Allez voir l'état d'avancement ! 💪"
 ]
 
-# Charger les tâches depuis le fichier JSON au démarrage
+
 def charger_etat_taches():
     global etat_taches_global
-    if os.path.exists(TASKS_FILE):
-        with open(TASKS_FILE, "r", encoding="utf-8") as f:
-            etat_taches_global = json.load(f)
-    else:
-        etat_taches_global = {}
+    etat_taches_global = load_json(TASKS_FILE, default={})
 
-# Sauvegarder les tâches dans le fichier JSON
+
 def sauvegarder_etat_taches():
-    try:
-        with open(TASKS_FILE, "w", encoding="utf-8") as f:
-            json.dump(etat_taches_global, f, ensure_ascii=False, indent=4)
-        
-        meta = {
-            "last_saved": datetime.utcnow().isoformat() + "Z",
-            "task_count": len(etat_taches_global)
-        }
-        with open(META_FILE, "w", encoding="utf-8") as mf:
-            json.dump(meta, mf, ensure_ascii=False, indent=4)
-    except Exception as e:
-        logging.error(f"Erreur lors de la sauvegarde des tâches: {e}")
+    save_with_meta(TASKS_FILE, etat_taches_global, META_FILE)
 
 # MANGA_CHANNELS et MANGA_ROLES sont importés depuis config.py
 
@@ -569,11 +558,7 @@ def setup(bot):
 
         # Header
         description = (
-            "```ansi\n"
-            "\u001b[1;36m╔══════════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;36m║\u001b[0m  \u001b[1;37m✦  Bienvenue dans le Centre d'Aide  ✦\u001b[0m  \u001b[1;36m║\u001b[0m\n"
-            "\u001b[1;36m╚══════════════════════════════════════════╝\u001b[0m\n"
-            "```\n"
+            make_banner("✦  Bienvenue dans le Centre d'Aide  ✦", "cyan") +
             "> Utilise le **menu déroulant** ci-dessous pour explorer les catégories.\n"
             "> Ou tape `!help <commande>` pour les détails d'une commande.\n"
         )
@@ -727,11 +712,7 @@ def setup(bot):
 
             embed = discord.Embed(
                 description=(
-                    f"```ansi\n"
-                    f"\u001b[1;31m╔══════════════════════════════════╗\u001b[0m\n"
-                    f"\u001b[1;31m║\u001b[0m   \u001b[1;37m❌ Commande Introuvable\u001b[0m      \u001b[1;31m║\u001b[0m\n"
-                    f"\u001b[1;31m╚══════════════════════════════════╝\u001b[0m\n"
-                    f"```\n"
+                    make_banner("❌ Commande Introuvable", "red") +
                     f"La commande `{command_name}` n'existe pas "
                     f"ou vous n'y avez pas accès."
                     f"{suggest_text}\n\n"
@@ -818,20 +799,7 @@ def setup(bot):
         view.message = message
     
     # ==================== AUTRES COMMANDES ====================
-    
-    # ==================== THEME COLORS ====================
-    THEME_COLORS = {
-        "success": 0x2ECC71,
-        "error": 0xE74C3C,
-        "warning": 0xF39C12,
-        "info": 0x3498DB,
-        "moderation": 0x9B59B6,
-        "tasks": 0x1ABC9C,
-        "manga": 0xE91E63,
-        "gold": 0xF1C40F,
-        "server": 0x5865F2
-    }
-    
+
     @bot.command()
     @commands.has_permissions(manage_messages=True)
     @commands.cooldown(1, 5, commands.BucketType.user)
@@ -839,8 +807,8 @@ def setup(bot):
         """Supprime un nombre spécifié de messages"""
         if amount <= 0:
             embed = discord.Embed(
-                description="```ansi\n\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Nombre Invalide\u001b[0m           \u001b[1;31m║\u001b[0m\n\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n```\nLe nombre de messages doit être supérieur à **0**.",
-                color=THEME_COLORS["error"]
+                description=make_banner("❌ Nombre Invalide", "red") + "\nLe nombre de messages doit être supérieur à **0**.",
+                color=COLORS["error"]
             )
             await ctx.send(embed=embed, delete_after=5)
             return
@@ -849,15 +817,11 @@ def setup(bot):
         deleted_count = len(deleted) - 1
         
         embed = discord.Embed(
-            color=THEME_COLORS["moderation"],
+            color=COLORS["moderation"],
             timestamp=datetime.now()
         )
         embed.description = (
-            "```ansi\n"
-            "\u001b[1;35m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;35m║\u001b[0m       \u001b[1;37m🗑️ Messages Supprimés\u001b[0m        \u001b[1;35m║\u001b[0m\n"
-            "\u001b[1;35m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("🗑️ Messages Supprimés", "purple")
         )
         embed.add_field(name="📊 Quantité", value=f"**{deleted_count}** messages", inline=True)
         embed.add_field(name="📍 Salon", value=ctx.channel.mention, inline=True)
@@ -874,15 +838,11 @@ def setup(bot):
         await member.kick(reason=reason)
         
         embed = discord.Embed(
-            color=THEME_COLORS["warning"],
+            color=COLORS["warning"],
             timestamp=datetime.now()
         )
         embed.description = (
-            "```ansi\n"
-            "\u001b[1;33m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;33m║\u001b[0m       \u001b[1;37m👢 Membre Expulsé\u001b[0m            \u001b[1;33m║\u001b[0m\n"
-            "\u001b[1;33m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("👢 Membre Expulsé", "yellow")
         )
         embed.set_thumbnail(url=member.avatar.url if member.avatar else None)
         embed.add_field(name="👤 Membre", value=f"{member.mention}\n`{member.name}#{member.discriminator}`", inline=True)
@@ -902,15 +862,11 @@ def setup(bot):
         await member.ban(reason=reason)
         
         embed = discord.Embed(
-            color=THEME_COLORS["error"],
+            color=COLORS["error"],
             timestamp=datetime.now()
         )
         embed.description = (
-            "```ansi\n"
-            "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;31m║\u001b[0m       \u001b[1;37m🔨 Membre Banni\u001b[0m              \u001b[1;31m║\u001b[0m\n"
-            "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("🔨 Membre Banni", "red")
         )
         embed.set_thumbnail(url=member.avatar.url if member.avatar else None)
         embed.add_field(name="👤 Membre", value=f"{member.mention}\n`{member.name}#{member.discriminator}`", inline=True)
@@ -936,15 +892,11 @@ def setup(bot):
                 await ctx.guild.unban(user)
                 
                 embed = discord.Embed(
-                    color=THEME_COLORS["success"],
+                    color=COLORS["success"],
                     timestamp=datetime.now()
                 )
                 embed.description = (
-                    "```ansi\n"
-                    "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
-                    "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Membre Débanni\u001b[0m            \u001b[1;32m║\u001b[0m\n"
-                    "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
-                    "```"
+                    make_banner("✅ Membre Débanni", "green")
                 )
                 embed.add_field(name="👤 Membre", value=f"**{user.name}**#{user.discriminator}", inline=True)
                 embed.add_field(name="🆔 ID", value=f"`{user.id}`", inline=True)
@@ -957,13 +909,9 @@ def setup(bot):
         
         # Membre non trouvé
         embed = discord.Embed(
-            color=THEME_COLORS["error"],
+            color=COLORS["error"],
             description=(
-                "```ansi\n"
-                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Membre Non Trouvé\u001b[0m         \u001b[1;31m║\u001b[0m\n"
-                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```\n"
+                make_banner("❌ Membre Non Trouvé", "red") +
                 f"Aucun utilisateur banni avec le nom `{member}` n'a été trouvé."
             )
         )
@@ -975,15 +923,11 @@ def setup(bot):
     async def warn(ctx, member: discord.Member, *, reason=None):
         """Avertit un membre"""
         embed = discord.Embed(
-            color=THEME_COLORS["warning"],
+            color=COLORS["warning"],
             timestamp=datetime.now()
         )
         embed.description = (
-            "```ansi\n"
-            "\u001b[1;33m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;33m║\u001b[0m       \u001b[1;37m⚠️ Avertissement\u001b[0m             \u001b[1;33m║\u001b[0m\n"
-            "\u001b[1;33m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("⚠️ Avertissement", "yellow")
         )
         embed.set_thumbnail(url=member.avatar.url if member.avatar else None)
         embed.add_field(name="👤 Membre averti", value=f"{member.mention}\n`{member.name}`", inline=True)
@@ -999,7 +943,7 @@ def setup(bot):
             dm_embed = discord.Embed(
                 title="⚠️ Vous avez reçu un avertissement",
                 description=f"Vous avez reçu un avertissement sur **{ctx.guild.name}**.",
-                color=THEME_COLORS["warning"]
+                color=COLORS["warning"]
             )
             dm_embed.add_field(name="📝 Raison", value=reason or "*Non spécifiée*", inline=False)
             dm_embed.set_footer(text="Veuillez respecter les règles du serveur.")
@@ -1024,15 +968,11 @@ def setup(bot):
         categories = len(guild.categories)
         
         embed = discord.Embed(
-            color=THEME_COLORS["server"],
+            color=COLORS["server"],
             timestamp=datetime.now()
         )
         embed.description = (
-            "```ansi\n"
-            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;34m║\u001b[0m       \u001b[1;37m📊 Informations Serveur\u001b[0m       \u001b[1;34m║\u001b[0m\n"
-            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("📊 Informations Serveur", "blue")
         )
         
         if guild.icon:
@@ -1092,15 +1032,11 @@ def setup(bot):
         join_position = sorted(ctx.guild.members, key=lambda m: m.joined_at or datetime.min).index(member) + 1
         
         embed = discord.Embed(
-            color=member.color if member.color != discord.Color.default() else THEME_COLORS["info"],
+            color=member.color if member.color != discord.Color.default() else COLORS["info"],
             timestamp=datetime.now()
         )
         embed.description = (
-            "```ansi\n"
-            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;34m║\u001b[0m       \u001b[1;37m👤 Profil Utilisateur\u001b[0m         \u001b[1;34m║\u001b[0m\n"
-            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("👤 Profil Utilisateur", "blue")
         )
         
         if member.avatar:
@@ -1147,40 +1083,39 @@ def setup(bot):
     @bot.command()
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def ping(ctx):
-        """Vérifie la latence du bot"""
-        latency = round(bot.latency * 1000)
-        
-        # Déterminer la qualité de la connexion
-        if latency < 100:
+        """Vérifie la latence du bot (gateway + round-trip API)."""
+        ws_latency = round(bot.latency * 1000)
+
+        # Mesure du round-trip API : temps pour envoyer puis éditer un message
+        start = datetime.now()
+        msg = await ctx.send("🏓 Pong…")
+        api_latency = round((datetime.now() - start).total_seconds() * 1000)
+
+        worst = max(ws_latency, api_latency)
+        if worst < 150:
             quality = "🟢 Excellente"
-            color = THEME_COLORS["success"]
+            color = COLORS["success"]
             bar = "🟩🟩🟩🟩🟩"
-        elif latency < 200:
+        elif worst < 300:
             quality = "🟡 Bonne"
-            color = THEME_COLORS["warning"]
+            color = COLORS["warning"]
             bar = "🟩🟩🟩🟩⬜"
         else:
             quality = "🔴 Lente"
-            color = THEME_COLORS["error"]
+            color = COLORS["error"]
             bar = "🟩🟩⬜⬜⬜"
-        
-        embed = discord.Embed(
-            color=color,
-            timestamp=datetime.now()
-        )
-        embed.description = (
-            "```ansi\n"
-            "\u001b[1;36m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;36m║\u001b[0m          \u001b[1;37m🏓 Pong!\u001b[0m                 \u001b[1;36m║\u001b[0m\n"
-            "\u001b[1;36m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
-        )
-        embed.add_field(name="⏱️ Latence", value=f"**{latency}** ms", inline=True)
+
+        embed = discord.Embed(color=color, timestamp=datetime.now())
+        embed.description = make_banner("🏓 Pong!", "cyan")
+        embed.add_field(name="📡 Gateway", value=f"**{ws_latency}** ms", inline=True)
+        embed.add_field(name="🔄 API", value=f"**{api_latency}** ms", inline=True)
         embed.add_field(name="📊 Qualité", value=quality, inline=True)
-        embed.add_field(name="📶 Signal", value=bar, inline=True)
-        embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
-        
-        await ctx.send(embed=embed)
+        embed.add_field(name="📶 Signal", value=bar, inline=False)
+        embed.set_footer(
+            text=f"Demandé par {ctx.author.name}",
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None,
+        )
+        await msg.edit(content=None, embed=embed)
     
     @bot.command()
     @commands.has_any_role(*TASK_ROLES)
@@ -1192,13 +1127,9 @@ def setup(bot):
         
         if action.lower() not in actions_valides:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 description=(
-                    "```ansi\n"
-                    "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                    "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Action Invalide\u001b[0m            \u001b[1;31m║\u001b[0m\n"
-                    "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-                    "```\n"
+                    make_banner("❌ Action Invalide", "red") +
                     f"Actions disponibles : `{', '.join(actions_valides)}`"
                 )
             )
@@ -1241,15 +1172,11 @@ def setup(bot):
         
         # Créer l'embed de réponse
         embed = discord.Embed(
-            color=THEME_COLORS["tasks"],
+            color=COLORS["tasks"],
             timestamp=datetime.now()
         )
         embed.description = (
-            "```ansi\n"
-            "\u001b[1;36m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;36m║\u001b[0m       \u001b[1;37m📋 Mise à Jour Tâche\u001b[0m          \u001b[1;36m║\u001b[0m\n"
-            "\u001b[1;36m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("📋 Mise à Jour Tâche", "cyan")
         )
         
         embed.add_field(name=f"{action_emoji} Action", value=f"**{action.capitalize()}**", inline=True)
@@ -1292,15 +1219,11 @@ def setup(bot):
                     chapitres_mention = ", ".join(chapitres_complets)
                     
                     notif_embed = discord.Embed(
-                        color=THEME_COLORS["gold"],
+                        color=COLORS["gold"],
                         timestamp=datetime.now()
                     )
                     notif_embed.description = (
-                        "```ansi\n"
-                        "\u001b[1;33m╔═══════════════════════════════════════╗\u001b[0m\n"
-                        "\u001b[1;33m║\u001b[0m    \u001b[1;37m🎉 CHAPITRE(S) TERMINÉ(S) !\u001b[0m    \u001b[1;33m║\u001b[0m\n"
-                        "\u001b[1;33m╚═══════════════════════════════════════╝\u001b[0m\n"
-                        "```"
+                        make_banner("🎉 CHAPITRE(S) TERMINÉ(S) !", "yellow")
                     )
                     notif_embed.add_field(
                         name="📚 Manga",
@@ -1519,13 +1442,9 @@ def setup(bot):
         
         if chapitre_key is None:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 description=(
-                    "```ansi\n"
-                    "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                    "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Chapitre Non Trouvé\u001b[0m        \u001b[1;31m║\u001b[0m\n"
-                    "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-                    "```\n"
+                    make_banner("❌ Chapitre Non Trouvé", "red") +
                     f"Aucun état trouvé pour **{manga}** ch.**{chapitre}**."
                 )
             )
@@ -1540,15 +1459,11 @@ def setup(bot):
         progress_bar = generate_progress_bar(completed_tasks, 4)
         
         embed = discord.Embed(
-            color=THEME_COLORS["gold"] if is_complete else THEME_COLORS["tasks"],
+            color=COLORS["gold"] if is_complete else COLORS["tasks"],
             timestamp=datetime.now()
         )
         embed.description = (
-            "```ansi\n"
-            "\u001b[1;36m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;36m║\u001b[0m       \u001b[1;37m📊 État des Tâches\u001b[0m            \u001b[1;36m║\u001b[0m\n"
-            "\u001b[1;36m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("📊 État des Tâches", "cyan")
         )
         
         embed.add_field(name="📚 Manga", value=f"**{manga.title()}**", inline=True)
@@ -1590,15 +1505,11 @@ def setup(bot):
             sauvegarder_etat_taches()
             
             embed = discord.Embed(
-                color=THEME_COLORS["warning"],
+                color=COLORS["warning"],
                 timestamp=datetime.now()
             )
             embed.description = (
-                "```ansi\n"
-                "\u001b[1;33m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;33m║\u001b[0m       \u001b[1;37m🗑️ Tâches Supprimées\u001b[0m          \u001b[1;33m║\u001b[0m\n"
-                "\u001b[1;33m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```"
+                make_banner("🗑️ Tâches Supprimées", "yellow")
             )
             embed.add_field(name="📚 Manga", value=f"**{manga}**", inline=True)
             embed.add_field(name="📖 Chapitre", value=f"**{chapitre}**", inline=True)
@@ -1608,13 +1519,9 @@ def setup(bot):
             await ctx.send(embed=embed)
         else:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 description=(
-                    "```ansi\n"
-                    "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                    "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Tâche Non Trouvée\u001b[0m          \u001b[1;31m║\u001b[0m\n"
-                    "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-                    "```\n"
+                    make_banner("❌ Tâche Non Trouvée", "red") +
                     f"Aucune tâche trouvée pour **{manga}** ch.**{chapitre}**."
                 )
             )
@@ -1651,15 +1558,11 @@ def setup(bot):
         sauvegarder_etat_taches()
         
         embed = discord.Embed(
-            color=THEME_COLORS["success"],
+            color=COLORS["success"],
             timestamp=datetime.now()
         )
         embed.description = (
-            "```ansi\n"
-            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;32m║\u001b[0m    \u001b[1;37m🔧 Normalisation Terminée\u001b[0m        \u001b[1;32m║\u001b[0m\n"
-            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("🔧 Normalisation Terminée", "green")
         )
         embed.add_field(name="📊 Avant", value=f"`{old_count}` tâches", inline=True)
         embed.add_field(name="📊 Après", value=f"`{len(etat_taches_global)}` tâches", inline=True)
@@ -1668,178 +1571,198 @@ def setup(bot):
         
         await ctx.send(embed=embed)
     
+    AVANCEE_MANGAS = [
+        ("Ao No Exorcist", "👹"),
+        ("Satsudou", "🩸"),
+        ("Tokyo Underworld", "🗼"),
+        ("Tougen Anki", "😈"),
+        ("Catenaccio", "⚽"),
+    ]
+    CHAPTERS_PER_PAGE = 5
+
+    def _build_home_embed(author):
+        embed = discord.Embed(color=COLORS["manga"], timestamp=datetime.now())
+        liste = "\n".join(f"{e} {n}" for n, e in AVANCEE_MANGAS)
+        embed.description = (
+            make_banner("📊 Avancée des Projets", "purple")
+            + "**Choisis un manga ci-dessous !**\n\n"
+            + liste
+        )
+        embed.set_footer(
+            text="Sélection via le menu déroulant",
+            icon_url=author.avatar.url if author.avatar else None,
+        )
+        return embed
+
+    def _build_manga_pages(manga_name, manga_emoji, author):
+        manga_chapters = {}
+        target = normaliser_manga_name(manga_name)
+        for key in etat_taches_global:
+            km, kc = extraire_manga_chapitre(key)
+            if km and kc and normaliser_manga_name(km) == target:
+                manga_chapters[kc] = etat_taches_global[key]
+
+        if not manga_chapters:
+            embed = discord.Embed(
+                color=COLORS["error"],
+                description=(
+                    make_banner("❌ Aucune Tâche", "red")
+                    + f"Aucune tâche trouvée pour **{manga_name}**."
+                ),
+            )
+            return [embed]
+
+        sorted_chapters = sorted(manga_chapters.keys())
+        total_pages = (len(sorted_chapters) + CHAPTERS_PER_PAGE - 1) // CHAPTERS_PER_PAGE
+        total_tasks = len(sorted_chapters) * 4
+        completed = sum(
+            1 for ch in sorted_chapters
+            for t in manga_chapters[ch].values() if t == "✅ Terminé"
+        )
+        progress = (completed / total_tasks * 100) if total_tasks > 0 else 0
+        progress_bar = generate_progress_bar(int(progress / 10), 10)
+
+        pages = []
+        for page_num in range(total_pages):
+            start = page_num * CHAPTERS_PER_PAGE
+            end = min(start + CHAPTERS_PER_PAGE, len(sorted_chapters))
+            page_chapters = sorted_chapters[start:end]
+
+            page_embed = discord.Embed(color=COLORS["manga"], timestamp=datetime.now())
+            page_embed.description = (
+                make_banner(f"{manga_emoji} {manga_name}", "purple")
+                + f"📊 **Progression globale:** `{progress:.1f}%`\n"
+                f"{progress_bar} ({completed}/{total_tasks})\n"
+                f"📚 Chapitres: `{sorted_chapters[0]}` → `{sorted_chapters[-1]}`"
+            )
+            page_embed.add_field(name="━━━━━━━━━━━━━━━━━━━━", value="** **", inline=False)
+
+            for chapter in page_chapters:
+                tasks = manga_chapters[chapter]
+                prog = sum(1 for t in tasks.values() if t == "✅ Terminé")
+                bar = generate_progress_bar(prog, 4)
+                title = f"📑 Ch.{chapter}"
+                if est_chapitre_complet(tasks):
+                    title += " ✅"
+                clean_s = "✅" if tasks.get('clean') == "✅ Terminé" else "⏳"
+                trad_s = "✅" if tasks.get('trad') == "✅ Terminé" else "⏳"
+                check_s = "✅" if tasks.get('check') == "✅ Terminé" else "⏳"
+                edit_s = "✅" if tasks.get('edit') == "✅ Terminé" else "⏳"
+                value = (
+                    f"{bar} `{prog}/4`\n"
+                    f"🧹{clean_s} 🌍{trad_s} ✅{check_s} ✏️{edit_s}"
+                )
+                page_embed.add_field(name=title, value=value, inline=True)
+
+            page_embed.set_footer(
+                text=f"Page {page_num + 1}/{total_pages} │ {author.name}",
+                icon_url=author.avatar.url if author.avatar else None,
+            )
+            pages.append(page_embed)
+        return pages
+
+    class AvanceeMangaSelect(discord.ui.Select):
+        def __init__(self):
+            options = [
+                discord.SelectOption(label=name, emoji=emoji, value=name)
+                for name, emoji in AVANCEE_MANGAS
+            ]
+            super().__init__(
+                placeholder="📚 Choisir un manga…",
+                options=options,
+                row=0,
+            )
+
+        async def callback(self, interaction: discord.Interaction):
+            view: "AvanceeView" = self.view
+            choice = self.values[0]
+            emoji = next((e for n, e in AVANCEE_MANGAS if n == choice), "📚")
+            view.pages = _build_manga_pages(choice, emoji, view.author)
+            view.current = 0
+            view._sync_buttons()
+            await interaction.response.edit_message(embed=view.pages[0], view=view)
+
+    class AvanceeView(discord.ui.View):
+        def __init__(self, author):
+            super().__init__(timeout=180)
+            self.author = author
+            self.pages = []
+            self.current = 0
+            self.message = None
+            self.select = AvanceeMangaSelect()
+            self.add_item(self.select)
+            self._sync_buttons()
+
+        def _sync_buttons(self):
+            has_pages = len(self.pages) > 1
+            self.first_btn.disabled = not has_pages or self.current == 0
+            self.prev_btn.disabled = not has_pages or self.current == 0
+            self.next_btn.disabled = not has_pages or self.current >= len(self.pages) - 1
+            self.last_btn.disabled = not has_pages or self.current >= len(self.pages) - 1
+            self.counter_btn.label = (
+                f"{self.current + 1}/{len(self.pages)}" if self.pages else "—"
+            )
+
+        async def interaction_check(self, interaction: discord.Interaction) -> bool:
+            if interaction.user.id != self.author.id:
+                await interaction.response.send_message(
+                    "Ce menu ne t'appartient pas.", ephemeral=True
+                )
+                return False
+            return True
+
+        async def on_timeout(self):
+            for child in self.children:
+                child.disabled = True
+            try:
+                if self.message:
+                    await self.message.edit(view=self)
+            except Exception:
+                pass
+
+        @discord.ui.button(emoji="⏮️", style=discord.ButtonStyle.secondary, row=1)
+        async def first_btn(self, interaction, button):
+            self.current = 0
+            self._sync_buttons()
+            await interaction.response.edit_message(embed=self.pages[0], view=self)
+
+        @discord.ui.button(emoji="⬅️", style=discord.ButtonStyle.primary, row=1)
+        async def prev_btn(self, interaction, button):
+            self.current = max(0, self.current - 1)
+            self._sync_buttons()
+            await interaction.response.edit_message(embed=self.pages[self.current], view=self)
+
+        @discord.ui.button(label="—", style=discord.ButtonStyle.secondary, disabled=True, row=1)
+        async def counter_btn(self, interaction, button):
+            pass
+
+        @discord.ui.button(emoji="➡️", style=discord.ButtonStyle.primary, row=1)
+        async def next_btn(self, interaction, button):
+            self.current = min(len(self.pages) - 1, self.current + 1)
+            self._sync_buttons()
+            await interaction.response.edit_message(embed=self.pages[self.current], view=self)
+
+        @discord.ui.button(emoji="⏭️", style=discord.ButtonStyle.secondary, row=1)
+        async def last_btn(self, interaction, button):
+            self.current = len(self.pages) - 1
+            self._sync_buttons()
+            await interaction.response.edit_message(embed=self.pages[self.current], view=self)
+
+        @discord.ui.button(emoji="🏠", label="Accueil", style=discord.ButtonStyle.success, row=2)
+        async def home_btn(self, interaction, button):
+            self.pages = []
+            self.current = 0
+            self._sync_buttons()
+            await interaction.response.edit_message(
+                embed=_build_home_embed(self.author), view=self
+            )
+
     @bot.command(name="avancee")
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def avancee(ctx):
-        """Affiche l'avancée des mangas avec pagination"""
-        embed = discord.Embed(
-            color=THEME_COLORS["manga"],
-            timestamp=datetime.now()
-        )
-        embed.description = (
-            "```ansi\n"
-            "\u001b[1;35m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;35m║\u001b[0m    \u001b[1;37m📊 Avancée des Projets\u001b[0m          \u001b[1;35m║\u001b[0m\n"
-            "\u001b[1;35m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```\n"
-            "**Choisissez un manga !**\n\n"
-            "👹 Ao No Exorcist\n"
-            "🩸 Satsudou\n"
-            "🗼 Tokyo Underworld\n"
-            "😈 Tougen Anki\n"
-            "⚽ Catenaccio"
-        )
-        embed.set_footer(text="Cliquez sur une réaction pour voir l'avancée", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
-        
-        message = await ctx.send(embed=embed)
-        
-        reactions = ['👹', '🩸', '🗼', '😈', '⚽']
-        for r in reactions:
-            await message.add_reaction(r)
-
-        manga_map = {
-            '👹': 'Ao No Exorcist',
-            '🩸': 'Satsudou',
-            '🗼': 'Tokyo Underworld',
-            '😈': 'Tougen Anki',
-            '⚽': 'Catenaccio',
-        }
-        
-        def check(reaction, user):
-            return user == ctx.author and str(reaction.emoji) in reactions
-        
-        try:
-            reaction, user = await bot.wait_for('reaction_add', timeout=30.0, check=check)
-            manga_name = manga_map[str(reaction.emoji)]
-            manga_emoji = str(reaction.emoji)
-            
-            manga_chapters = {}
-            manga_name_normalized = normaliser_manga_name(manga_name)
-            
-            for key in etat_taches_global:
-                key_manga, key_chapter = extraire_manga_chapitre(key)
-                if key_manga and key_chapter:
-                    if normaliser_manga_name(key_manga) == manga_name_normalized:
-                        manga_chapters[key_chapter] = etat_taches_global[key]
-            
-            if not manga_chapters:
-                error_embed = discord.Embed(
-                    color=THEME_COLORS["error"],
-                    description=(
-                        "```ansi\n"
-                        "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                        "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Aucune Tâche\u001b[0m               \u001b[1;31m║\u001b[0m\n"
-                        "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-                        "```\n"
-                        f"Aucune tâche trouvée pour **{manga_name}**."
-                    )
-                )
-                await ctx.send(embed=error_embed)
-                return
-            
-            sorted_chapters = sorted(manga_chapters.keys())
-            CHAPTERS_PER_PAGE = 5
-            total_pages = (len(sorted_chapters) + CHAPTERS_PER_PAGE - 1) // CHAPTERS_PER_PAGE
-            
-            def create_page_embed(page_num):
-                start_idx = page_num * CHAPTERS_PER_PAGE
-                end_idx = min(start_idx + CHAPTERS_PER_PAGE, len(sorted_chapters))
-                page_chapters = sorted_chapters[start_idx:end_idx]
-                
-                total_tasks = len(sorted_chapters) * 4
-                completed = sum(1 for ch in sorted_chapters for t in manga_chapters[ch].values() if t == "✅ Terminé")
-                progress = (completed / total_tasks * 100) if total_tasks > 0 else 0
-                progress_bar = generate_progress_bar(int(progress / 10), 10)
-                
-                page_embed = discord.Embed(
-                    color=THEME_COLORS["manga"],
-                    timestamp=datetime.now()
-                )
-                page_embed.description = (
-                    "```ansi\n"
-                    "\u001b[1;35m╔═══════════════════════════════════════╗\u001b[0m\n"
-                    f"\u001b[1;35m║\u001b[0m      \u001b[1;37m{manga_emoji} {manga_name}\u001b[0m\n"
-                    "\u001b[1;35m╚═══════════════════════════════════════╝\u001b[0m\n"
-                    "```\n"
-                    f"📊 **Progression globale:** `{progress:.1f}%`\n"
-                    f"{progress_bar} ({completed}/{total_tasks})\n"
-                    f"📚 Chapitres: `{sorted_chapters[0]}` → `{sorted_chapters[-1]}`"
-                )
-                
-                page_embed.add_field(name="━━━━━━━━━━━━━━━━━━━━", value="** **", inline=False)
-                
-                for chapter in page_chapters:
-                    tasks = manga_chapters[chapter]
-                    prog = sum(1 for t in tasks.values() if t == "✅ Terminé")
-                    bar = generate_progress_bar(prog, 4)
-                    
-                    title = f"📑 Ch.{chapter}"
-                    if est_chapitre_complet(tasks):
-                        title += " ✅"
-                    
-                    # Format compact
-                    clean_status = "✅" if tasks.get('clean') == "✅ Terminé" else "⏳"
-                    trad_status = "✅" if tasks.get('trad') == "✅ Terminé" else "⏳"
-                    check_status = "✅" if tasks.get('check') == "✅ Terminé" else "⏳"
-                    edit_status = "✅" if tasks.get('edit') == "✅ Terminé" else "⏳"
-                    
-                    value = (
-                        f"{bar} `{prog}/4`\n"
-                        f"🧹{clean_status} 🌍{trad_status} ✅{check_status} ✏️{edit_status}"
-                    )
-                    
-                    page_embed.add_field(name=title, value=value, inline=True)
-                
-                page_embed.set_footer(
-                    text=f"Page {page_num + 1}/{total_pages} │ {ctx.author.name}",
-                    icon_url=ctx.author.avatar.url if ctx.author.avatar else None
-                )
-                
-                return page_embed
-            
-            current_page = 0
-            await message.clear_reactions()
-            await message.edit(embed=create_page_embed(current_page))
-            
-            if total_pages > 1:
-                nav = ['⏮️', '⬅️', '➡️', '⏭️', '🏠']
-                for n in nav:
-                    await message.add_reaction(n)
-                
-                def nav_check(reaction, user):
-                    return user == ctx.author and str(reaction.emoji) in nav and reaction.message.id == message.id
-                
-                while True:
-                    try:
-                        reaction, user = await bot.wait_for('reaction_add', timeout=120.0, check=nav_check)
-                        emoji = str(reaction.emoji)
-                        
-                        if emoji == '⏮️':
-                            current_page = 0
-                        elif emoji == '⬅️':
-                            current_page = max(0, current_page - 1)
-                        elif emoji == '➡️':
-                            current_page = min(total_pages - 1, current_page + 1)
-                        elif emoji == '⏭️':
-                            current_page = total_pages - 1
-                        elif emoji == '🏠':
-                            await message.clear_reactions()
-                            await message.edit(embed=embed)
-                            for r in reactions:
-                                await message.add_reaction(r)
-                            break
-                        
-                        await message.edit(embed=create_page_embed(current_page))
-                        await message.remove_reaction(reaction, user)
-                    
-                    except asyncio.TimeoutError:
-                        await message.clear_reactions()
-                        break
-        
-        except asyncio.TimeoutError:
-            await message.clear_reactions()
-            embed.description += "\n\n⏰ Temps écoulé."
-            await message.edit(embed=embed)
+        """Affiche l'avancée des mangas (menu interactif)."""
+        view = AvanceeView(ctx.author)
+        view.message = await ctx.send(embed=_build_home_embed(ctx.author), view=view)
     
     @bot.command(name="task_all")
     @commands.has_any_role(*TASK_ROLES)
@@ -1848,13 +1771,9 @@ def setup(bot):
         """Affiche toutes les tâches en cours (optionnel: spécifier un manga)"""
         if not etat_taches_global:
             embed = discord.Embed(
-                color=THEME_COLORS["info"],
+                color=COLORS["info"],
                 description=(
-                    "```ansi\n"
-                    "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
-                    "\u001b[1;34m║\u001b[0m       \u001b[1;37m📋 Aucune Tâche\u001b[0m              \u001b[1;34m║\u001b[0m\n"
-                    "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
-                    "```\n"
+                    make_banner("📋 Aucune Tâche", "blue") +
                     "Il n'y a actuellement aucune tâche en cours."
                 )
             )
@@ -1895,13 +1814,9 @@ def setup(bot):
                 # Afficher le menu de sélection si le manga n'est pas trouvé
                 available_mangas = "\n".join([f"{manga_emojis.get(m, '📚')} {m}" for m in tasks_by_manga.keys()])
                 embed = discord.Embed(
-                    color=THEME_COLORS["error"],
+                    color=COLORS["error"],
                     description=(
-                        "```ansi\n"
-                        "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                        "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Manga Non Trouvé\u001b[0m           \u001b[1;31m║\u001b[0m\n"
-                        "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-                        "```\n"
+                        make_banner("❌ Manga Non Trouvé", "red") +
                         f"Aucun manga trouvé pour **{manga_filter}**.\n\n"
                         f"**Mangas disponibles :**\n{available_mangas}\n\n"
                         f"💡 Utilisez `!task_all` sans argument pour tout voir."
@@ -1930,17 +1845,13 @@ def setup(bot):
                 total_manga_pages = (len(sorted_chapters) + CHAPTERS_PER_PAGE - 1) // CHAPTERS_PER_PAGE
                 
                 embed = discord.Embed(
-                    color=THEME_COLORS["tasks"],
+                    color=COLORS["tasks"],
                     timestamp=datetime.now()
                 )
                 
                 page_info = f" ({page_num}/{total_manga_pages})" if total_manga_pages > 1 else ""
                 embed.description = (
-                    "```ansi\n"
-                    "\u001b[1;36m╔═══════════════════════════════════════╗\u001b[0m\n"
-                    f"\u001b[1;36m║\u001b[0m      \u001b[1;37m{manga_emoji} {manga}\u001b[0m{page_info}\n"
-                    "\u001b[1;36m╚═══════════════════════════════════════╝\u001b[0m\n"
-                    "```\n"
+                    make_banner(f"{manga_emoji} {manga}{page_info}", "cyan") +
                     f"📊 **Progression:** `{progress:.1f}%` ({completed_tasks}/{total_tasks})\n"
                     f"📚 **Chapitres:** `{len(chapitres)}`"
                 )
@@ -1970,7 +1881,7 @@ def setup(bot):
         
         if not embeds:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 description="❌ Aucune tâche trouvée."
             )
             await ctx.send(embed=embed)
@@ -2018,15 +1929,11 @@ def setup(bot):
         TARGET_USER_ID = 608234789564186644
         
         embed_select = discord.Embed(
-            color=THEME_COLORS["info"],
+            color=COLORS["info"],
             timestamp=datetime.now()
         )
         embed_select.description = (
-            "```ansi\n"
-            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;34m║\u001b[0m       \u001b[1;37m🔄 Actualisation\u001b[0m             \u001b[1;34m║\u001b[0m\n"
-            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```\n"
+            make_banner("🔄 Actualisation", "blue") +
             "**Choisissez le type de données à exporter :**\n\n"
             "📝 **Tasks** - Tâches des chapitres\n"
             "⏰ **Rappels** - Rappels planifiés\n"
@@ -2049,7 +1956,7 @@ def setup(bot):
             
             if str(reaction.emoji) == "❌":
                 cancel_embed = discord.Embed(
-                    color=THEME_COLORS["error"],
+                    color=COLORS["error"],
                     description="❌ **Opération annulée.**"
                 )
                 await message.edit(embed=cancel_embed)
@@ -2076,7 +1983,7 @@ def setup(bot):
             target_user = await bot.fetch_user(TARGET_USER_ID)
             if not target_user:
                 error_embed = discord.Embed(
-                    color=THEME_COLORS["error"],
+                    color=COLORS["error"],
                     description="❌ **Utilisateur cible introuvable.**"
                 )
                 await message.edit(embed=error_embed)
@@ -2089,15 +1996,11 @@ def setup(bot):
                 files.append(discord.File(meta_file))
             
             embed_dm = discord.Embed(
-                color=THEME_COLORS["success"],
+                color=COLORS["success"],
                 timestamp=datetime.now()
             )
             embed_dm.description = (
-                "```ansi\n"
-                "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;32m║\u001b[0m       \u001b[1;37m📁 Export de Données\u001b[0m          \u001b[1;32m║\u001b[0m\n"
-                "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```"
+                make_banner("📁 Export de Données", "green")
             )
             embed_dm.add_field(name="📊 Type", value=f"**{file_type.capitalize()}**", inline=True)
             embed_dm.add_field(name="📈 Éléments", value=f"`{len(data)}`", inline=True)
@@ -2108,15 +2011,11 @@ def setup(bot):
             
             # Message de confirmation
             success_embed = discord.Embed(
-                color=THEME_COLORS["success"],
+                color=COLORS["success"],
                 timestamp=datetime.now()
             )
             success_embed.description = (
-                "```ansi\n"
-                "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Export Réussi\u001b[0m              \u001b[1;32m║\u001b[0m\n"
-                "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```"
+                make_banner("✅ Export Réussi", "green")
             )
             success_embed.add_field(name="📊 Type", value=f"**{file_type.capitalize()}**", inline=True)
             success_embed.add_field(name="📈 Éléments", value=f"`{len(data)}`", inline=True)
@@ -2128,7 +2027,7 @@ def setup(bot):
         except asyncio.TimeoutError:
             await message.clear_reactions()
             timeout_embed = discord.Embed(
-                color=THEME_COLORS["warning"],
+                color=COLORS["warning"],
                 description="⏰ **Temps écoulé.** L'opération a été annulée."
             )
             await message.edit(embed=timeout_embed)
@@ -2149,15 +2048,11 @@ def setup(bot):
         """
         if not users:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = (
-                "```ansi\n"
-                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Erreur de Syntaxe\u001b[0m          \u001b[1;31m║\u001b[0m\n"
-                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```\n"
+                make_banner("❌ Erreur de Syntaxe", "red") +
                 "**Vous devez spécifier au moins un utilisateur !**\n\n"
                 "**Usage:** `!bulk_role @Rôle @user1 @user2 ID3`\n"
                 "**Exemples:**\n"
@@ -2170,15 +2065,11 @@ def setup(bot):
         
         # Message de traitement
         processing_embed = discord.Embed(
-            color=THEME_COLORS["info"],
+            color=COLORS["info"],
             timestamp=datetime.now()
         )
         processing_embed.description = (
-            "```ansi\n"
-            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;34m║\u001b[0m       \u001b[1;37m⏳ Traitement en cours\u001b[0m         \u001b[1;34m║\u001b[0m\n"
-            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```\n"
+            make_banner("⏳ Traitement en cours", "blue") +
             f"Attribution du rôle {role.mention} en cours..."
         )
         processing_msg = await ctx.send(embed=processing_embed)
@@ -2230,16 +2121,12 @@ def setup(bot):
 
         # Créer l'embed de résultat
         result_embed = discord.Embed(
-            color=THEME_COLORS["success"] if success_list else THEME_COLORS["warning"],
+            color=COLORS["success"] if success_list else COLORS["warning"],
             timestamp=datetime.now()
         )
         
         result_embed.description = (
-            "```ansi\n"
-            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Attribution Terminée\u001b[0m        \u001b[1;32m║\u001b[0m\n"
-            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("✅ Attribution Terminée", "green")
         )
         
         result_embed.add_field(
@@ -2312,15 +2199,11 @@ def setup(bot):
         """
         if not args or '-' not in args:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = (
-                "```ansi\n"
-                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Erreur de Syntaxe\u001b[0m          \u001b[1;31m║\u001b[0m\n"
-                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```\n"
+                make_banner("❌ Erreur de Syntaxe", "red") +
                 "**Vous devez utiliser le séparateur `-` (tiret) !**\n\n"
                 "**Usage:** `!multi_bulk_role @Role1 @Role2 - @user1 @user2`\n"
                 "**Exemples:**\n"
@@ -2338,7 +2221,7 @@ def setup(bot):
         
         if not role_args:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = "❌ **Aucun rôle spécifié avant le séparateur `-` !**"
@@ -2347,7 +2230,7 @@ def setup(bot):
         
         if not user_args:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = "❌ **Aucun utilisateur spécifié après le séparateur `-` !**"
@@ -2375,7 +2258,7 @@ def setup(bot):
         
         if invalid_roles:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = f"❌ **Rôle(s) invalide(s) :** {', '.join(f'`{r}`' for r in invalid_roles)}"
@@ -2384,7 +2267,7 @@ def setup(bot):
         
         if not roles:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = "❌ **Aucun rôle valide trouvé !**"
@@ -2393,16 +2276,12 @@ def setup(bot):
         
         # Message de traitement
         processing_embed = discord.Embed(
-            color=THEME_COLORS["info"],
+            color=COLORS["info"],
             timestamp=datetime.now()
         )
         role_mentions = ", ".join([r.mention for r in roles])
         processing_embed.description = (
-            "```ansi\n"
-            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;34m║\u001b[0m       \u001b[1;37m⏳ Traitement en cours\u001b[0m         \u001b[1;34m║\u001b[0m\n"
-            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```\n"
+            make_banner("⏳ Traitement en cours", "blue") +
             f"Attribution des rôles {role_mentions} en cours..."
         )
         processing_msg = await ctx.send(embed=processing_embed)
@@ -2460,16 +2339,12 @@ def setup(bot):
         
         # Créer l'embed de résultat
         result_embed = discord.Embed(
-            color=THEME_COLORS["success"] if (success_list or partial_success) else THEME_COLORS["warning"],
+            color=COLORS["success"] if (success_list or partial_success) else COLORS["warning"],
             timestamp=datetime.now()
         )
         
         result_embed.description = (
-            "```ansi\n"
-            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Attribution Terminée\u001b[0m        \u001b[1;32m║\u001b[0m\n"
-            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("✅ Attribution Terminée", "green")
         )
         
         result_embed.add_field(
@@ -2550,15 +2425,11 @@ def setup(bot):
         """
         if not users:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = (
-                "```ansi\n"
-                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Erreur de Syntaxe\u001b[0m          \u001b[1;31m║\u001b[0m\n"
-                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```\n"
+                make_banner("❌ Erreur de Syntaxe", "red") +
                 "**Vous devez spécifier au moins un utilisateur !**\n\n"
                 "**Usage:** `!bulk_remove_role @Rôle @user1 @user2 ID3`\n"
                 "**Exemples:**\n"
@@ -2571,15 +2442,11 @@ def setup(bot):
         
         # Message de traitement
         processing_embed = discord.Embed(
-            color=THEME_COLORS["info"],
+            color=COLORS["info"],
             timestamp=datetime.now()
         )
         processing_embed.description = (
-            "```ansi\n"
-            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;34m║\u001b[0m       \u001b[1;37m⏳ Traitement en cours\u001b[0m         \u001b[1;34m║\u001b[0m\n"
-            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```\n"
+            make_banner("⏳ Traitement en cours", "blue") +
             f"Retrait du rôle {role.mention} en cours..."
         )
         processing_msg = await ctx.send(embed=processing_embed)
@@ -2631,16 +2498,12 @@ def setup(bot):
         
         # Créer l'embed de résultat
         result_embed = discord.Embed(
-            color=THEME_COLORS["success"] if success_list else THEME_COLORS["warning"],
+            color=COLORS["success"] if success_list else COLORS["warning"],
             timestamp=datetime.now()
         )
         
         result_embed.description = (
-            "```ansi\n"
-            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Retrait Terminé\u001b[0m             \u001b[1;32m║\u001b[0m\n"
-            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("✅ Retrait Terminé", "green")
         )
         
         result_embed.add_field(
@@ -2714,15 +2577,11 @@ def setup(bot):
             channel_id_int = int(channel_id)
         except ValueError:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = (
-                "```ansi\n"
-                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ ID de canal invalide\u001b[0m        \u001b[1;31m║\u001b[0m\n"
-                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```\n"
+                make_banner("❌ ID de canal invalide", "red") +
                 f"**L'ID `{channel_id}` n'est pas valide !**\n\n"
                 "L'ID d'un canal doit être une série de chiffres.\n"
                 "**Exemple:** `!bulk_role_channel @Role 1234567890123456789`"
@@ -2739,15 +2598,11 @@ def setup(bot):
         
         if not channel:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = (
-                "```ansi\n"
-                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Canal/Fil introuvable\u001b[0m       \u001b[1;31m║\u001b[0m\n"
-                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```\n"
+                make_banner("❌ Canal/Fil introuvable", "red") +
                 f"**Le canal ou fil avec l'ID `{channel_id}` est introuvable !**\n\n"
                 "Vérifiez que :\n"
                 "• L'ID est correct\n"
@@ -2759,15 +2614,11 @@ def setup(bot):
         
         # Message de traitement
         processing_embed = discord.Embed(
-            color=THEME_COLORS["info"],
+            color=COLORS["info"],
             timestamp=datetime.now()
         )
         processing_embed.description = (
-            "```ansi\n"
-            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;34m║\u001b[0m       \u001b[1;37m⏳ Analyse en cours\u001b[0m            \u001b[1;34m║\u001b[0m\n"
-            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```\n"
+            make_banner("⏳ Analyse en cours", "blue") +
             f"Analyse des membres du canal **#{channel.name}**...\n"
             f"Attribution du rôle {role.mention} en cours..."
         )
@@ -2798,15 +2649,11 @@ def setup(bot):
         
         if not members_without_role:
             embed = discord.Embed(
-                color=THEME_COLORS["warning"],
+                color=COLORS["warning"],
                 timestamp=datetime.now()
             )
             embed.description = (
-                "```ansi\n"
-                "\u001b[1;33m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;33m║\u001b[0m       \u001b[1;37m⚠️ Aucun membre à traiter\u001b[0m      \u001b[1;33m║\u001b[0m\n"
-                "\u001b[1;33m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```\n"
+                make_banner("⚠️ Aucun membre à traiter", "yellow") +
                 f"**Tous les membres de #{channel.name} ont déjà le rôle {role.mention} !**\n\n"
                 f"📊 **Membres du canal:** {len(members_in_channel)}\n"
                 f"✅ **Ont déjà le rôle:** {len(members_in_channel)}\n"
@@ -2836,16 +2683,12 @@ def setup(bot):
         
         # Créer l'embed de résultat
         result_embed = discord.Embed(
-            color=THEME_COLORS["success"] if success_list else THEME_COLORS["warning"],
+            color=COLORS["success"] if success_list else COLORS["warning"],
             timestamp=datetime.now()
         )
         
         result_embed.description = (
-            "```ansi\n"
-            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Attribution Terminée\u001b[0m        \u001b[1;32m║\u001b[0m\n"
-            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("✅ Attribution Terminée", "green")
         )
         
         result_embed.add_field(
@@ -2912,15 +2755,11 @@ def setup(bot):
             target_id_int = int(target_id)
         except ValueError:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = (
-                "```ansi\n"
-                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ ID invalide\u001b[0m                 \u001b[1;31m║\u001b[0m\n"
-                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```\n"
+                make_banner("❌ ID invalide", "red") +
                 f"**L'ID `{target_id}` n'est pas valide !**\n\n"
                 "L'ID doit être une série de chiffres.\n"
                 "**Exemple:** `!list_member_ids 1234567890123456789`"
@@ -2931,15 +2770,11 @@ def setup(bot):
         
         # Message de traitement
         processing_embed = discord.Embed(
-            color=THEME_COLORS["info"],
+            color=COLORS["info"],
             timestamp=datetime.now()
         )
         processing_embed.description = (
-            "```ansi\n"
-            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;34m║\u001b[0m       \u001b[1;37m⏳ Analyse en cours\u001b[0m            \u001b[1;34m║\u001b[0m\n"
-            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```\n"
+            make_banner("⏳ Analyse en cours", "blue") +
             f"Recherche des membres pour l'ID `{target_id}`..."
         )
         processing_msg = await ctx.send(embed=processing_embed)
@@ -2967,15 +2802,11 @@ def setup(bot):
         
         if not target:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = (
-                "```ansi\n"
-                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Cible introuvable\u001b[0m           \u001b[1;31m║\u001b[0m\n"
-                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```\n"
+                make_banner("❌ Cible introuvable", "red") +
                 f"**Le canal, fil ou catégorie avec l'ID `{target_id}` est introuvable !**\n\n"
                 "Vérifiez que :\n"
                 "• L'ID est correct\n"
@@ -3015,15 +2846,11 @@ def setup(bot):
         
         if not members_list:
             embed = discord.Embed(
-                color=THEME_COLORS["warning"],
+                color=COLORS["warning"],
                 timestamp=datetime.now()
             )
             embed.description = (
-                "```ansi\n"
-                "\u001b[1;33m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;33m║\u001b[0m       \u001b[1;37m⚠️ Aucun membre trouvé\u001b[0m         \u001b[1;33m║\u001b[0m\n"
-                "\u001b[1;33m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```\n"
+                make_banner("⚠️ Aucun membre trouvé", "yellow") +
                 f"**Aucun membre (hors bots) trouvé pour {target_type.lower()} `{target_name}` !**"
             )
             await processing_msg.edit(embed=embed)
@@ -3037,16 +2864,12 @@ def setup(bot):
         
         # Créer l'embed de résultat avec un style amélioré
         result_embed = discord.Embed(
-            color=THEME_COLORS["success"],
+            color=COLORS["success"],
             timestamp=datetime.now()
         )
         
         result_embed.description = (
-            "```ansi\n"
-            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Liste des membres\u001b[0m           \u001b[1;32m║\u001b[0m\n"
-            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("✅ Liste des membres", "green")
         )
         
         # Ajouter la photo de profil du premier membre comme thumbnail
@@ -3207,7 +3030,7 @@ def setup(bot):
         members_list = [m for m in guild.members if not m.bot]
         if not members_list:
             embed = discord.Embed(
-                color=THEME_COLORS["warning"],
+                color=COLORS["warning"],
                 description="⚠️ Aucun membre humain trouvé sur ce serveur.",
                 timestamp=datetime.now(),
             )
@@ -3218,15 +3041,11 @@ def setup(bot):
         ids_formatted = " ".join(ids_list)
 
         result_embed = discord.Embed(
-            color=THEME_COLORS["success"],
+            color=COLORS["success"],
             timestamp=datetime.now(),
         )
         result_embed.description = (
-            "```ansi\n"
-            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Membres du serveur\u001b[0m         \u001b[1;32m║\u001b[0m\n"
-            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("✅ Membres du serveur", "green")
         )
         result_embed.add_field(
             name="🏷️ Serveur",
@@ -3317,15 +3136,11 @@ def setup(bot):
         """
         if not args or '-' not in args:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = (
-                "```ansi\n"
-                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Erreur de Syntaxe\u001b[0m          \u001b[1;31m║\u001b[0m\n"
-                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```\n"
+                make_banner("❌ Erreur de Syntaxe", "red") +
                 "**Vous devez utiliser le séparateur `-` (tiret) !**\n\n"
                 "**Usage:** `!multi_bulk_remove_role @Role1 @Role2 - @user1 @user2`\n"
                 "**Exemples:**\n"
@@ -3343,7 +3158,7 @@ def setup(bot):
         
         if not role_args:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = "❌ **Aucun rôle spécifié avant le séparateur `-` !**"
@@ -3352,7 +3167,7 @@ def setup(bot):
         
         if not user_args:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = "❌ **Aucun utilisateur spécifié après le séparateur `-` !**"
@@ -3379,7 +3194,7 @@ def setup(bot):
         
         if invalid_roles:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = f"❌ **Rôle(s) invalide(s) :** {', '.join(f'`{r}`' for r in invalid_roles)}"
@@ -3388,7 +3203,7 @@ def setup(bot):
         
         if not roles:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = "❌ **Aucun rôle valide trouvé !**"
@@ -3397,16 +3212,12 @@ def setup(bot):
         
         # Message de traitement
         processing_embed = discord.Embed(
-            color=THEME_COLORS["info"],
+            color=COLORS["info"],
             timestamp=datetime.now()
         )
         role_mentions = ", ".join([r.mention for r in roles])
         processing_embed.description = (
-            "```ansi\n"
-            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;34m║\u001b[0m       \u001b[1;37m⏳ Traitement en cours\u001b[0m         \u001b[1;34m║\u001b[0m\n"
-            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```\n"
+            make_banner("⏳ Traitement en cours", "blue") +
             f"Retrait des rôles {role_mentions} en cours..."
         )
         processing_msg = await ctx.send(embed=processing_embed)
@@ -3464,16 +3275,12 @@ def setup(bot):
         
         # Créer l'embed de résultat
         result_embed = discord.Embed(
-            color=THEME_COLORS["success"] if (success_list or partial_success) else THEME_COLORS["warning"],
+            color=COLORS["success"] if (success_list or partial_success) else COLORS["warning"],
             timestamp=datetime.now()
         )
         
         result_embed.description = (
-            "```ansi\n"
-            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Retrait Terminé\u001b[0m             \u001b[1;32m║\u001b[0m\n"
-            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("✅ Retrait Terminé", "green")
         )
         
         result_embed.add_field(
@@ -3556,15 +3363,11 @@ def setup(bot):
         """
         if not args or '-' not in args:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = (
-                "```ansi\n"
-                "\u001b[1;31m╔═══════════════════════════════════════╗\u001b[0m\n"
-                "\u001b[1;31m║\u001b[0m       \u001b[1;37m❌ Erreur de Syntaxe\u001b[0m          \u001b[1;31m║\u001b[0m\n"
-                "\u001b[1;31m╚═══════════════════════════════════════╝\u001b[0m\n"
-                "```\n"
+                make_banner("❌ Erreur de Syntaxe", "red") +
                 "**Vous devez utiliser le séparateur `-` (tiret) !**\n\n"
                 "**Usage:** `!multi_bulk_role_channel @Role1 @Role2 - ID_CANAL`\n"
                 "**Exemples:**\n"
@@ -3582,7 +3385,7 @@ def setup(bot):
         
         if not role_args:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = "❌ **Aucun rôle spécifié avant le séparateur `-` !**"
@@ -3591,7 +3394,7 @@ def setup(bot):
         
         if not channel_args:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = "❌ **Aucun ID de canal spécifié après le séparateur `-` !**"
@@ -3606,7 +3409,7 @@ def setup(bot):
             channel_id_int = int(channel_id_str)
         except ValueError:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = f"❌ **L'ID de canal `{channel_id_str}` n'est pas valide !**"
@@ -3621,7 +3424,7 @@ def setup(bot):
         
         if not channel:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = f"❌ **Le canal ou fil avec l'ID `{channel_id_str}` est introuvable !**"
@@ -3648,7 +3451,7 @@ def setup(bot):
         
         if invalid_roles:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = f"❌ **Rôle(s) invalide(s) :** {', '.join(f'`{r}`' for r in invalid_roles)}"
@@ -3657,7 +3460,7 @@ def setup(bot):
         
         if not roles:
             embed = discord.Embed(
-                color=THEME_COLORS["error"],
+                color=COLORS["error"],
                 timestamp=datetime.now()
             )
             embed.description = "❌ **Aucun rôle valide trouvé !**"
@@ -3666,16 +3469,12 @@ def setup(bot):
         
         # Message de traitement
         processing_embed = discord.Embed(
-            color=THEME_COLORS["info"],
+            color=COLORS["info"],
             timestamp=datetime.now()
         )
         role_mentions = ", ".join([r.mention for r in roles])
         processing_embed.description = (
-            "```ansi\n"
-            "\u001b[1;34m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;34m║\u001b[0m       \u001b[1;37m⏳ Analyse en cours\u001b[0m            \u001b[1;34m║\u001b[0m\n"
-            "\u001b[1;34m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```\n"
+            make_banner("⏳ Analyse en cours", "blue") +
             f"Analyse des membres du canal **#{channel.name}**...\n"
             f"Attribution des rôles {role_mentions} en cours..."
         )
@@ -3735,16 +3534,12 @@ def setup(bot):
 
         # Créer l'embed de résultat
         result_embed = discord.Embed(
-            color=THEME_COLORS["success"] if (success_list or partial_success) else THEME_COLORS["warning"],
+            color=COLORS["success"] if (success_list or partial_success) else COLORS["warning"],
             timestamp=datetime.now()
         )
 
         result_embed.description = (
-            "```ansi\n"
-            "\u001b[1;32m╔═══════════════════════════════════════╗\u001b[0m\n"
-            "\u001b[1;32m║\u001b[0m       \u001b[1;37m✅ Attribution Terminée\u001b[0m        \u001b[1;32m║\u001b[0m\n"
-            "\u001b[1;32m╚═══════════════════════════════════════╝\u001b[0m\n"
-            "```"
+            make_banner("✅ Attribution Terminée", "green")
         )
         
         result_embed.add_field(
@@ -3803,8 +3598,3 @@ def setup(bot):
         logging.info(f"Multi bulk role channel: {roles_names} to {total_success} members of #{channel.name} by {ctx.author.name}")
 
 
-def generate_progress_bar(progress, total, size=10):
-    """Génère une barre de progression"""
-    pct = progress / total if total > 0 else 0
-    filled = int(size * pct)
-    return '🟩' * filled + '⬜' * (size - filled)
