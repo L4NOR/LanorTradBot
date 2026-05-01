@@ -694,125 +694,140 @@ class CommunitySystem(commands.Cog):
     # RÉCAP MENSUEL - ANNONCE DU TOP XP DU MOIS
     # ═══════════════════════════════════════════════════════════════════════════
 
+    async def _build_and_send_monthly_recap(self, force=False, override_channel=None):
+        """Construit et envoie le récap mensuel. Retourne (succes:bool, info:str).
+
+        Args:
+            force: si True, ignore la vérification du jour (1er du mois).
+            override_channel: si fourni, envoie dans ce salon au lieu du
+                channel monthly_recap configuré (utilisé pour test).
+        """
+        today = datetime.now().date()
+
+        if not force and today.day != 1:
+            return False, "Pas le 1er du mois (utilise force=True pour ignorer)."
+
+        guild = self.bot.guilds[0] if self.bot.guilds else None
+        if not guild:
+            return False, "Aucune guilde disponible."
+
+        # En mode 'force', on parle du mois en cours ; en mode auto, du mois précédent
+        if force:
+            ref_month = today.month
+            ref_year = today.year
+        else:
+            ref_month = today.month - 1 if today.month > 1 else 12
+            ref_year = today.year if today.month > 1 else today.year - 1
+
+        month_names = {
+            1: "Janvier", 2: "Février", 3: "Mars", 4: "Avril",
+            5: "Mai", 6: "Juin", 7: "Juillet", 8: "Août",
+            9: "Septembre", 10: "Octobre", 11: "Novembre", 12: "Décembre"
+        }
+        month_name = month_names[ref_month]
+
+        # Trier les utilisateurs par monthly_xp
+        sorted_monthly = sorted(
+            user_stats.items(),
+            key=lambda x: x[1].get("monthly_xp", 0),
+            reverse=True
+        )
+
+        top_users = []
+        for user_id_str, stats in sorted_monthly:
+            monthly_xp = stats.get("monthly_xp", 0)
+            if monthly_xp <= 0:
+                continue
+            member = guild.get_member(int(user_id_str))
+            if not member or member.bot:
+                continue
+            top_users.append((user_id_str, stats, member, monthly_xp))
+            if len(top_users) >= 3:
+                break
+
+        if not top_users:
+            return False, "Aucun utilisateur actif ce mois-ci."
+
+        # Construction embed
+        medals = ["🥇", "🥈", "🥉"]
+        winner = top_users[0][2]
+        winner_xp = top_users[0][3]
+
+        title_prefix = "🏆 GAGNANT·E DU MOIS" if not force else "🏆 GAGNANT·E EN COURS"
+        embed = discord.Embed(
+            title=f"{title_prefix} — {month_name} {ref_year} : {winner.display_name}",
+            description=(
+                f"Félicitations à {winner.mention} qui remporte la **récompense mensuelle** "
+                f"de {month_name} avec **{winner_xp:,} XP** !\n"
+                f"Une preuve d'achat sera envoyée par MP aux membres dès que la récompense "
+                f"aura été commandée 📦\n\n"
+                f"Voici aussi les autres membres les plus actifs du mois 🎉"
+            ),
+            color=0xFFD700,
+            timestamp=datetime.now()
+        )
+
+        winner_stats = top_users[0][1]
+        winner_level = calculate_level(winner_stats.get("total_xp", 0))
+        embed.add_field(
+            name=f"🎁 RÉCOMPENSE MENSUELLE — {winner.display_name}",
+            value=(
+                f"{medals[0]} **Gagnant·e officiel·le du mois de {month_name}**\n"
+                f"⭐ Nv. {winner_level} • 📊 **{winner_xp:,} XP** ce mois\n"
+                f"💬 {winner_stats.get('messages_count', 0):,} messages • "
+                f"🎤 {winner_stats.get('voice_minutes', 0):,} min vocal"
+            ),
+            inline=False
+        )
+
+        if len(top_users) > 1:
+            podium_lines = []
+            for i, (user_id_str, stats, member, monthly_xp) in enumerate(top_users[1:], start=1):
+                level = calculate_level(stats.get("total_xp", 0))
+                podium_lines.append(
+                    f"{medals[i]} **#{i+1} {member.display_name}** — Nv. {level} • "
+                    f"📊 {monthly_xp:,} XP"
+                )
+            embed.add_field(
+                name="🥈 Podium",
+                value="\n".join(podium_lines),
+                inline=False
+            )
+
+        embed.set_thumbnail(url=winner.display_avatar.url)
+        embed.set_footer(
+            text=("APERÇU FORCÉ — pas de reset du compteur" if force
+                  else "Nouveau mois, nouveau classement — c'est reparti ! 🔥")
+        )
+
+        # Choix du salon
+        recap_channel = override_channel
+        if recap_channel is None:
+            recap_channel_id = CHANNELS.get("monthly_recap")
+            if not recap_channel_id:
+                return False, "Aucun channel 'monthly_recap' configuré dans config.py."
+            recap_channel = self.bot.get_channel(recap_channel_id)
+            if not recap_channel:
+                return False, f"Channel monthly_recap introuvable (ID: {recap_channel_id})."
+
+        await safe_api_call(
+            recap_channel.send,
+            content=f"🎉 Bravo {winner.mention} !",
+            embed=embed
+        )
+        return True, (
+            f"Récap envoyé dans #{recap_channel.name} (gagnant: {winner.display_name})."
+        )
+
     @tasks.loop(hours=24)
     async def monthly_recap_loop(self):
         """Annonce le classement XP du mois le 1er de chaque mois"""
         try:
-            today = datetime.now().date()
-
-            # Ne s'exécute que le 1er du mois
-            if today.day != 1:
-                return
-
-            guild = self.bot.guilds[0] if self.bot.guilds else None
-            if not guild:
-                return
-
-            # Récupérer le mois précédent pour le titre
-            last_month = today.month - 1 if today.month > 1 else 12
-            last_year = today.year if today.month > 1 else today.year - 1
-            month_names = {
-                1: "Janvier", 2: "Février", 3: "Mars", 4: "Avril",
-                5: "Mai", 6: "Juin", 7: "Juillet", 8: "Août",
-                9: "Septembre", 10: "Octobre", 11: "Novembre", 12: "Décembre"
-            }
-            month_name = month_names[last_month]
-
-            # Trier les utilisateurs par monthly_xp (avant le reset)
-            sorted_monthly = sorted(
-                user_stats.items(),
-                key=lambda x: x[1].get("monthly_xp", 0),
-                reverse=True
-            )
-
-            # Filtrer les utilisateurs avec 0 XP et les bots
-            top_users = []
-            for user_id_str, stats in sorted_monthly:
-                monthly_xp = stats.get("monthly_xp", 0)
-                if monthly_xp <= 0:
-                    continue
-
-                member = guild.get_member(int(user_id_str))
-                if not member or member.bot:
-                    continue
-
-                top_users.append((user_id_str, stats, member, monthly_xp))
-                if len(top_users) >= 3:
-                    break
-
-            if not top_users:
-                logging.info("📊 Récap mensuel : aucun utilisateur actif ce mois-ci")
-                return
-
-            # Construire l'embed
-            medals = ["🥇", "🥈", "🥉"]
-            winner = top_users[0][2]
-            winner_xp = top_users[0][3]
-
-            embed = discord.Embed(
-                title=f"🏆 GAGNANT·E DU MOIS — {month_name} {last_year} : {winner.display_name}",
-                description=(
-                    f"Félicitations à {winner.mention} qui remporte la **récompense mensuelle** "
-                    f"de {month_name} avec **{winner_xp:,} XP** !\n"
-                    f"Une preuve d'achat sera envoyée par MP aux membres dès que la récompense "
-                    f"aura été commandée 📦\n\n"
-                    f"Voici aussi les autres membres les plus actifs du mois 🎉"
-                ),
-                color=0xFFD700,
-                timestamp=datetime.now()
-            )
-
-            # Bloc gagnant mis en valeur
-            winner_stats = top_users[0][1]
-            winner_level = calculate_level(winner_stats.get("total_xp", 0))
-            embed.add_field(
-                name=f"🎁 RÉCOMPENSE MENSUELLE — {winner.display_name}",
-                value=(
-                    f"{medals[0]} **Gagnant·e officiel·le du mois de {month_name}**\n"
-                    f"⭐ Nv. {winner_level} • 📊 **{winner_xp:,} XP** ce mois\n"
-                    f"💬 {winner_stats.get('messages_count', 0):,} messages • "
-                    f"🎤 {winner_stats.get('voice_minutes', 0):,} min vocal"
-                ),
-                inline=False
-            )
-
-            # Podium (2e et 3e)
-            if len(top_users) > 1:
-                podium_lines = []
-                for i, (user_id_str, stats, member, monthly_xp) in enumerate(top_users[1:], start=1):
-                    level = calculate_level(stats.get("total_xp", 0))
-                    podium_lines.append(
-                        f"{medals[i]} **#{i+1} {member.display_name}** — Nv. {level} • "
-                        f"📊 {monthly_xp:,} XP"
-                    )
-                embed.add_field(
-                    name="🥈 Podium",
-                    value="\n".join(podium_lines),
-                    inline=False
-                )
-
-            embed.set_thumbnail(url=winner.display_avatar.url)
-            embed.set_footer(text="Nouveau mois, nouveau classement — c'est reparti ! 🔥")
-
-            # Envoyer dans le channel configuré (mention du gagnant pour notif)
-            recap_channel_id = CHANNELS.get("monthly_recap")
-            if recap_channel_id:
-                recap_channel = self.bot.get_channel(recap_channel_id)
-                if recap_channel:
-                    await safe_api_call(
-                        recap_channel.send,
-                        content=f"🎉 Bravo {winner.mention} !",
-                        embed=embed
-                    )
-                    logging.info(
-                        f"📊 Récap mensuel envoyé dans #{recap_channel.name} "
-                        f"(gagnant: {winner.display_name})"
-                    )
-                else:
-                    logging.warning(f"⚠️ Channel monthly_recap introuvable (ID: {recap_channel_id})")
+            ok, info = await self._build_and_send_monthly_recap(force=False)
+            if ok:
+                logging.info(f"📊 Récap mensuel : {info}")
             else:
-                logging.warning("⚠️ Aucun channel 'monthly_recap' configuré dans config.py")
-
+                logging.info(f"📊 Récap mensuel ignoré : {info}")
         except Exception as e:
             logging.error(f"Erreur dans monthly_recap_loop: {e}")
 
@@ -1348,6 +1363,40 @@ class CommunitySystem(commands.Cog):
 
         if level_up:
             await self.announce_level_up(member.id, new_level, ctx.channel)
+
+    @commands.command(name="force_monthly_recap", aliases=["force_recap", "monthly_recap_now"])
+    @commands.has_any_role(*ADMIN_ROLES)
+    async def force_monthly_recap(self, ctx, *, channel_arg: str = ""):
+        """(ADMIN) Force l'envoi du récap mensuel maintenant.
+
+        Usage :
+          !force_monthly_recap                → envoie dans le channel configuré
+          !force_monthly_recap here           → envoie dans le channel courant
+          !force_monthly_recap #salon         → envoie dans le salon mentionné
+        """
+        override_channel = None
+        arg = channel_arg.strip()
+        if arg:
+            if arg.lower() in ("here", "ici", "current"):
+                override_channel = ctx.channel
+            else:
+                # tente conversion mention / id
+                try:
+                    converted = await commands.TextChannelConverter().convert(ctx, arg)
+                    override_channel = converted
+                except Exception:
+                    await ctx.send(
+                        "❌ Salon non reconnu. Utilise `here`, une mention #salon ou un ID."
+                    )
+                    return
+
+        ok, info = await self._build_and_send_monthly_recap(
+            force=True, override_channel=override_channel
+        )
+        if ok:
+            await ctx.send(f"✅ {info}")
+        else:
+            await ctx.send(f"⚠️ {info}")
 
     @commands.command(name="preuve_gagnant", aliases=["proof_winner", "preuve_achat"])
     @commands.has_any_role(*ADMIN_ROLES)
