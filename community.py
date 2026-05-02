@@ -1167,14 +1167,15 @@ class CommunitySystem(commands.Cog):
     @commands.command(name="leaderboard", aliases=["lb", "top"])
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def leaderboard(self, ctx, page: int = 1):
-        """Affiche le classement par niveau"""
+        """Classement mensuel : qui gagne le plus d'XP ce mois-ci (récompense mensuelle)."""
         if page < 1:
             page = 1
 
-        # Trier par total_xp (= niveau effectif)
+        # Trier par monthly_xp (course à la récompense du mois)
+        active = [(uid, s) for uid, s in user_stats.items() if s.get("monthly_xp", 0) > 0]
         sorted_users = sorted(
-            user_stats.items(),
-            key=lambda x: x[1].get("total_xp", x[1].get("total_points_earned", 0)),
+            active,
+            key=lambda x: x[1].get("monthly_xp", 0),
             reverse=True
         )
 
@@ -1183,15 +1184,40 @@ class CommunitySystem(commands.Cog):
         end = start + per_page
         page_users = sorted_users[start:end]
 
-        if not page_users:
-            await ctx.send("❌ Aucun utilisateur trouvé pour cette page.")
-            return
+        month_names = {
+            1: "Janvier", 2: "Février", 3: "Mars", 4: "Avril",
+            5: "Mai", 6: "Juin", 7: "Juillet", 8: "Août",
+            9: "Septembre", 10: "Octobre", 11: "Novembre", 12: "Décembre"
+        }
+        now = datetime.now()
+        month_label = f"{month_names[now.month]} {now.year}"
 
+        if not sorted_users:
+            embed = discord.Embed(
+                title=f"🏆 Classement du Mois — {month_label}",
+                description=(
+                    "Personne n'a encore gagné d'XP ce mois-ci !\n"
+                    "Joue aux mini-jeux, réagis aux annonces, fais ton `!daily` "
+                    "— le 1er rang remporte la **récompense mensuelle** 🎁"
+                ),
+                color=COLORS["info"],
+                timestamp=now
+            )
+            embed.set_footer(text="Le gagnant du mois est annoncé le 1er du mois suivant.")
+            return await ctx.send(embed=embed)
+
+        if not page_users:
+            return await ctx.send("❌ Aucun utilisateur trouvé pour cette page.")
+
+        total_pages = (len(sorted_users) + per_page - 1) // per_page
         embed = discord.Embed(
-            title="🏆 Classement par Niveau",
-            description=f"Page {page}/{(len(sorted_users) + per_page - 1) // per_page}",
+            title=f"🏆 Classement du Mois — {month_label}",
+            description=(
+                f"Le **#1** remporte la récompense mensuelle 🎁\n"
+                f"Page {page}/{total_pages} • {len(sorted_users)} membre(s) actif(s)"
+            ),
             color=COLORS["info"],
-            timestamp=datetime.now()
+            timestamp=now
         )
 
         for i, (user_id_str, stats) in enumerate(page_users, start=start + 1):
@@ -1209,6 +1235,7 @@ class CommunitySystem(commands.Cog):
             elif i == 3:
                 medal = "🥉"
 
+            monthly_xp = stats.get("monthly_xp", 0)
             total_xp = stats.get("total_xp", stats.get("total_points_earned", 0))
             level = calculate_level(total_xp)
             streak_emoji = "🔥" if stats.get("daily_streak", 0) > 0 else ""
@@ -1216,13 +1243,13 @@ class CommunitySystem(commands.Cog):
             embed.add_field(
                 name=f"{medal} #{i} - {username}",
                 value=(
-                    f"⭐ **Nv. {level}** — {stats.get('xp', stats.get('points', 0)):,} XP {streak_emoji}\n"
-                    f"📊 +{stats.get('weekly_xp', stats.get('weekly_points', 0)):,} cette semaine • 📅 +{stats.get('monthly_xp', 0):,} ce mois"
+                    f"📅 **{monthly_xp:,} XP** ce mois {streak_emoji}\n"
+                    f"⭐ Nv. {level} (lifetime) • 📊 +{stats.get('weekly_xp', 0):,} cette semaine"
                 ),
                 inline=False
             )
 
-        embed.set_footer(text="Utilise !daily pour gagner plus d'XP !")
+        embed.set_footer(text="Plus tu joues, plus tu montes — la course recommence chaque mois !")
         await ctx.send(embed=embed)
 
     @commands.command(name="profile", aliases=["profil"])
