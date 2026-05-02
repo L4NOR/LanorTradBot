@@ -12,7 +12,8 @@ import asyncio
 from discord.ext import commands
 from config import (
     COLORS, CHANNELS, ROLES, MANGA_EMOJIS, TASK_EMOJIS,
-    MANGA_ROLES, DATA_DIR
+    MANGA_ROLES, DATA_DIR, MINIGAME_CHANNELS, GAME_CHANNEL_CATEGORY,
+    ADMIN_ROLES,
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -92,6 +93,42 @@ async def batch_api_calls(items, coro_factory, batch_size=5, delay_between=2.0):
 
 # Créer le dossier data au démarrage
 os.makedirs(DATA_DIR, exist_ok=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# RESTRICTION DE CHANNEL POUR LES MINI-JEUX
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def in_minigame_channel():
+    """Décorateur (commands.check) qui restreint la commande au channel
+    correspondant à sa catégorie (cf. config.GAME_CHANNEL_CATEGORY).
+
+    Bypass si l'auteur a un rôle admin.
+    Si la commande n'est pas mappée, autorise tout (sécurité par défaut: pas de blocage).
+    """
+    async def predicate(ctx):
+        # Bypass admin
+        if any(r.id in ADMIN_ROLES for r in getattr(ctx.author, "roles", [])):
+            return True
+
+        cmd_name = ctx.command.name if ctx.command else None
+        category = GAME_CHANNEL_CATEGORY.get(cmd_name)
+        if not category:
+            return True  # commande non mappée → pas de restriction
+
+        allowed_id = MINIGAME_CHANNELS.get(category)
+        if not allowed_id or ctx.channel.id == allowed_id:
+            return True
+
+        try:
+            await ctx.send(
+                f"❌ Cette commande se joue dans <#{allowed_id}> uniquement."
+            )
+        except Exception:
+            pass
+        return False
+
+    return commands.check(predicate)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # FONCTIONS JSON GÉNÉRIQUES

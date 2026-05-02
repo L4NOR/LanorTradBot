@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from config import COLORS, POINTS_ALLOWED_CHANNELS
 from community import add_xp, get_user_stats, sauvegarder_donnees, calculate_level, xp_progress, generate_xp_bar
 from database import db
-from utils import safe_api_call, load_json, save_json
+from utils import safe_api_call, load_json, save_json, in_minigame_channel
 from effects import (
     apply_minigame_xp,
     is_featured,
@@ -811,6 +811,7 @@ class MiniGames(commands.Cog):
 
     @commands.command(name="reaction")
     @commands.cooldown(1, 30, commands.BucketType.channel)
+    @in_minigame_channel()
     async def reaction_game(self, ctx, mode: str = None):
         """Sois le premier à réagir avec le bon emoji !
 
@@ -921,6 +922,7 @@ class MiniGames(commands.Cog):
 
     @commands.command(name="unscramble")
     @commands.cooldown(1, 15, commands.BucketType.user)
+    @in_minigame_channel()
     async def unscramble_game(self, ctx):
         """[Solo] Remets les lettres dans le bon ordre !"""
         if self._is_game_active(ctx.channel.id):
@@ -1029,6 +1031,7 @@ class MiniGames(commands.Cog):
 
     @commands.command(name="coinflip", aliases=["cf"])
     @commands.cooldown(1, 10, commands.BucketType.user)
+    @in_minigame_channel()
     async def coinflip(self, ctx, mise: int = None):
         """Pile ou face ! Mise ton XP (x2 ou perdu)"""
         if mise is None:
@@ -1079,6 +1082,7 @@ class MiniGames(commands.Cog):
 
     @commands.command(name="slots")
     @commands.cooldown(1, 10, commands.BucketType.user)
+    @in_minigame_channel()
     async def slots(self, ctx, mise: int = None):
         """Machine à sous ! 3 identiques = jackpot"""
         if mise is None:
@@ -1156,6 +1160,7 @@ class MiniGames(commands.Cog):
 
     @commands.command(name="roulette")
     @commands.cooldown(1, 10, commands.BucketType.user)
+    @in_minigame_channel()
     async def roulette(self, ctx, mise: int = None, *, choix: str = None):
         """Roulette ! Mise sur rouge, noir ou un numéro (0-36)"""
         if mise is None or choix is None:
@@ -1255,6 +1260,7 @@ class MiniGames(commands.Cog):
 
     @commands.command(name="duel")
     @commands.cooldown(1, 30, commands.BucketType.user)
+    @in_minigame_channel()
     async def duel(self, ctx, adversaire: discord.Member = None, mise: int = None):
         """Défie un autre membre en duel ! Le gagnant prend la mise"""
         if adversaire is None or mise is None:
@@ -1416,6 +1422,7 @@ class MiniGames(commands.Cog):
 
     @commands.command(name="wordle")
     @commands.cooldown(1, 30, commands.BucketType.user)
+    @in_minigame_channel()
     async def wordle(self, ctx):
         """[Solo] Devine le mot en 6 essais ! 🟩 = bonne place, 🟨 = mauvaise place, ⬛ = absent"""
         if self._is_game_active(ctx.channel.id):
@@ -1577,6 +1584,7 @@ class MiniGames(commands.Cog):
 
     @commands.command(name="hangman", aliases=["pendu"])
     @commands.cooldown(1, 15, commands.BucketType.user)
+    @in_minigame_channel()
     async def hangman(self, ctx):
         """[Solo] Jeu du pendu ! Devine le mot lettre par lettre"""
         if self._is_game_active(ctx.channel.id):
@@ -1735,6 +1743,7 @@ class MiniGames(commands.Cog):
 
     @commands.command(name="chain", aliases=["chaine"])
     @commands.cooldown(1, 30, commands.BucketType.channel)
+    @in_minigame_channel()
     async def chain_game(self, ctx):
         """Chaîne de mots ! Chaque mot doit commencer par la dernière lettre du précédent"""
         if self._is_game_active(ctx.channel.id):
@@ -2106,6 +2115,7 @@ class MiniGames(commands.Cog):
 
     @commands.command(name="boss")
     @commands.cooldown(1, 5, commands.BucketType.user)
+    @in_minigame_channel()
     async def boss_status(self, ctx):
         """Affiche l'état du boss actuel"""
         if not self.boss_data.get("active"):
@@ -2138,6 +2148,7 @@ class MiniGames(commands.Cog):
 
     @commands.command(name="boss_list", aliases=["bosses", "boss_catalog"])
     @commands.cooldown(1, 5, commands.BucketType.user)
+    @in_minigame_channel()
     async def boss_list(self, ctx):
         """Affiche le catalogue des 6 boss disponibles."""
         embed = discord.Embed(
@@ -2163,6 +2174,7 @@ class MiniGames(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="attack", aliases=["attaque", "atk"])
+    @in_minigame_channel()
     async def attack_boss(self, ctx):
         """Attaque le boss actuel !"""
         if not self.boss_data.get("active"):
@@ -2347,6 +2359,7 @@ class MiniGames(commands.Cog):
 
     @commands.command(name="mgstats", aliases=["minigame_stats", "gamestats"])
     @commands.cooldown(1, 5, commands.BucketType.user)
+    @in_minigame_channel()
     async def mgstats(self, ctx, member: discord.Member = None):
         """Affiche tes statistiques de mini-jeux (ou celles d'un autre membre)"""
         target = member or ctx.author
@@ -2399,6 +2412,7 @@ class MiniGames(commands.Cog):
 
     @commands.command(name="mgtop", aliases=["minigame_top"])
     @commands.cooldown(1, 5, commands.BucketType.user)
+    @in_minigame_channel()
     async def mgtop(self, ctx, game: str = None):
         """Classement des meilleurs joueurs de mini-jeux. Usage: !mgtop [jeu]"""
         valid_games = {"reaction", "unscramble", "wordle", "hangman", "chain",
@@ -2462,6 +2476,7 @@ class MiniGames(commands.Cog):
 
     @commands.command(name="mglimits", aliases=["mglimit", "minigame_limits"])
     @commands.cooldown(1, 5, commands.BucketType.user)
+    @in_minigame_channel()
     async def mglimits(self, ctx, member: discord.Member = None):
         """Affiche les pools quotidiens (mini-jeux + boss + engagement) et ton usage du jour."""
         target = member or ctx.author

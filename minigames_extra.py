@@ -26,6 +26,7 @@ from minigames_data import (
     MEMORY_EMOJIS,
 )
 from effects import apply_minigame_xp, is_featured
+from utils import in_minigame_channel
 import logging
 
 logger = logging.getLogger(__name__)
@@ -199,6 +200,7 @@ class MiniGamesExtra(commands.Cog):
 
     @commands.command(name="devinette", aliases=["riddle"])
     @commands.cooldown(1, 15, commands.BucketType.user)
+    @in_minigame_channel()
     async def devinette(self, ctx):
         """[Solo] Devine la réponse à une énigme manga."""
         if _is_game_active(self, ctx.channel.id):
@@ -259,6 +261,7 @@ class MiniGamesExtra(commands.Cog):
 
     @commands.command(name="quoteguess", aliases=["quote"])
     @commands.cooldown(1, 15, commands.BucketType.user)
+    @in_minigame_channel()
     async def quoteguess(self, ctx):
         """[Solo] Devine de quel manga vient cette réplique."""
         if _is_game_active(self, ctx.channel.id):
@@ -320,6 +323,7 @@ class MiniGamesExtra(commands.Cog):
 
     @commands.command(name="emojirebus", aliases=["rebus"])
     @commands.cooldown(1, 15, commands.BucketType.user)
+    @in_minigame_channel()
     async def emojirebus(self, ctx):
         """[Solo] Devine le manga/personnage codé en emojis."""
         if _is_game_active(self, ctx.channel.id):
@@ -381,6 +385,7 @@ class MiniGamesExtra(commands.Cog):
 
     @commands.command(name="anagram", aliases=["anagramme"])
     @commands.cooldown(1, 15, commands.BucketType.user)
+    @in_minigame_channel()
     async def anagram(self, ctx):
         """[Solo] Démêle l'anagramme — un titre/mot dont les lettres sont mélangées."""
         if _is_game_active(self, ctx.channel.id):
@@ -450,6 +455,7 @@ class MiniGamesExtra(commands.Cog):
 
     @commands.command(name="guessmanga", aliases=["panel"])
     @commands.cooldown(1, 15, commands.BucketType.user)
+    @in_minigame_channel()
     async def guessmanga(self, ctx):
         """[Solo] Devine le manga à partir d'un panel/description."""
         if _is_game_active(self, ctx.channel.id):
@@ -513,6 +519,7 @@ class MiniGamesExtra(commands.Cog):
 
     @commands.command(name="opening", aliases=["ost"])
     @commands.cooldown(1, 15, commands.BucketType.user)
+    @in_minigame_channel()
     async def opening(self, ctx):
         """[Solo] Devine l'anime à partir d'un opening."""
         if _is_game_active(self, ctx.channel.id):
@@ -574,6 +581,7 @@ class MiniGamesExtra(commands.Cog):
 
     @commands.command(name="character", aliases=["akinator", "twentyq"])
     @commands.cooldown(1, 30, commands.BucketType.user)
+    @in_minigame_channel()
     async def character(self, ctx):
         """[Solo] Le bot pense à un personnage et tu poses des questions Oui/Non."""
         if _is_game_active(self, ctx.channel.id):
@@ -710,6 +718,7 @@ class MiniGamesExtra(commands.Cog):
 
     @commands.command(name="click", aliases=["fastclick"])
     @commands.cooldown(1, 15, commands.BucketType.user)
+    @in_minigame_channel()
     async def click(self, ctx):
         """[Solo] Clique sur les 5 boutons dans l'ordre le plus vite possible."""
         if _is_game_active(self, ctx.channel.id):
@@ -769,6 +778,7 @@ class MiniGamesExtra(commands.Cog):
 
     @commands.command(name="memory")
     @commands.cooldown(1, 20, commands.BucketType.user)
+    @in_minigame_channel()
     async def memory(self, ctx):
         """[Solo] Memory — retrouve les paires d'emojis cachés (grille 4x4)."""
         if _is_game_active(self, ctx.channel.id):
@@ -828,6 +838,7 @@ class MiniGamesExtra(commands.Cog):
 
     @commands.command(name="ttt", aliases=["tictactoe", "morpion"])
     @commands.cooldown(1, 30, commands.BucketType.user)
+    @in_minigame_channel()
     async def ttt(self, ctx, adversaire: discord.Member = None):
         """Morpion 1v1 — `!ttt @adversaire`. L'adversaire valide via bouton."""
         if adversaire is None:
@@ -877,6 +888,7 @@ class MiniGamesExtra(commands.Cog):
 
     @commands.command(name="connect4", aliases=["c4", "puissance4"])
     @commands.cooldown(1, 30, commands.BucketType.user)
+    @in_minigame_channel()
     async def connect4(self, ctx, adversaire: discord.Member = None):
         """Puissance 4 — `!connect4 @adversaire`."""
         if adversaire is None:
@@ -930,6 +942,7 @@ class MiniGamesExtra(commands.Cog):
 
     @commands.command(name="featured", aliases=["jeuvedette"])
     @commands.cooldown(1, 10, commands.BucketType.user)
+    @in_minigame_channel()
     async def featured_cmd(self, ctx):
         """Affiche le mini-jeu vedette du jour (XP doublée)."""
         from effects import get_featured_game, FEATURED_MULTIPLIER
@@ -952,6 +965,7 @@ class MiniGamesExtra(commands.Cog):
 
     @commands.command(name="streak", aliases=["combo"])
     @commands.cooldown(1, 5, commands.BucketType.user)
+    @in_minigame_channel()
     async def streak_cmd(self, ctx, member: discord.Member = None):
         """Affiche le streak (combo de victoires) d'un joueur."""
         from effects import get_streak, get_streak_multiplier, STREAK_TIERS

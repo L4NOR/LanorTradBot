@@ -322,6 +322,60 @@ POINTS_ALLOWED_CHANNELS = [
 ]
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# CHANNELS DÉDIÉS AUX MINI-JEUX
+# ═══════════════════════════════════════════════════════════════════════════════
+# Chaque catégorie de jeu n'est jouable que dans son channel dédié (les admins
+# bypassent la restriction pour les tests).
+
+MINIGAME_CHANNELS = {
+    "wordle":    1492621153330528327,
+    "multi":     1492634364956114964,  # duels + jeux multi/compétitifs
+    "boss":      1492634550575300668,
+    "casino":    1492634742892531753,
+    "unscramble": 1492635024619471032, # unscramble + puzzles solo (devinette, anagram, ...)
+    "dashboard": 1492635124930576654,  # stats, leaderboards, featured, mglimits, streak
+}
+
+# Mapping nom de commande → catégorie (channel dédié)
+# Tout ce qui n'est PAS dans ce mapping reste utilisable partout (ex: commandes admin).
+GAME_CHANNEL_CATEGORY = {
+    # Wordle
+    "wordle":     "wordle",
+    # Unscramble + puzzles solo
+    "unscramble": "unscramble",
+    "devinette":  "unscramble",
+    "quoteguess": "unscramble",
+    "emojirebus": "unscramble",
+    "anagram":    "unscramble",
+    "guessmanga": "unscramble",
+    "opening":    "unscramble",
+    "character":  "unscramble",
+    "click":      "unscramble",
+    "memory":     "unscramble",
+    # Multi & duels
+    "duel":       "multi",
+    "reaction":   "multi",
+    "hangman":    "multi",
+    "chain":      "multi",
+    "ttt":        "multi",
+    "connect4":   "multi",
+    # Boss (commandes joueur)
+    "boss":       "boss",
+    "boss_list":  "boss",
+    "attack":     "boss",
+    # Casino
+    "coinflip":   "casino",
+    "slots":      "casino",
+    "roulette":   "casino",
+    # Dashboard / infos
+    "mgstats":    "dashboard",
+    "mgtop":      "dashboard",
+    "mglimits":   "dashboard",
+    "streak":     "dashboard",
+    "featured":   "dashboard",
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # CONFIGURATION DM REMINDER
 # ═══════════════════════════════════════════════════════════════════════════════
 
