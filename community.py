@@ -23,10 +23,12 @@ POINTS = XP_GAINS
 
 # Fichiers de données
 USER_STATS_FILE = DATA_FILES["user_stats"]
+COMMUNITY_META_FILE = "data/community_meta.json"
 os.makedirs("data", exist_ok=True)
 
 # Données en mémoire
 user_stats = {}
+community_meta = {}  # ex: { "last_monthly_recap": "2026-04" }
 
 # Cooldowns pour les gains d'XP par message
 message_cooldowns = {}
@@ -168,8 +170,9 @@ def generate_xp_bar(current, needed, length=10):
 
 def charger_donnees():
     """Charge les données utilisateurs et migre les anciens champs si nécessaire"""
-    global user_stats
+    global user_stats, community_meta
     user_stats = load_json(USER_STATS_FILE, {})
+    community_meta = load_json(COMMUNITY_META_FILE, {})
 
     # Migration : points → xp pour les anciens profils
     migrated = False
@@ -189,6 +192,29 @@ def charger_donnees():
         logging.info("📦 Migration points → xp effectuée")
 
     logging.info(f"✅ Stats de {len(user_stats)} utilisateur(s) chargées")
+
+
+def sauvegarder_meta():
+    """Sauvegarde le meta communautaire (last_monthly_recap, etc.)"""
+    try:
+        with open(COMMUNITY_META_FILE, "w", encoding="utf-8") as f:
+            json.dump(community_meta, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        logging.error(f"❌ Erreur sauvegarde meta communautaire: {e}")
+
+
+def reset_monthly_xp():
+    """Réinitialise monthly_xp pour TOUS les utilisateurs et passe month_start au mois courant."""
+    now_month = datetime.now().month
+    count = 0
+    for stats in user_stats.values():
+        if stats.get("monthly_xp", 0) != 0 or stats.get("month_start") != now_month:
+            count += 1
+        stats["monthly_xp"] = 0
+        stats["month_start"] = now_month
+    sauvegarder_donnees()
+    logging.info(f"♻️ monthly_xp réinitialisé pour {count} utilisateur(s)")
+    return count
 
 
 def sauvegarder_donnees():
@@ -298,17 +324,16 @@ def add_xp(user_id, amount, reason=""):
     stats["xp"] = stats.get("xp", 0) + final_amount
     stats["last_activity"] = datetime.now().isoformat()
 
-    # Mise à jour stats hebdomadaires
+    # Mise à jour stats hebdomadaires (reset hebdo géré localement)
     current_week = datetime.now().isocalendar()[1]
     if stats.get("week_start") != current_week:
         stats["week_start"] = current_week
         stats["weekly_xp"] = 0
 
-    # Mise à jour stats mensuelles
-    current_month = datetime.now().month
-    if stats.get("month_start") != current_month:
-        stats["month_start"] = current_month
-        stats["monthly_xp"] = 0
+    # NB: monthly_xp n'est PAS reset paresseusement ici. Le reset est exclusivement
+    # piloté par le récap mensuel (cf. _build_and_send_monthly_recap / reset_monthly_xp)
+    # pour garantir que le snapshot du mois écoulé reste cohérent au moment de
+    # l'annonce du gagnant.
 
     if final_amount > 0:
         stats["weekly_xp"] = stats.get("weekly_xp", 0) + final_amount
@@ -694,30 +719,46 @@ class CommunitySystem(commands.Cog):
     # RÉCAP MENSUEL - ANNONCE DU TOP XP DU MOIS
     # ═══════════════════════════════════════════════════════════════════════════
 
-    async def _build_and_send_monthly_recap(self, force=False, override_channel=None):
+    async def _build_and_send_monthly_recap(self, force=False, override_channel=None,
+                                             do_reset=None, close_now=False):
         """Construit et envoie le récap mensuel. Retourne (succes:bool, info:str).
 
         Args:
-            force: si True, ignore la vérification du jour (1er du mois).
+            force: si True, ignore la vérification du jour (1er du mois). Mode "preview"
+                qui parle du mois en cours et **ne reset pas** par défaut.
             override_channel: si fourni, envoie dans ce salon au lieu du
                 channel monthly_recap configuré (utilisé pour test).
+            do_reset: True/False pour forcer/empêcher le reset après envoi. None = défaut
+                (auto: True, force: False, close_now: True).
+            close_now: si True, mode "clôture manuelle" — annonce le mois écoulé et reset
+                MÊME si on n'est pas le 1er. Utilisé par !cloturer_mois.
         """
         today = datetime.now().date()
 
-        if not force and today.day != 1:
-            return False, "Pas le 1er du mois (utilise force=True pour ignorer)."
+        # Auto: autoriser entre le 1er et le 5 du mois, pour rattraper un loop manqué
+        # si le bot était down. L'idempotence (last_monthly_recap) empêche les doublons.
+        if not force and not close_now and today.day > 5:
+            return False, "Période de récap auto passée (jours 1-5 du mois)."
 
         guild = self.bot.guilds[0] if self.bot.guilds else None
         if not guild:
             return False, "Aucune guilde disponible."
 
-        # En mode 'force', on parle du mois en cours ; en mode auto, du mois précédent
+        # Mode 'force' = aperçu du mois en cours (pas de reset par défaut)
+        # Mode auto OU close_now = on parle du mois écoulé (avec reset par défaut)
         if force:
             ref_month = today.month
             ref_year = today.year
         else:
             ref_month = today.month - 1 if today.month > 1 else 12
             ref_year = today.year if today.month > 1 else today.year - 1
+
+        # Idempotence en mode auto : ne pas relancer 2x dans le même cycle
+        ref_key = f"{ref_year}-{ref_month:02d}"
+        if not force and not close_now:
+            last_done = community_meta.get("last_monthly_recap")
+            if last_done == ref_key:
+                return False, f"Récap déjà envoyé pour {ref_key}."
 
         month_names = {
             1: "Janvier", 2: "Février", 3: "Mars", 4: "Avril",
@@ -815,13 +856,23 @@ class CommunitySystem(commands.Cog):
             content=f"🎉 Bravo {winner.mention} !",
             embed=embed
         )
+
+        # Reset après envoi : auto et close_now resettent ; force ne reset pas par défaut
+        should_reset = do_reset if do_reset is not None else (not force)
+        reset_info = ""
+        if should_reset:
+            count = reset_monthly_xp()
+            community_meta["last_monthly_recap"] = ref_key
+            sauvegarder_meta()
+            reset_info = f" Compteurs mensuels remis à zéro ({count} profil(s))."
+
         return True, (
-            f"Récap envoyé dans #{recap_channel.name} (gagnant: {winner.display_name})."
+            f"Récap envoyé dans #{recap_channel.name} (gagnant: {winner.display_name}).{reset_info}"
         )
 
-    @tasks.loop(hours=24)
+    @tasks.loop(hours=6)
     async def monthly_recap_loop(self):
-        """Annonce le classement XP du mois le 1er de chaque mois"""
+        """Annonce le classement XP du mois (jours 1-5, idempotent)"""
         try:
             ok, info = await self._build_and_send_monthly_recap(force=False)
             if ok:
@@ -1397,6 +1448,96 @@ class CommunitySystem(commands.Cog):
             await ctx.send(f"✅ {info}")
         else:
             await ctx.send(f"⚠️ {info}")
+
+    @commands.command(name="cloturer_mois", aliases=["close_month", "close_month_now"])
+    @commands.has_any_role(*ADMIN_ROLES)
+    async def cloturer_mois(self, ctx, *, channel_arg: str = ""):
+        """(ADMIN) Clôture le mois écoulé : annonce le gagnant + reset des monthly_xp.
+
+        À utiliser quand le récap auto du 1er a été manqué, ou pour forcer la clôture
+        d'un mois en cours et démarrer un nouveau classement.
+
+        Usage :
+          !cloturer_mois               → envoie dans le channel monthly_recap configuré
+          !cloturer_mois here          → envoie dans le channel courant
+          !cloturer_mois #salon        → envoie dans le salon mentionné
+        """
+        override_channel = None
+        arg = channel_arg.strip()
+        if arg:
+            if arg.lower() in ("here", "ici", "current"):
+                override_channel = ctx.channel
+            else:
+                try:
+                    converted = await commands.TextChannelConverter().convert(ctx, arg)
+                    override_channel = converted
+                except Exception:
+                    await ctx.send(
+                        "❌ Salon non reconnu. Utilise `here`, une mention #salon ou un ID."
+                    )
+                    return
+
+        # Confirmation : c'est destructif (reset monthly_xp pour tout le monde)
+        confirm = await ctx.send(
+            "⚠️ Tu vas **clôturer le mois** : annonce du gagnant **puis reset des XP "
+            "mensuels** pour tous les membres.\nRéagis ✅ dans les 30s pour confirmer, ❌ pour annuler."
+        )
+        await confirm.add_reaction("✅")
+        await confirm.add_reaction("❌")
+
+        def check(reaction, user):
+            return (
+                user.id == ctx.author.id
+                and reaction.message.id == confirm.id
+                and str(reaction.emoji) in ("✅", "❌")
+            )
+
+        try:
+            reaction, _ = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
+        except asyncio.TimeoutError:
+            await confirm.edit(content="⏱️ Confirmation expirée — clôture annulée.")
+            return
+
+        if str(reaction.emoji) == "❌":
+            await confirm.edit(content="❌ Clôture annulée.")
+            return
+
+        ok, info = await self._build_and_send_monthly_recap(
+            close_now=True, override_channel=override_channel
+        )
+        if ok:
+            await ctx.send(f"✅ {info}")
+        else:
+            await ctx.send(f"⚠️ {info}")
+
+    @commands.command(name="reset_monthly_xp", aliases=["reset_mensuel"])
+    @commands.has_any_role(*ADMIN_ROLES)
+    async def reset_monthly_xp_cmd(self, ctx):
+        """(ADMIN) Réinitialise uniquement les compteurs monthly_xp (sans annonce)."""
+        confirm = await ctx.send(
+            "⚠️ Reset **monthly_xp** pour TOUS les membres (sans annonce de gagnant). "
+            "Réagis ✅ dans les 30s pour confirmer."
+        )
+        await confirm.add_reaction("✅")
+        await confirm.add_reaction("❌")
+
+        def check(reaction, user):
+            return (
+                user.id == ctx.author.id
+                and reaction.message.id == confirm.id
+                and str(reaction.emoji) in ("✅", "❌")
+            )
+        try:
+            reaction, _ = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
+        except asyncio.TimeoutError:
+            await confirm.edit(content="⏱️ Confirmation expirée.")
+            return
+        if str(reaction.emoji) == "❌":
+            await confirm.edit(content="❌ Annulé.")
+            return
+
+        count = reset_monthly_xp()
+        await ctx.send(f"♻️ monthly_xp réinitialisé pour **{count}** profil(s).")
 
     @commands.command(name="preuve_gagnant", aliases=["proof_winner", "preuve_achat"])
     @commands.has_any_role(*ADMIN_ROLES)

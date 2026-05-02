@@ -29,14 +29,15 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 MINIGAME_XP = {
-    "reaction": 8,
-    "unscramble": 12,
-    "wordle": 20,
-    "hangman": 15,
-    "chain": 10,
-    "boss_hit": 3,
-    "boss_kill": 50,
-    "duel_min_bet": 10,
+    # Récompenses divisées par ~2 — incite à jouer plus pour le même gain
+    "reaction": 4,
+    "unscramble": 6,
+    "wordle": 10,
+    "hangman": 8,
+    "chain": 5,
+    "boss_hit": 2,
+    "boss_kill": 25,
+    "duel_min_bet": 10,  # mise minimum, pas une récompense → inchangé
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -35,17 +35,18 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 EXTRA_XP = {
-    "devinette":  18,
-    "quoteguess": 15,
-    "emojirebus": 15,
-    "anagram":    20,
-    "guessmanga": 15,
-    "opening":    15,
-    "character":  22,
-    "click":      12,
-    "memory":     18,
-    "ttt":        10,
-    "connect4":   15,
+    # Récompenses divisées par ~2 — incite à jouer plus pour le même gain
+    "devinette":  9,
+    "quoteguess": 8,
+    "emojirebus": 8,
+    "anagram":    10,
+    "guessmanga": 8,
+    "opening":    8,
+    "character":  11,
+    "click":      6,
+    "memory":     9,
+    "ttt":        5,
+    "connect4":   8,
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════

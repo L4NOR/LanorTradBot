@@ -281,7 +281,7 @@ class QuizButton(Button):
         # XP
         xp_amount = 0
         if correct:
-            xp_amount = 25 + (5 * min(stats["current_streak"], 10))  # bonus streak max +50
+            xp_amount = 12 + (3 * min(stats["current_streak"], 10))  # base 12 + streak max +30
             try:
                 add_xp(view.author_id, xp_amount, "quiz_manga")
             except Exception:

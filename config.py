@@ -265,32 +265,32 @@ SHOP_ROLES = {
 # ═══════════════════════════════════════════════════════════════════════════════
 
 XP_GAINS = {
-    # Activité de messages (passif)
+    # Activité de messages (passif) — déjà très bas, on garde
     "message_min": 1,
-    "message_max": 3,
-    "message_cooldown": 60,  # secondes
+    "message_max": 2,
+    "message_cooldown": 90,  # secondes (allongé pour ralentir le farming passif)
 
-    # Bonus quotidien
-    "daily_min": 20,
-    "daily_max": 50,
-    "streak_bonus": 5,      # par jour consécutif
-    "streak_max_bonus": 50, # bonus max
+    # Bonus quotidien — divisé par 2
+    "daily_min": 10,
+    "daily_max": 25,
+    "streak_bonus": 3,      # par jour consécutif
+    "streak_max_bonus": 25, # bonus max
 
-    # Réactions aux annonces
-    "chapter_reaction": 10,
+    # Réactions aux annonces — divisé par 2
+    "chapter_reaction": 5,
 
-    # Vocal
-    "voice_per_15min": 5,
+    # Vocal — divisé par ~2
+    "voice_per_15min": 3,
 
-    # Ancienneté (hebdomadaire)
-    "seniority_base": 50,
-    "seniority_max": 200,
+    # Ancienneté (hebdomadaire) — divisé par 2
+    "seniority_base": 25,
+    "seniority_max": 100,
 
-    # Mini-jeux
-    "trivia_easy": 20,
-    "trivia_medium": 50,
-    "trivia_hard": 100,
-    "guess_correct": 30,
+    # Mini-jeux trivia — divisé par 2
+    "trivia_easy": 10,
+    "trivia_medium": 25,
+    "trivia_hard": 50,
+    "guess_correct": 15,
 }
 
 # Alias pour compatibilité
