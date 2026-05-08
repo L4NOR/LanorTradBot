@@ -15,7 +15,8 @@
       "Bash(python -m py_compile main.py config.py utils.py commands.py community.py events.py announcements.py admin_data.py achievements.py shop.py rappels.py giveaway.py engagement.py minigames.py minigames_extra.py minigames_data.py tournaments.py weekly_challenges.py polls.py tickets.py role_selector.py logs.py stats.py planning.py effects.py database.py)",
       "Bash(python -m py_compile community.py minigames.py minigames_extra.py engagement.py config.py)",
       "Bash(python -c \"from utils import in_minigame_channel; from config import MINIGAME_CHANNELS, GAME_CHANNEL_CATEGORY; print\\('imports OK'\\); print\\('channels:', list\\(MINIGAME_CHANNELS.keys\\(\\)\\)\\); print\\('mapped commands:', len\\(GAME_CHANNEL_CATEGORY\\)\\)\")",
-      "Bash(python -m py_compile community.py)"
+      "Bash(python -m py_compile community.py)",
+      "Bash(python -m py_compile \"F:/LanorTrad/Bot/LanorTradBot/template.py\" \"F:/LanorTrad/Bot/LanorTradBot/main.py\")"
     ]
   }
 }

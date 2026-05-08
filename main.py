@@ -109,6 +109,10 @@ async def setup_modules(bot):
     await weekly_challenges.setup(bot)
     logging.info("✅ Module Weekly Challenges chargé")
 
+    import template
+    template.setup(bot)
+    logging.info("✅ Module Template chargé")
+
 
 # ═══════════════════════════════════════════════════════════════
 # BOT CLASS
