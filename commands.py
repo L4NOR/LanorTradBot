@@ -69,7 +69,12 @@ def extraire_manga_chapitre(key):
     chapter_str = parts[1].strip()
     if chapter_str.isdigit():
         return manga_name, int(chapter_str)
-    return manga_name, None
+    # Chapitres bonus décimaux (ex: "246.5", "246.6")
+    try:
+        num = float(chapter_str)
+    except ValueError:
+        return manga_name, None
+    return manga_name, int(num) if num.is_integer() else num
 
 
 # ==================== CONFIGURATION DU MENU HELP ====================
@@ -1836,7 +1841,7 @@ def setup(bot):
             completed_tasks = sum(1 for chap_tasks in chapitres.values() for t in chap_tasks.values() if t == "✅ Terminé")
             progress = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
             
-            sorted_chapters = sorted(chapitres.items(), key=lambda x: int(x[0]))
+            sorted_chapters = sorted(chapitres.items(), key=lambda x: float(x[0]))
             
             # Diviser en pages si nécessaire
             for page_start in range(0, len(sorted_chapters), CHAPTERS_PER_PAGE):
