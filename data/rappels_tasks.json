@@ -1,18 +1,13 @@
 {
-    "Tougen Anki_240_edit_433305136975183882": {
-        "user_id": 433305136975183882,
+    "Tougen Anki_248_qcheck_937386825562062858": {
+        "user_id": 937386825562062858,
         "manga": "Tougen Anki",
         "chapitres": [
-            240,
-            241,
-            242,
-            243,
-            244,
-            245,
-            246,
-            247
+            248,
+            249,
+            250
         ],
-        "task": "edit",
-        "date_limite": "2026-05-10"
+        "task": "qcheck",
+        "date_limite": "2026-08-05"
     }
 }
