@@ -13,7 +13,7 @@ import math
 from datetime import datetime, timedelta
 from config import (
     COLORS, ADMIN_ROLES, DATA_FILES, XP_GAINS, CHANNELS,
-    POINTS_ALLOWED_CHANNELS, MANGA_EMOJIS, LEVELS
+    POINTS_ALLOWED_CHANNELS, MANGA_EMOJIS, LEVELS, AUTO_ANNONCES
 )
 from utils import load_json, save_json, safe_api_call
 import logging
@@ -874,6 +874,8 @@ class CommunitySystem(commands.Cog):
     async def monthly_recap_loop(self):
         """Annonce le classement XP du mois (jours 1-5, idempotent)"""
         try:
+            if not AUTO_ANNONCES["recap_mensuel"]:
+                return
             ok, info = await self._build_and_send_monthly_recap(force=False)
             if ok:
                 logging.info(f"📊 Récap mensuel : {info}")

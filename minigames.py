@@ -10,7 +10,7 @@ import asyncio
 import time
 import unicodedata
 from datetime import datetime, timedelta
-from config import COLORS, POINTS_ALLOWED_CHANNELS
+from config import COLORS, POINTS_ALLOWED_CHANNELS, AUTO_ANNONCES
 from community import add_xp, get_user_stats, sauvegarder_donnees, calculate_level, xp_progress, generate_xp_bar
 from database import db
 from utils import safe_api_call, load_json, save_json, in_minigame_channel
@@ -683,6 +683,8 @@ class MiniGames(commands.Cog):
         déploiement, crash) reposterait sinon l'annonce du jour.
         """
         try:
+            if not AUTO_ANNONCES["jeu_vedette"]:
+                return
             if featured_already_announced():
                 return
             game = get_featured_game()
@@ -2076,7 +2078,7 @@ class MiniGames(commands.Cog):
             self.boss_data["active"] = False
             save_json(BOSS_FILE, self.boss_data)
 
-            if channel:
+            if channel and AUTO_ANNONCES["boss_rotation"]:
                 await channel.send(embed=discord.Embed(
                     title=f"🌫️ {previous_name} se retire...",
                     description=(
@@ -2091,6 +2093,9 @@ class MiniGames(commands.Cog):
                 next_index = (self.boss_data.get("rotation_index", -1) + 1) % len(BOSS_CATALOG)
                 next_boss = BOSS_CATALOG[next_index]
                 self._spawn_boss(next_boss, channel.id)
+                # Le boss est bien spawn ; seule l'annonce est muette.
+                if not AUTO_ANNONCES["boss_rotation"]:
+                    return
                 await channel.send(embed=discord.Embed(
                     title=f"⚠️ {next_boss['name']} APPARAÎT !",
                     description=(

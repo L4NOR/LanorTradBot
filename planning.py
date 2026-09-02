@@ -15,7 +15,7 @@ import unicodedata
 import pytz
 import calendar as cal_module
 
-from config import ADMIN_ROLES, COLORS, MANGA_EMOJIS, MANGA_ROLES, TASK_ROLES, DATA_DIR
+from config import ADMIN_ROLES, COLORS, MANGA_EMOJIS, MANGA_ROLES, TASK_ROLES, DATA_DIR, AUTO_ANNONCES
 from utils import load_json, save_json, save_with_meta, paginate, get_manga_emoji, safe_api_call
 
 logger = logging.getLogger(__name__)
@@ -607,6 +607,8 @@ class PlanningSystem(commands.Cog):
 
             # A 9h -> refresh + notifications
             if now.hour != 9:
+                return
+            if not AUTO_ANNONCES["planning_9h"]:
                 return
 
             today_str = now.date().isoformat()

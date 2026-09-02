@@ -387,6 +387,26 @@ DM_REMINDER_CONFIG = {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# ANNONCES AUTOMATIQUES
+# ═══════════════════════════════════════════════════════════════════════════════
+# Chaque clé pilote un message que le bot poste de lui-même, sans qu'un membre
+# l'ait demandé. Mettre False coupe uniquement l'annonce : la mécanique du jeu
+# (tirage du jeu vedette, rotation des défis, expiration du boss) continue de
+# tourner normalement, et les commandes manuelles restent disponibles.
+# Un redémarrage du bot est nécessaire pour prendre en compte un changement.
+
+AUTO_ANNONCES = {
+    "jeu_vedette": False,       # ⭐ Jeu vedette du jour (!featured reste dispo)
+    "defis_hebdo": False,       # 🗓️ Nouveaux défis hebdo (!challenges reste dispo)
+    "boss_rotation": False,     # 👹 Retrait / apparition automatique d'un boss
+    "loterie_hebdo": False,     # 🎰 Résultat du tirage hebdomadaire
+    "recap_mensuel": True,      # 📊 Classement XP du mois (du 1er au 5)
+    "anniversaires": True,      # 🎂 Anniversaires du jour
+    "countdown_planning": True, # ⏳ Compte à rebours dans #planning
+    "planning_9h": True,        # 📅 Notifications de planning à 9h
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # AUTRES
 # ═══════════════════════════════════════════════════════════════════════════════
 

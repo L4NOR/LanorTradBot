@@ -13,7 +13,7 @@ import random
 import time
 from datetime import datetime, timedelta, date
 
-from config import COLORS, ADMIN_ROLES, DATA_DIR, MANGA_EMOJIS
+from config import COLORS, ADMIN_ROLES, DATA_DIR, MANGA_EMOJIS, AUTO_ANNONCES
 from utils import load_json, save_json
 from community import add_xp, get_user_stats
 
@@ -1044,6 +1044,8 @@ class EngagementSystem(commands.Cog):
     async def birthday_loop(self):
         """Vérifie les anniversaires du jour et célèbre les nouveaux."""
         try:
+            if not AUTO_ANNONCES["anniversaires"]:
+                return
             today = date.today()
             today_key = f"{today.month:02d}-{today.day:02d}"
             current_year = today.year
@@ -1182,6 +1184,8 @@ class EngagementSystem(commands.Cog):
     async def countdown_loop(self):
         """Met à jour (ou crée) le message de compte à rebours dans #planning."""
         try:
+            if not AUTO_ANNONCES["countdown_planning"]:
+                return
             channel = self.bot.get_channel(PLANNING_CHANNEL_ID)
             if channel is None:
                 return

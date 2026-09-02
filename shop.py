@@ -7,7 +7,7 @@ import os
 import random
 import asyncio
 from datetime import datetime, timedelta
-from config import COLORS, ADMIN_ROLES, DATA_FILES, SHOP_ROLES
+from config import COLORS, ADMIN_ROLES, DATA_FILES, SHOP_ROLES, AUTO_ANNONCES
 from utils import load_json, save_json, safe_api_call
 
 # Fichiers de données (depuis config.py)
@@ -283,6 +283,8 @@ class ShopSystem(commands.Cog):
             sauvegarder_shop()
 
             # Annoncer (chercher un salon approprié)
+            if not AUTO_ANNONCES["loterie_hebdo"]:
+                return
             for guild in self.bot.guilds:
                 channel = discord.utils.find(
                     lambda c: "general" in c.name.lower() or "annonce" in c.name.lower(),

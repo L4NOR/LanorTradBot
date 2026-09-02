@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 import discord
 from discord.ext import commands, tasks
 
-from config import COLORS, POINTS_ALLOWED_CHANNELS, ADMIN_ROLES, DATA_DIR
+from config import COLORS, POINTS_ALLOWED_CHANNELS, ADMIN_ROLES, DATA_DIR, AUTO_ANNONCES
 from utils import load_json, save_json
 
 logger = logging.getLogger(__name__)
@@ -410,7 +410,7 @@ class WeeklyChallenges(commands.Cog):
     async def rotation_task(self):
         try:
             rotated = _ensure_current_week()
-            if rotated:
+            if rotated and AUTO_ANNONCES["defis_hebdo"]:
                 await self._announce_new_week()
         except Exception as e:
             logger.warning(f"rotation_task error: {e}")
