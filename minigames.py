@@ -18,6 +18,8 @@ from effects import (
     apply_minigame_xp,
     is_featured,
     get_featured_game,
+    featured_already_announced,
+    mark_featured_announced,
     FEATURED_MULTIPLIER,
 )
 import logging
@@ -652,8 +654,6 @@ class MiniGames(commands.Cog):
         self.boss_data.setdefault("auto_rotate", False)
         self.boss_data.setdefault("history", [])
         self.attack_cooldowns = {}  # user_id -> datetime
-        # Dernier jeu vedette annoncé — pour n'annoncer qu'une fois par jour
-        self._last_featured_announced = None
         # Tâche d'arrière-plan : check toutes les heures si le boss a expiré
         # ou si un nouveau doit spawn (auto rotation).
         self.boss_rotation_task.start()
@@ -677,18 +677,15 @@ class MiniGames(commands.Cog):
     async def featured_rotation_task(self):
         """Vérifie chaque heure si un nouveau jeu vedette doit être annoncé.
 
-        Appelle simplement `get_featured_game()` — la logique de rotation est
-        dans effects.py (un seul tirage par jour). Si le jeu a changé par
-        rapport à la dernière annonce, on poste dans le premier channel de
-        `POINTS_ALLOWED_CHANNELS`.
+        La logique de rotation est dans effects.py (un seul tirage par jour).
+        Le flag « déjà annoncé » y est persisté sur disque : la loop démarre
+        immédiatement à chaque lancement du bot, donc un redémarrage (pm2,
+        déploiement, crash) reposterait sinon l'annonce du jour.
         """
         try:
-            game = get_featured_game()
-            today = datetime.now().date().isoformat()
-            key = f"{today}:{game}"
-            if key == self._last_featured_announced:
+            if featured_already_announced():
                 return
-            self._last_featured_announced = key
+            game = get_featured_game()
 
             channel = None
             for cid in POINTS_ALLOWED_CHANNELS:
@@ -725,6 +722,7 @@ class MiniGames(commands.Cog):
             )
             embed.set_footer(text="Remis à zéro chaque jour à minuit")
             await channel.send(embed=embed)
+            mark_featured_announced()
         except Exception as e:
             logger.warning(f"featured_rotation_task error: {e}")
 

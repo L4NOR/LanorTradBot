@@ -27,6 +27,7 @@ DEFAULT_EFFECTS = {
     "featured": {         # jeu vedette du jour (x2 XP)
         "date": None,
         "game": None,
+        "announced": None,  # "YYYY-MM-DD:game" une fois l'annonce postée
     },
 }
 
@@ -169,6 +170,27 @@ def get_featured_game():
         _save()
         logger.info(f"⭐ Featured minigame du jour : {feat['game']}")
     return feat["game"]
+
+
+def featured_already_announced():
+    """True si l'annonce du jeu vedette a déjà été postée aujourd'hui.
+
+    Le flag est persisté dans effects.json : un redémarrage du bot (pm2,
+    déploiement, crash) ne provoque donc plus de doublon d'annonce.
+    """
+    d = _load()
+    game = get_featured_game()
+    today = datetime.now().date().isoformat()
+    return d["featured"].get("announced") == f"{today}:{game}"
+
+
+def mark_featured_announced():
+    """Marque l'annonce du jour comme postée (persistée sur disque)."""
+    d = _load()
+    game = get_featured_game()
+    today = datetime.now().date().isoformat()
+    d["featured"]["announced"] = f"{today}:{game}"
+    _save()
 
 
 def is_featured(game_name):
