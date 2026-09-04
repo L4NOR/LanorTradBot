@@ -104,11 +104,11 @@ def manga_url(manga_key: str) -> str:
 # Le bot les rattache aux séries par leur NOM au démarrage.
 
 LANORTRAD_SERIES_ROLE_IDS = [
-    1465027919951958220,
-    1465027907968831541,
-    1465027916999032976,
-    1465027911235928155,
-    1465027914050437184,
+    1465027919951958220,   # Ao No Exorcist
+    1465027907968831541,   # Catenaccio
+    1465027916999032976,   # Satsudou
+    1465027911235928155,   # Tougen Anki
+    1465027914050437184,   # Tokyo Underworld
 ]
 
 KEEP_ROLE_IDS = (
@@ -117,15 +117,51 @@ KEEP_ROLE_IDS = (
 
 
 # ═══════════════════════════════════════════════════════
-# 📂 SALONS & RÔLES (résolus automatiquement)
+# 📂 SALONS & RÔLES — IDs du serveur officiel
 # ═══════════════════════════════════════════════════════
-# Rien à remplir : resolver.py les trouve par leur nom au démarrage et met
-# le résultat en cache dans data/resolved_ids.json. Un ID écrit ici à la
-# main reste prioritaire tant qu'il pointe vers quelque chose d'existant.
+# Ces IDs font AUTORITÉ : tant qu'ils pointent vers quelque chose d'existant,
+# le bot ne cherche rien par nom. Renommer un salon ou un rôle ne casse donc
+# plus rien. Ce qui n'est pas listé ici est résolu par nom (voir resolver.py).
 
-CHANNELS = {}
-ROLES = {}
+CHANNELS = {
+    # ─── Pages de référence (cog content · /publier) ───
+    "welcome":     1545537941781086268,   # 👋 bienvenue
+    "rules":       1326211105332265001,   # 📜 règles
+    "faq":         1545537964853952525,   # ❓ faq
+    "site_links":  1545538010672795668,   # 🔗 le-site
+    "site_forum":  1545538018155171940,   # 💬 forum-du-site
+    "recrutement": 1545538050883584020,   # 📋 recrutement
+}
 
+ROLES = {
+    # ─── Séries (rôles historiques, portés par les membres) ───
+    "ping_ao":     1465027919951958220,   # Ao No Exorcist
+    "ping_cat":    1465027907968831541,   # Catenaccio
+    "ping_sat":    1465027916999032976,   # Satsudou
+    "ping_tougen": 1465027911235928155,   # Tougen Anki
+    "ping_tokyo":  1465027914050437184,   # Tokyo Underworld
+    "ping_one":    1545537911309471916,   # Oneshots
+
+    # ─── Équipe ───
+    "founder":     1545537840300167168,   # Fondateur
+    "moderator":   1545537850400055357,   # Modération
+
+    # ─── Métiers (vocabulaire du site) ───
+    "raw_provider": 1545537857823842305,  # Pages
+    "cleaner":      1545537865495224390,  # Clean
+    "translator":   1545537873737027747,  # Traduction
+    "typesetter":   1545537881760731206,  # Édition
+    "qc":           1545537889415335986,  # Q-check
+    "trial":        1545537896717623306,  # En test
+
+    # ─── Base & notifications ───
+    "member":             1545537904095264788,   # Lecteur
+    "ping_all":           1545537918561554462,   # Toutes sorties
+    "ping_announcements": 1545537926321152150,   # Annonces
+}
+
+# Le cache écrit par le resolver complète ce qui n'est pas listé ci-dessus,
+# sans jamais écraser un ID explicite.
 _resolved = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "data", "resolved_ids.json")
@@ -133,8 +169,10 @@ try:
     import json as _json
     with open(_resolved, encoding="utf-8") as _f:
         _cache = _json.load(_f)
-    CHANNELS.update(_cache.get("channels", {}))
-    ROLES.update(_cache.get("roles", {}))
+    for _k, _v in _cache.get("channels", {}).items():
+        CHANNELS.setdefault(_k, _v)
+    for _k, _v in _cache.get("roles", {}).items():
+        ROLES.setdefault(_k, _v)
 except (FileNotFoundError, ValueError, OSError):
     pass
 
@@ -160,6 +198,10 @@ RELEASE_FORUM_MODE  = "auto"    # poste en forum si le salon cible en est un
 RELEASE_FORUM_KEY   = None      # ex : "releases_forum" pour tout centraliser
 
 ANNOUNCE_DEFAULT_PING = "ping_announcements"
+
+# Roles donnes automatiquement a chaque arrivee, et attribuables en
+# masse aux membres deja presents via /roles_base (cles de ROLES).
+BASE_ROLES = ["member"]
 
 
 # ═══════════════════════════════════════════════════════

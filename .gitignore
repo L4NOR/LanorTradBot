@@ -1,7 +1,8 @@
 __pycache__/
 *.pyc
 .env
-data/
-!data/.gitkeep
 .venv/
 venv/
+
+# Données d'exécution du bot v2 (le data/ de la v1 reste versionné)
+v2/data/

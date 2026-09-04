@@ -44,7 +44,8 @@ COGS = [
     # ─── Accueil ───
     "bot.cogs.welcome",
     "bot.cogs.alerts",        # panneau de rôles par série
-    "bot.cogs.content",       # pages de référence (bienvenue, règles, FAQ…)
+    "bot.cogs.content",
+    "bot.cogs.bulkroles",
     # ─── Contact ───
     "bot.cogs.tickets",
     "bot.cogs.recruit",

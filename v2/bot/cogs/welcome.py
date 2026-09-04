@@ -17,7 +17,7 @@ import discord
 from discord.ext import commands
 
 from bot.config import (
-    CHANNELS, ROLES, COLOR_NEUTRAL, IS_INFO_SERVER, SITE,
+    CHANNELS, ROLES, BASE_ROLES, COLOR_NEUTRAL, IS_INFO_SERVER, SITE,
 )
 
 log = logging.getLogger("lanortrad.welcome")
@@ -42,14 +42,14 @@ class Welcome(commands.Cog):
     # Serveur informatif : MP + rôle lecteur
     # ─────────────────────────────────────────────
     async def _welcome_info(self, member: discord.Member):
-        role_id = ROLES.get("member")
-        if role_id:
-            role = member.guild.get_role(role_id)
-            if role:
-                try:
-                    await member.add_roles(role, reason="Arrivée sur le serveur")
-                except discord.HTTPException as e:
-                    log.warning("Rôle lecteur non attribué à %s : %s", member, e)
+        # Mêmes rôles que /roles_base : un seul endroit décide de la liste
+        roles = [member.guild.get_role(ROLES[k]) for k in BASE_ROLES if ROLES.get(k)]
+        roles = [r for r in roles if r and r not in member.roles]
+        if roles:
+            try:
+                await member.add_roles(*roles, reason="Arrivée sur le serveur")
+            except discord.HTTPException as e:
+                log.warning("Rôle de base non attribué à %s : %s", member, e)
 
         def ref(key, fallback):
             ch_id = CHANNELS.get(key)

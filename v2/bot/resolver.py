@@ -220,7 +220,7 @@ def map_kept_manga_roles(guild: discord.Guild) -> dict:
     sont portés par les membres : on ne les recrée pas, on les reconnaît.
     Aucun ordre à respecter dans KEEP_ROLE_IDS.
     """
-    mapped, unknown = {}, []
+    mapped, unknown, explicites = {}, [], []
     for role_id in KEEP_ROLE_IDS:
         role = guild.get_role(int(role_id))
         if role is None:
@@ -233,6 +233,10 @@ def map_kept_manga_roles(guild: discord.Guild) -> dict:
                 match = info["role_key"]
                 break
         if match:
+            explicite = ROLES.get(match)
+            if explicite and guild.get_role(int(explicite)):
+                explicites.append(match)   # ID explicite : il fait autorité
+                continue
             ROLES[match] = role.id
             mapped[match] = role.name
         else:
@@ -241,8 +245,11 @@ def map_kept_manga_roles(guild: discord.Guild) -> dict:
     if mapped:
         log.info("🎭 rôles séries rattachés : %s",
                  ", ".join(f"{k} → « {v} »" for k, v in mapped.items()))
+    if explicites:
+        log.info("🔒 rôles séries fixés par ID : %s", ", ".join(sorted(explicites)))
+    connus = set(mapped) | set(explicites)
     missing = [i["role_key"] for i in MANGAS.values()
-               if i["role_key"] not in mapped and i["role_key"] != "ping_one"]
+               if i["role_key"] not in connus and i["role_key"] != "ping_one"]
     if missing:
         log.warning("   séries sans rôle conservé : %s", ", ".join(missing))
     if unknown:
@@ -272,12 +279,14 @@ def resolve(guild: discord.Guild) -> dict:
     kept = map_kept_manga_roles(guild) if KEEP_ROLE_IDS else {}
 
     for key, names in ROLE_NAMES.items():
+        # 1. un ID explicite et valide gagne toujours
+        current = ROLES.get(key)
+        if current and guild.get_role(int(current)) is not None:
+            found_role[key] = int(current)
+            continue
+        # 2. sinon, le rattachement par nom des roles de series
         if key in kept:
             found_role[key] = ROLES[key]
-            continue
-        current = ROLES.get(key)
-        if current and guild.get_role(current) is not None:
-            found_role[key] = current
             continue
         role = _find_role(guild, names)
         if role is not None:
