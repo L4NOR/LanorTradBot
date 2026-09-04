@@ -3,7 +3,7 @@
 Le bot du serveur Discord officiel LanorTrad.
 
 > **Le site décide, Discord notifie.**
-> Le bot lit les données du site ([lanortradtest.netlify.app](https://lanortradtest.netlify.app))
+> Le bot lit les données du site ([lanortrad.com](https://lanortrad.com))
 > et les recopie dans Discord. Rien ne se ressaisit à la main, rien ne peut
 > diverger.
 

@@ -53,7 +53,7 @@ IS_INFO_SERVER = True
 # 🌐 LE SITE — source de vérité
 # ═══════════════════════════════════════════════════════
 
-SITE_URL = os.environ.get("SITE_URL", "https://lanortradtest.netlify.app")
+SITE_URL = os.environ.get("SITE_URL", "https://lanortrad.com")
 
 SITE = {
     "accueil":   SITE_URL,

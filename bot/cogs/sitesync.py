@@ -138,7 +138,7 @@ class SiteSync(commands.Cog):
         )
         legend = " → ".join(f"{s[2]} {s[1]}" for s in sitelib.STEPS)
         embed.add_field(name="Les étapes", value=legend, inline=False)
-        embed.set_footer(text="Reflet du site · lanortradtest.netlify.app/planning")
+        embed.set_footer(text="Reflet du site · lanortrad.com/planning")
         return embed
 
     def weekly_embed(self, guild) -> discord.Embed:
