@@ -228,6 +228,14 @@ ANNOUNCE_DEFAULT_PING = "ping_announcements"
 # masse aux membres deja presents via /roles_base (cles de ROLES).
 BASE_ROLES = ["member"]
 
+# Salons ou le nouveau membre est mentionne a son arrivee, dans cet ordre.
+# Chaque salon a son message : voir MESSAGES_ARRIVEE dans cogs/welcome.py.
+WELCOME_PING_CHANNELS = ["welcome", "rules", "faq"]
+
+# Minutes avant que ces messages s'effacent tout seuls (0 = ils restent).
+# Utile pour que les salons de reference ne se remplissent pas d'arrivees.
+WELCOME_PING_DELETE_AFTER = 0
+
 
 # ═══════════════════════════════════════════════════════
 # 🔄 SYNCHRO AVEC LE SITE

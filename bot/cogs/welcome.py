@@ -18,9 +18,28 @@ from discord.ext import commands
 
 from bot.config import (
     CHANNELS, ROLES, BASE_ROLES, COLOR_NEUTRAL, IS_INFO_SERVER, SITE,
+    WELCOME_PING_CHANNELS, WELCOME_PING_DELETE_AFTER,
 )
 
 log = logging.getLogger("lanortrad.welcome")
+
+# Un message par salon : le meme texte repete trois fois serait du bruit.
+# {membre} = la mention · {alertes} {support} {recrutement} = les salons
+MESSAGES_ARRIVEE = {
+    "welcome": (
+        "🩸 Bienvenue {membre} !\n"
+        "Tu es le/la **{numero}e** à nous rejoindre. Tout est expliqué "
+        "juste au-dessus — et pour être prévenu·e des sorties, ça se passe "
+        "dans {alertes}."
+    ),
+    "rules": (
+        "📜 {membre} — deux minutes de lecture, et on n'en reparle plus."
+    ),
+    "faq": (
+        "❓ {membre} — la réponse à ta question est probablement déjà ici. "
+        "Sinon, {support} est là pour ça."
+    ),
+}
 
 
 class Welcome(commands.Cog):
@@ -76,6 +95,41 @@ class Welcome(commands.Cog):
             await member.send(text)
         except discord.HTTPException:
             log.info("MP de bienvenue refusé par %s (MP fermés).", member)
+
+        await self._ping_salons(member)
+
+    async def _ping_salons(self, member: discord.Member):
+        """Mentionne l'arrivant dans les salons de reference."""
+        refs = {
+            "membre": member.mention,
+            "numero": member.guild.member_count,
+            "alertes": self._mention(member.guild, "notifications", "#alertes-sorties"),
+            "support": self._mention(member.guild, "tickets", "#support"),
+            "recrutement": self._mention(member.guild, "recrutement", "#recrutement"),
+        }
+        efface = WELCOME_PING_DELETE_AFTER * 60 or None
+
+        for cle in WELCOME_PING_CHANNELS:
+            ch_id = CHANNELS.get(cle)
+            salon = member.guild.get_channel(ch_id) if ch_id else None
+            modele = MESSAGES_ARRIVEE.get(cle)
+            if salon is None or not modele:
+                continue
+            try:
+                await salon.send(
+                    modele.format(**refs),
+                    delete_after=efface,
+                    allowed_mentions=discord.AllowedMentions(users=True),
+                )
+            except discord.HTTPException as e:
+                log.warning("Ping d'arrivée impossible dans #%s : %s",
+                            getattr(salon, "name", cle), e)
+
+    @staticmethod
+    def _mention(guild, cle, defaut):
+        ch_id = CHANNELS.get(cle)
+        salon = guild.get_channel(ch_id) if ch_id else None
+        return salon.mention if salon else defaut
 
     # ─────────────────────────────────────────────
     # Serveur communautaire : embed public
