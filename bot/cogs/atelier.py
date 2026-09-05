@@ -31,19 +31,25 @@ Trois principes :
 
 Les fiches survivent aux redémarrages (`data/atelier.json`), boutons compris.
 """
+import base64
+import datetime
+import io
 import logging
 import time
 
+import aiohttp
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from bot import site as sitelib
+from bot import siteexport
 from bot.config import (
     GUILD_ID, MANGAS, CHANNELS, ROLES, SITE_URL,
-    COLOR_NEUTRAL, COLOR_SUCCESS, COLOR_WARNING,
+    COLOR_NEUTRAL, COLOR_SUCCESS, COLOR_WARNING, COLOR_ERROR,
     ATELIER_CHANNEL, ATELIER_ANNONCE_ETAPE,
     ATELIER_ETAPE_ROLES, ATELIER_ROLES_JOKER,
+    SITE_REPO, SITE_REPO_BRANCH, SITE_REPO_TOKEN,
     manga_url,
 )
 from bot.embeds import brand_embed
@@ -313,6 +319,10 @@ class Atelier(commands.Cog):
         if fiche.get("pages"):
             embed.add_field(name="📄 Pages", value=f"**{fiche['pages']}** pages",
                             inline=True)
+
+        if fiche.get("eta"):
+            embed.add_field(name="🎯 Sortie visée",
+                            value=f"**{fiche['eta']}**", inline=True)
 
         if termine:
             embed.add_field(
@@ -914,6 +924,253 @@ class Atelier(commands.Cog):
             ephemeral=True)
 
     atelier_retirer.autocomplete("chapitre")(_ac_chapitre)
+
+    # ═══════════════════════════════════════════════
+    # Le pont vers le site
+    # ═══════════════════════════════════════════════
+
+    def _noms_site(self) -> dict:
+        """clé MANGAS → identifiant exact de la série sur le site.
+
+        On demande au site plutôt que de supposer : une clé inventée
+        créerait une entrée fantôme que le site n'afficherait jamais.
+        """
+        sync = self.bot.get_cog("SiteSync")
+        data = getattr(sync, "data", None)
+        noms = {}
+        for cle, info in MANGAS.items():
+            if cle == "oneshot":
+                continue                    # l'atelier du site ne suit que les séries
+            if data is None:
+                noms[cle] = info["name"]    # site injoignable : on fait confiance à la config
+                continue
+            serie = data.get_series(info["name"])
+            if serie is not None:
+                noms[cle] = serie.get("id") or info["name"]
+        return noms
+
+    async def _atelier_en_ligne(self) -> str:
+        """Le fichier atelier.js tel qu'il est publié en ce moment."""
+        url = f"{SITE_URL.rstrip('/')}/{siteexport.CHEMIN}"
+        delai = aiohttp.ClientTimeout(total=20)
+        async with aiohttp.ClientSession(timeout=delai) as session:
+            async with session.get(url) as reponse:
+                reponse.raise_for_status()
+                return await reponse.text()
+
+    async def _preparer(self):
+        """(contenu, changements, remarques, contenu actuel)."""
+        brut = await self._atelier_en_ligne()
+        actuel = sitelib.parse_js_literal(brut, siteexport.VARIABLE)
+        fiches = list(self._store.get("fiches", {}).values())
+        depuis_bot, remarques = siteexport.entrees_depuis_fiches(
+            fiches, self._noms_site())
+        fusion, changements = siteexport.fusionner(actuel, depuis_bot)
+        return siteexport.rendre(fusion, siteexport.entete(brut)), \
+            changements, remarques, brut
+
+    def _resume(self, changements, remarques) -> str:
+        texte = "\n".join(changements) if changements else "*rien à signaler*"
+        if remarques:
+            texte += "\n\n" + "\n".join(remarques)
+        return texte[:3900]
+
+    @app_commands.command(
+        name="atelier_export",
+        description="Génère le atelier.js du site à partir des fiches")
+    @app_commands.default_permissions(manage_messages=True)
+    @app_commands.guilds(GUILD)
+    async def atelier_export(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        try:
+            contenu, changements, remarques, brut = await self._preparer()
+        except Exception as e:
+            return await interaction.followup.send(
+                embed=brand_embed(
+                    interaction.guild, title="❌ Export impossible",
+                    description=f"```{type(e).__name__} : {e}```",
+                    color=COLOR_ERROR),
+                ephemeral=True)
+
+        if contenu == brut:
+            return await interaction.followup.send(
+                embed=brand_embed(
+                    interaction.guild, title="✅ Le site est déjà à jour",
+                    description="Les fiches Discord et `atelier.js` disent "
+                                "la même chose.\n\n"
+                                + self._resume(changements, remarques),
+                    color=COLOR_SUCCESS),
+                ephemeral=True)
+
+        fichier = discord.File(
+            io.BytesIO(contenu.encode("utf-8")), filename="atelier.js")
+        await interaction.followup.send(
+            embed=brand_embed(
+                interaction.guild, title="📝 atelier.js régénéré",
+                description=self._resume(changements, remarques)
+                + "\n\n→ Remplace `js/data/atelier.js` par le fichier joint, "
+                  "ou lance `/atelier_pousser` si le dépôt est configuré.",
+                color=COLOR_NEUTRAL),
+            file=fichier, ephemeral=True)
+
+    @app_commands.command(
+        name="atelier_pousser",
+        description="(Admin) Écrit atelier.js dans le dépôt du site")
+    @app_commands.describe(
+        simulation="True = montre ce qui serait commité, sans rien envoyer")
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.guilds(GUILD)
+    async def atelier_pousser(self, interaction: discord.Interaction,
+                              simulation: bool = True):
+        if not SITE_REPO or not SITE_REPO_TOKEN:
+            manquant = []
+            if not SITE_REPO:
+                manquant.append("`SITE_REPO=proprietaire/depot`")
+            if not SITE_REPO_TOKEN:
+                manquant.append("`SITE_REPO_TOKEN=ghp_...`")
+            return await interaction.response.send_message(
+                embed=brand_embed(
+                    interaction.guild, title="⚙️ Dépôt du site non configuré",
+                    description=(
+                        "À ajouter dans le `.env` du bot, puis redémarrer :\n"
+                        + "\n".join(f"• {m}" for m in manquant)
+                        + "\n\nLe jeton a besoin du droit **Contents: write** sur "
+                          "ce dépôt, et de rien d'autre.\n"
+                          "En attendant, `/atelier_export` te donne le fichier "
+                          "à déposer à la main."),
+                    color=COLOR_WARNING),
+                ephemeral=True)
+
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        try:
+            contenu, changements, remarques, brut = await self._preparer()
+        except Exception as e:
+            return await interaction.followup.send(
+                embed=brand_embed(
+                    interaction.guild, title="❌ Préparation impossible",
+                    description=f"```{type(e).__name__} : {e}```",
+                    color=COLOR_ERROR),
+                ephemeral=True)
+
+        if contenu == brut:
+            return await interaction.followup.send(
+                embed=brand_embed(
+                    interaction.guild, title="✅ Rien à pousser",
+                    description="`atelier.js` dit déjà la même chose que les fiches.",
+                    color=COLOR_SUCCESS),
+                ephemeral=True)
+
+        if simulation:
+            return await interaction.followup.send(
+                embed=brand_embed(
+                    interaction.guild,
+                    title="🔎 Simulation — rien n'a été envoyé",
+                    description=(
+                        self._resume(changements, remarques)
+                        + f"\n\n**Destination :** `{SITE_REPO}` · branche "
+                          f"`{SITE_REPO_BRANCH}` · `{siteexport.CHEMIN}`\n"
+                          "Pour appliquer : relance avec `simulation:False`."),
+                    color=COLOR_WARNING),
+                ephemeral=True)
+
+        try:
+            lien = await self._commit(contenu, interaction.user)
+        except Exception as e:
+            return await interaction.followup.send(
+                embed=brand_embed(
+                    interaction.guild, title="❌ GitHub a refusé",
+                    description=f"```{type(e).__name__} : {e}```\n"
+                                "Vérifie le dépôt, la branche et les droits du jeton.",
+                    color=COLOR_ERROR),
+                ephemeral=True)
+
+        log.info("Atelier : atelier.js pousse sur %s par %s",
+                 SITE_REPO, interaction.user)
+        await interaction.followup.send(
+            embed=brand_embed(
+                interaction.guild, title="🚀 atelier.js mis à jour",
+                description=self._resume(changements, remarques)
+                + f"\n\n→ [voir le commit]({lien})",
+                color=COLOR_SUCCESS),
+            ephemeral=True)
+
+    async def _commit(self, contenu: str, auteur) -> str:
+        """Écrit le fichier via l'API Contents de GitHub. Renvoie l'URL du commit."""
+        entetes = {
+            "Authorization": f"Bearer {SITE_REPO_TOKEN}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "LanorTradBot",
+        }
+        url = (f"https://api.github.com/repos/{SITE_REPO}"
+               f"/contents/{siteexport.CHEMIN}")
+        delai = aiohttp.ClientTimeout(total=30)
+
+        async with aiohttp.ClientSession(headers=entetes, timeout=delai) as session:
+            async with session.get(url, params={"ref": SITE_REPO_BRANCH}) as r:
+                if r.status != 200:
+                    raise RuntimeError(
+                        f"lecture du fichier : HTTP {r.status} — "
+                        f"{(await r.text())[:200]}")
+                sha = (await r.json()).get("sha")
+
+            charge = {
+                "message": f"atelier : mise a jour depuis Discord ({auteur})",
+                "content": base64.b64encode(contenu.encode("utf-8")).decode("ascii"),
+                "sha": sha,
+                "branch": SITE_REPO_BRANCH,
+            }
+            async with session.put(url, json=charge) as r:
+                if r.status not in (200, 201):
+                    raise RuntimeError(
+                        f"écriture : HTTP {r.status} — {(await r.text())[:200]}")
+                return (await r.json())["commit"]["html_url"]
+
+    @app_commands.command(
+        name="atelier_eta",
+        description="Fixe la date de sortie visée d'un chapitre")
+    @app_commands.describe(manga="La série", chapitre="Numéro du chapitre",
+                           date="AAAA-MM-JJ, ou « - » pour retirer la date")
+    @app_commands.choices(manga=MANGA_CHOICES)
+    @app_commands.guilds(GUILD)
+    async def atelier_eta(self, interaction: discord.Interaction,
+                          manga: app_commands.Choice[str], chapitre: str,
+                          date: app_commands.Range[str, 1, 10]):
+        fiche = self.fiche(manga.value, chapitre)
+        if fiche is None:
+            return await interaction.response.send_message(
+                "❌ Aucune fiche pour ce chapitre.", ephemeral=True)
+        if not _peut_valider(interaction.user, fiche.get("etape") or DERNIERE):
+            return await interaction.response.send_message(
+                "❌ Réservé à l'équipe sur ce chapitre.", ephemeral=True)
+
+        date = date.strip()
+        if date in ("-", "aucune", "none"):
+            fiche.pop("eta", None)
+            texte = "La date de sortie visée est retirée."
+        else:
+            try:
+                datetime.date.fromisoformat(date)
+            except ValueError:
+                return await interaction.response.send_message(
+                    "❌ Date attendue au format **AAAA-MM-JJ** "
+                    "(ex. `2026-09-13`), ou `-` pour l'enlever.", ephemeral=True)
+            fiche["eta"] = date
+            texte = f"Sortie visée le **{date}**."
+
+        self.sauver()
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        await self._reecrire(interaction.guild, fiche)
+        await interaction.followup.send(
+            embed=brand_embed(
+                interaction.guild, title="🎯 Date mise à jour",
+                description=(f"{_nom_manga(manga.value)} — chapitre "
+                             f"**{fiche['chapitre']}**\n{texte}\n\n"
+                             "`/atelier_pousser` pour la reporter sur le site."),
+                color=COLOR_SUCCESS),
+            ephemeral=True)
+
+    atelier_eta.autocomplete("chapitre")(_ac_chapitre)
 
 
 async def setup(bot):

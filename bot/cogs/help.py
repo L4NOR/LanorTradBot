@@ -75,6 +75,9 @@ class Help(commands.Cog):
                     "`/atelier_qcheck` — valider son étape\n"
                     "`/atelier_liste` — tout ce qui est en cours\n"
                     "`/atelier_fiche` — revoir une fiche\n"
+                    "`/atelier_eta` — fixer la date de sortie visée\n"
+                    "`/atelier_export` — le `atelier.js` du site, "
+                    "à jour depuis les fiches\n"
                     "*Chaque étape validée ping le métier suivant.*"
                 ),
                 inline=False,
@@ -100,6 +103,7 @@ class Help(commands.Cog):
                 value=(
                     "`/publier <page>` — (re)poster les pages de référence\n"
                     "`/atelier_etape` `/atelier_retirer` — corriger une fiche\n"
+                    "`/atelier_pousser` — écrire `atelier.js` dans le dépôt du site\n"
                     "`/panneau_alertes` · `/ticket_setup` · `/recrutement_panel`\n"
                     "`/raid` · `/lockdown` — protection du serveur\n"
                     "`/backup` — sauvegarde de la structure\n"

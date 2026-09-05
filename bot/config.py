@@ -257,6 +257,16 @@ SITE_INCIDENT_CHANNEL = "incidents"
 
 SITE_STALE_DAYS = 21              # relance hebdo sur les chapitres qui dorment
 
+# ── Dépôt du site, pour que /atelier_pousser écrive js/data/atelier.js ──
+# Tout se met dans .env, jamais ici : le jeton est un secret.
+#   SITE_REPO=proprietaire/depot
+#   SITE_REPO_BRANCH=main
+#   SITE_REPO_TOKEN=ghp_...   (droit « Contents: write » sur ce dépôt)
+SITE_REPO = os.environ.get("SITE_REPO", "").strip()
+SITE_REPO_BRANCH = os.environ.get("SITE_REPO_BRANCH", "main").strip()
+SITE_REPO_TOKEN = (os.environ.get("SITE_REPO_TOKEN")
+                   or os.environ.get("GITHUB_TOKEN") or "").strip()
+
 
 # ═══════════════════════════════════════════════════════
 # 📥 ATELIER — dépôt des pages RAW (cog atelier)
