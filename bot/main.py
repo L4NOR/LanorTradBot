@@ -41,6 +41,7 @@ COGS = [
     # ─── Le site ───
     "bot.cogs.sitesync",      # planning · atelier · catalogue · auto-publication
     "bot.cogs.releases",      # /release manuel + historique
+    "bot.cogs.atelier",       # depot des pages RAW (embed + boutons)
     # ─── Accueil ───
     "bot.cogs.welcome",
     "bot.cogs.alerts",        # panneau de rôles par série

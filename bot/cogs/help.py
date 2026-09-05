@@ -70,6 +70,8 @@ class Help(commands.Cog):
             embed.add_field(
                 name="🛠️ Équipe",
                 value=(
+                    "`/atelier_raws` — déposer un lot de pages RAW\n"
+                    "`/atelier_liste` — les lots qui attendent un cleaner\n"
                     "`/release` — publier une sortie à la main\n"
                     "`/site_sync` — forcer la synchro avec le site\n"
                     "`/annonce` — annonce signée, avec ping\n"

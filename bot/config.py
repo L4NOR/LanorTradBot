@@ -259,6 +259,22 @@ SITE_STALE_DAYS = 21              # relance hebdo sur les chapitres qui dorment
 
 
 # ═══════════════════════════════════════════════════════
+# 📥 ATELIER — dépôt des pages RAW (cog atelier)
+# ═══════════════════════════════════════════════════════
+
+# Salon où atterrissent les lots de RAW. Repli automatique sur
+# raws_archive puis workshop_chat si la clé n'existe pas sur le serveur.
+ATELIER_CHANNEL = "raws_archive"
+
+# Rôle prévenu à chaque dépôt (None = personne n'est pingé).
+ATELIER_PING_ROLE = "cleaner"
+
+# Qui peut déposer un lot, et qui peut cliquer « Je prends le clean ».
+ATELIER_DEPOSER_ROLES = ("raw_provider", "founder", "moderator")
+ATELIER_CLEAN_ROLES = ("cleaner", "trial", "founder", "moderator")
+
+
+# ═══════════════════════════════════════════════════════
 # 🎫 TICKETS
 # ═══════════════════════════════════════════════════════
 
