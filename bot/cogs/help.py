@@ -68,10 +68,21 @@ class Help(commands.Cog):
 
         if is_staff:
             embed.add_field(
+                name="🏭 L'atelier — la chaîne de fabrication",
+                value=(
+                    "`/atelier_raws` — ouvrir la fiche d'un chapitre\n"
+                    "`/atelier_clean` `/atelier_trad` `/atelier_edit` "
+                    "`/atelier_qcheck` — valider son étape\n"
+                    "`/atelier_liste` — tout ce qui est en cours\n"
+                    "`/atelier_fiche` — revoir une fiche\n"
+                    "*Chaque étape validée ping le métier suivant.*"
+                ),
+                inline=False,
+            )
+
+            embed.add_field(
                 name="🛠️ Équipe",
                 value=(
-                    "`/atelier_raws` — déposer un lot de pages RAW\n"
-                    "`/atelier_liste` — les lots qui attendent un cleaner\n"
                     "`/release` — publier une sortie à la main\n"
                     "`/site_sync` — forcer la synchro avec le site\n"
                     "`/annonce` — annonce signée, avec ping\n"
@@ -88,6 +99,7 @@ class Help(commands.Cog):
                 name="⚙️ Administration",
                 value=(
                     "`/publier <page>` — (re)poster les pages de référence\n"
+                    "`/atelier_etape` `/atelier_retirer` — corriger une fiche\n"
                     "`/panneau_alertes` · `/ticket_setup` · `/recrutement_panel`\n"
                     "`/raid` · `/lockdown` — protection du serveur\n"
                     "`/backup` — sauvegarde de la structure\n"

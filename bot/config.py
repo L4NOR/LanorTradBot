@@ -262,16 +262,29 @@ SITE_STALE_DAYS = 21              # relance hebdo sur les chapitres qui dorment
 # 📥 ATELIER — dépôt des pages RAW (cog atelier)
 # ═══════════════════════════════════════════════════════
 
-# Salon où atterrissent les lots de RAW. Repli automatique sur
+# Salon où vivent les fiches de chapitre. Repli automatique sur
 # raws_archive puis workshop_chat si la clé n'existe pas sur le serveur.
 ATELIER_CHANNEL = "raws_archive"
 
-# Rôle prévenu à chaque dépôt (None = personne n'est pingé).
-ATELIER_PING_ROLE = "cleaner"
+# À chaque étape validée, une ligne dans le salon ping le métier suivant.
+ATELIER_ANNONCE_ETAPE = True
 
-# Qui peut déposer un lot, et qui peut cliquer « Je prends le clean ».
-ATELIER_DEPOSER_ROLES = ("raw_provider", "founder", "moderator")
-ATELIER_CLEAN_ROLES = ("cleaner", "trial", "founder", "moderator")
+# Qui valide quoi. Les clés sont les étapes du site (bot/site.py · STEPS),
+# les valeurs des clés de ROLES. Une étape absente d'ici n'est ouverte
+# qu'aux rôles passe-partout ci-dessous.
+ATELIER_ETAPE_ROLES = {
+    "pages":  ("raw_provider",),
+    "clean":  ("cleaner",),
+    "trad":   ("translator",),
+    "edit":   ("typesetter",),
+    "qcheck": ("qc",),
+    "sortie": ("founder", "moderator"),
+}
+
+# Peuvent valider n'importe quelle étape (et débloquer une fiche coincée).
+# Ajoute "trial" ici si tu veux que les personnes en test participent
+# avant d'avoir reçu leur rôle métier.
+ATELIER_ROLES_JOKER = ("founder", "moderator")
 
 
 # ═══════════════════════════════════════════════════════
