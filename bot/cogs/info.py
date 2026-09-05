@@ -16,6 +16,49 @@ from bot.embeds import brand_embed
 GUILD = discord.Object(id=GUILD_ID) if GUILD_ID else None
 
 
+class AnnonceModal(discord.ui.Modal):
+    """Formulaire d'annonce — le seul endroit de Discord ou l'on peut taper
+    de vrais retours a la ligne (les parametres de commande sont monolignes)."""
+
+    def __init__(self, cog, target, mention, titre=None, corps=None):
+        super().__init__(title="Nouvelle annonce")
+        self.cog = cog
+        self.target = target
+        self.mention = mention
+
+        self.titre = discord.ui.TextInput(
+            label="Titre", default=titre or "",
+            placeholder="Le serveur fait peau neuve", max_length=200)
+        self.corps = discord.ui.TextInput(
+            label="Message", style=discord.TextStyle.paragraph,
+            default=corps or "",
+            placeholder="Ecris librement : les retours a la ligne sont conserves.",
+            max_length=3900)
+        self.image = discord.ui.TextInput(
+            label="Image (URL, facultatif)", required=False, max_length=400)
+        for item in (self.titre, self.corps, self.image):
+            self.add_item(item)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        try:
+            publie = await self.cog._publier_annonce(
+                interaction, str(self.titre), str(self.corps),
+                self.target, self.mention, str(self.image) or None)
+        except discord.Forbidden:
+            await interaction.followup.send(
+                f"❌ Permissions insuffisantes pour {self.target.mention}.",
+                ephemeral=True)
+            return
+        except discord.HTTPException as e:
+            await interaction.followup.send(
+                f"❌ Discord a refuse l'envoi : {e}", ephemeral=True)
+            return
+        await interaction.followup.send(
+            f"✅ Annonce postee dans {self.target.mention}{publie}.",
+            ephemeral=True)
+
+
 class Utils(commands.Cog):
     """Commandes utilitaires."""
 
@@ -130,6 +173,48 @@ class Utils(commands.Cog):
                 ephemeral=True,
             )
 
+    # ─────────────────────────────────────────────
+    # Publication d'une annonce (partagee par la commande et le formulaire)
+    # ─────────────────────────────────────────────
+    async def _publier_annonce(self, interaction, titre, corps, target,
+                               mention, image=None):
+        embed = brand_embed(
+            interaction.guild,
+            title=f"📢 {titre}",
+            description=corps.replace("\\n", "\n"),
+            color=COLOR_NEUTRAL,
+        )
+        if image:
+            embed.set_image(url=image)
+        embed.set_author(name=interaction.user.display_name,
+                         icon_url=interaction.user.display_avatar.url)
+        sent = await target.send(
+            content=mention, embed=embed,
+            allowed_mentions=discord.AllowedMentions(roles=bool(mention)))
+        publie = ""
+        if isinstance(target, discord.TextChannel) and target.is_news():
+            try:
+                await sent.publish()
+                publie = " et publiee aux serveurs abonnes"
+            except discord.HTTPException:
+                pass
+        return publie
+
+    def _cible_annonce(self, interaction, channel):
+        target = channel
+        if target is None:
+            ann_id = CHANNELS.get("announcements")
+            target = interaction.guild.get_channel(ann_id) if ann_id else None
+        return target or interaction.channel
+
+    def _mention_annonce(self, ping, sans_ping):
+        if sans_ping:
+            return None
+        if ping is not None:
+            return ping.mention
+        role_id = ROLES.get(ANNOUNCE_DEFAULT_PING) if ANNOUNCE_DEFAULT_PING else None
+        return f"<@&{role_id}>" if role_id else None
+
     @app_commands.command(name="annonce", description="(Mod) Poste une annonce stylée")
     @app_commands.describe(
         title="Titre de l'annonce",
@@ -144,29 +229,24 @@ class Utils(commands.Cog):
     async def announce(
         self,
         interaction: discord.Interaction,
-        title: str,
-        message: str,
+        title: str = None,
+        message: str = None,
         channel: discord.TextChannel = None,
         ping: discord.Role = None,
         sans_ping: bool = False,
         image: str = None,
     ):
+        target = self._cible_annonce(interaction, channel)
+        mention = self._mention_annonce(ping, sans_ping)
+
+        # Pas de texte fourni : on ouvre un formulaire, seul endroit de Discord
+        # ou l'on peut taper de vrais retours a la ligne.
+        if not title or not message:
+            await interaction.response.send_modal(
+                AnnonceModal(self, target, mention, titre=title, corps=message))
+            return
+
         # Cible : param explicite > #announcements configuré > salon courant
-        target = channel
-        if target is None:
-            ann_id = CHANNELS.get("announcements")
-            target = interaction.guild.get_channel(ann_id) if ann_id else None
-        target = target or interaction.channel
-
-        # Ping : param explicite > rôle d'annonces configuré > rien
-        if sans_ping:
-            mention = None
-        elif ping is not None:
-            mention = ping.mention
-        else:
-            role_id = ROLES.get(ANNOUNCE_DEFAULT_PING) if ANNOUNCE_DEFAULT_PING else None
-            mention = f"<@&{role_id}>" if role_id else None
-
         embed = brand_embed(
             interaction.guild,
             title=f"📢 {title}",
