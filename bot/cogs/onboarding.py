@@ -212,6 +212,52 @@ class Onboarding(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(
+        name="onboarding_preparer",
+        description="(Admin) Ouvre un salon à l'écriture, exigé par Discord")
+    @app_commands.describe(
+        salon="Le salon à ouvrir (par défaut : celui des présentations)")
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.guilds(GUILD)
+    async def onboarding_preparer(self, interaction: discord.Interaction,
+                                  salon: discord.TextChannel = None):
+        guild = interaction.guild
+        cible = salon or self._salon(guild, "presentations")
+        if cible is None:
+            await interaction.response.send_message(
+                "❌ Aucun salon de présentations trouvé. Crée-le, ou précise "
+                "un salon avec `salon:`.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        everyone = guild.default_role
+        droits = cible.overwrites_for(everyone)
+        droits.view_channel = True
+        droits.send_messages = True
+        droits.read_message_history = True
+        try:
+            await cible.set_permissions(
+                everyone, overwrite=droits,
+                reason="Prérequis du processus d'accueil Discord")
+        except discord.HTTPException as e:
+            await interaction.followup.send(f"❌ Modification refusée : {e}",
+                                            ephemeral=True)
+            return
+
+        manques, _, ecrivables = self._diagnostic(guild)
+        embed = brand_embed(
+            guild,
+            title="✅ Salon ouvert à l'écriture",
+            description=(
+                f"{cible.mention} accepte désormais les messages de @everyone.\n"
+                f"**Salons ouverts :** {len(ecrivables)}\n\n"
+                + ("Il reste :\n" + "\n".join(f"• {m}" for m in manques)
+                   if manques else "Tu peux lancer `/onboarding_setup`.")
+            ),
+            color=COLOR_SUCCESS if not manques else COLOR_WARNING,
+        )
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @app_commands.command(
         name="onboarding_setup",
         description="(Admin) Écrit les questions d'accueil et l'écran de bienvenue")
     @app_commands.default_permissions(administrator=True)
