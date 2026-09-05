@@ -51,6 +51,7 @@ CHANNEL_SLUGS = {
     "verification":     "verification",
     "notifications":    ("notifications", "alertes-sorties"),
     "faq":              ("lexique-faq", "lexique", "faq"),
+    "presentations":    ("présentations", "presentations", "introductions"),
 
     # ─── Broadcast ───
     "announcements":    ("announcements", "annonces"),

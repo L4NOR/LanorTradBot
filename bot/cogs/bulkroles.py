@@ -206,6 +206,7 @@ class BulkRoles(commands.Cog):
         role="Le rôle à donner",
         membres="Mentionne-les, ou colle leurs IDs séparés par des espaces",
         depuis_role="Ou : tous ceux qui portent déjà ce rôle",
+        tout_le_monde="Ou : TOUS les membres humains du serveur",
         role2="Un deuxième rôle à donner en même temps (facultatif)",
         role3="Un troisième rôle (facultatif)",
         simulation="True = montre ce qui serait fait, sans rien changer")
@@ -214,6 +215,7 @@ class BulkRoles(commands.Cog):
     async def roles_ajouter(self, interaction: discord.Interaction,
                             role: discord.Role, membres: str = None,
                             depuis_role: discord.Role = None,
+                            tout_le_monde: bool = False,
                             role2: discord.Role = None, role3: discord.Role = None,
                             simulation: bool = True):
         guild = interaction.guild
@@ -227,9 +229,10 @@ class BulkRoles(commands.Cog):
                   "Paramètres du serveur → Rôles.", ephemeral=True)
             return
 
-        if not membres and not depuis_role:
+        if not membres and not depuis_role and not tout_le_monde:
             await interaction.response.send_message(
-                "❌ Indique soit des `membres`, soit un `depuis_role`.", ephemeral=True)
+                "❌ Indique des `membres`, un `depuis_role`, "
+                "ou coche `tout_le_monde`.", ephemeral=True)
             return
 
         await interaction.response.defer(ephemeral=True, thinking=True)
@@ -244,6 +247,9 @@ class BulkRoles(commands.Cog):
                 introuvables.append(str(uid))
         if depuis_role:
             for membre in depuis_role.members:
+                cibles[membre.id] = membre
+        if tout_le_monde:
+            for membre in guild.members:
                 cibles[membre.id] = membre
 
         cibles = [m for m in cibles.values() if not m.bot]

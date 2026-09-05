@@ -45,6 +45,7 @@ COGS = [
     "bot.cogs.welcome",
     "bot.cogs.alerts",        # panneau de rôles par série
     "bot.cogs.content",
+    "bot.cogs.onboarding",
     "bot.cogs.bulkroles",
     # ─── Contact ───
     "bot.cogs.tickets",
