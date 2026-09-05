@@ -17,19 +17,39 @@ import sys
 # 🔑 TOKEN & SERVEUR
 # ═══════════════════════════════════════════════════════
 
+DOTENV_TROUVES = []
+
+
 def _load_dotenv():
-    """Charge un .env à la racine du projet, sans dépendance externe."""
-    path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
-    if not os.path.exists(path):
-        return
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+    """Charge le premier .env trouvé, sans dépendance externe.
+
+    Le code peut vivre à la racine du dépôt (bot/) ou dans un sous-dossier
+    (v2/bot/) : on regarde donc plusieurs emplacements plutôt que d'en
+    supposer un seul. Les variables déjà présentes dans l'environnement
+    gardent toujours la priorité.
+    """
+    ici = os.path.dirname(os.path.abspath(__file__))          # .../bot
+    parent = os.path.dirname(ici)                             # .../v2  ou racine
+    candidats = [
+        os.path.join(parent, ".env"),
+        os.path.join(os.path.dirname(parent), ".env"),        # racine du dépôt
+        os.path.join(os.getcwd(), ".env"),
+    ]
+    vus = set()
+    for path in candidats:
+        path = os.path.normpath(path)
+        if path in vus or not os.path.exists(path):
+            continue
+        vus.add(path)
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                os.environ.setdefault(
+                    key.strip(), value.strip().strip('"').strip("'"))
+        DOTENV_TROUVES.append(path)
 
 
 _load_dotenv()
@@ -37,7 +57,12 @@ _load_dotenv()
 TOKEN = os.environ.get("DISCORD_TOKEN")
 if not TOKEN:
     print("ERREUR : DISCORD_TOKEN introuvable.")
-    print("  -> renseigne-le dans .env (voir .env.example) ou dans l'environnement.")
+    if DOTENV_TROUVES:
+        print("  Fichiers .env lus : " + ", ".join(DOTENV_TROUVES))
+        print("  -> aucun n'y declare DISCORD_TOKEN=...")
+    else:
+        print("  Aucun fichier .env trouve a cote du code ni a la racine du depot.")
+    print("  -> ajoute une ligne DISCORD_TOKEN=... dans .env (voir .env.example)")
     sys.exit(1)
 
 from bot.servers import select as _select_server   # noqa: E402
