@@ -48,6 +48,7 @@ COGS = [
     "bot.cogs.onboarding",
     "bot.cogs.bulkroles",
     "bot.cogs.rolesorder",
+    "bot.cogs.permissions",
     # ─── Contact ───
     "bot.cogs.tickets",
     "bot.cogs.recruit",
