@@ -29,6 +29,8 @@ Renseigne `DISCORD_TOKEN` dans `.env`, puis :
 python -m bot.main
 ```
 
+En production, PM2 lance `run_v2.py`, qui fait la même chose.
+
 Le bot demande sur quel serveur il travaille. Pour éviter la question :
 
 ```bash
@@ -122,9 +124,9 @@ bot/
     ├── info.py        /ping /membre /serveur /site /dis /annonce
     ├── help.py        /aide
     └── errors.py      gestion d'erreurs globale
+run_v2.py   point d'entrée PM2
 data/       runtime, ignoré par git
 tests/      tests hors-ligne du parseur du site
-legacy/     l'ancien bot (v1), conservé tel quel pour référence
 ```
 
 ### Aucun ID à coller
@@ -165,9 +167,14 @@ chapitres.
 ## L'ancien bot
 
 La v1 (25 000 lignes, 152 commandes : mini-jeux, boutique, économie, XP,
-tournois) vit dans `legacy/`. Elle ne se charge plus : ces fonctionnalités
-servaient un serveur communautaire, remplacé par le forum du site. Tout reste
-dans l'historique git, rien n'est perdu.
+tournois) a été retirée : ces fonctionnalités servaient un serveur
+communautaire, remplacé par le forum du site.
+
+Rien n'est perdu — elle reste accessible en une commande :
+
+```bash
+git checkout v1-avant-v2 -- .
+```
 
 ---
 
