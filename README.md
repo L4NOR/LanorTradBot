@@ -73,11 +73,32 @@ est ignoré, et toute commande lancée depuis un autre serveur est refusée.
 `/verrou` · `/deverrou` · `/timeout` · `/kick` · `/ban` · `/warn` · `/warns` ·
 `/delwarn` · `/clearwarns`
 
+### Gestion des rôles
+
+| Commande | Ce qu'elle fait |
+|---|---|
+| `/roles_ajouter` | un ou plusieurs rôles à des membres précis, aux porteurs d'un rôle, ou à tout le monde |
+| `/roles_base` | le rôle de base à tous les membres, avec progression |
+| `/roles_retirer` | retire un rôle à tous ceux qui l'ont |
+| `/roles_ranger` | remet la hiérarchie dans l'ordre prévu |
+
+Toutes tournent en **simulation par défaut** : `simulation:False` pour appliquer.
+
+### Configuration du serveur
+
+| Commande | Ce qu'elle fait |
+|---|---|
+| `/perms_roles` | permissions serveur de chaque rôle, et @everyone en lecture seule |
+| `/perms_salons` | droits des 22 salons (lecture · panneau · ouvert · équipe · staff) |
+| `/onboarding_etat` | ce qui bloque le processus d'accueil Discord |
+| `/onboarding_preparer` | ouvre un salon à l'écriture, prérequis de Discord |
+| `/onboarding_setup` | écrit les questions d'accueil et l'écran de bienvenue |
+| `/publier <page>` | (re)poste les pages de référence |
+
 ### Administration
 
-`/publier <page>` · `/panneau_alertes` · `/ticket_setup` · `/recrutement_panel` ·
-`/raid` · `/lockdown` · `/backup` · `/logs` · `/dis` · `/ping` · `/serveur` ·
-`/membre`
+`/panneau_alertes` · `/ticket_setup` · `/recrutement_panel` · `/raid` ·
+`/lockdown` · `/backup` · `/logs` · `/dis` · `/ping` · `/serveur` · `/membre`
 
 ---
 
@@ -121,6 +142,10 @@ bot/
     ├── guard.py       automod + anti-raid + anti-flood
     ├── logs.py        journalisation
     ├── backup.py      sauvegardes de la structure
+    ├── bulkroles.py   attribution de rôles en masse
+    ├── rolesorder.py  rangement de la hiérarchie
+    ├── permissions.py droits des rôles et des salons
+    ├── onboarding.py  processus d'accueil natif Discord
     ├── info.py        /ping /membre /serveur /site /dis /annonce
     ├── help.py        /aide
     └── errors.py      gestion d'erreurs globale
