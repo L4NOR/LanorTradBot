@@ -22,6 +22,7 @@ import glob
 import json
 import logging
 import os
+import time
 
 import discord
 from discord import app_commands
@@ -29,8 +30,10 @@ from discord.ext import commands, tasks
 
 from bot.config import (
     GUILD_ID, CHANNELS, COLOR_NEUTRAL, COLOR_SUCCESS, BACKUP_KEEP,
+    BACKUP_CHANNEL_ID, BACKUP_MIN_DAYS,
 )
 from bot.embeds import brand_embed
+from bot.storage import JSONStore
 
 log = logging.getLogger("lanortrad.backup")
 
@@ -128,6 +131,7 @@ class Backup(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self._store = JSONStore("backup.json", default={})
         self.weekly_backup.start()
 
     def cog_unload(self):
@@ -153,16 +157,39 @@ class Backup(commands.Cog):
         log.info("Sauvegarde créée : %s", path)
         return path
 
+    def _salon_rapport(self, guild):
+        """Où déposer la sauvegarde : l'ID de la config d'abord.
+
+        Sans ID explicite on retombe sur #bot-logs, puis sur le salon
+        d'équipe — mais un fichier de 30 Ko toutes les semaines n'a rien
+        à faire dans un salon de discussion.
+        """
+        for ch_id in (BACKUP_CHANNEL_ID, CHANNELS.get("bot_logs"),
+                      CHANNELS.get("staff_chat")):
+            if not ch_id:
+                continue
+            salon = guild.get_channel(ch_id)
+            if salon is not None:
+                return salon
+        return None
+
     @tasks.loop(hours=168)
     async def weekly_backup(self):
+        # discord.py relance la boucle dès le démarrage : on vérifie
+        # nous-mêmes qu'une semaine est bien passée.
+        depuis = time.time() - self._store.get("derniere_auto", 0)
+        if depuis < BACKUP_MIN_DAYS * 86400:
+            log.info("Sauvegarde auto ignorée : la dernière date de %.1f jour(s).",
+                     depuis / 86400)
+            return
+
         for guild in self.bot.guilds:
             try:
                 path = self.create(guild, tag="auto-hebdo")
             except OSError as e:
                 log.error("Sauvegarde auto KO : %s", e)
                 continue
-            ch_id = CHANNELS.get("staff_chat") or CHANNELS.get("bot_logs")
-            channel = guild.get_channel(ch_id) if ch_id else None
+            channel = self._salon_rapport(guild)
             if channel:
                 try:
                     await channel.send(
@@ -171,6 +198,9 @@ class Backup(commands.Cog):
                     )
                 except discord.HTTPException:
                     pass
+
+        self._store["derniere_auto"] = time.time()
+        self._store.save()
 
     @weekly_backup.before_loop
     async def _before_backup(self):

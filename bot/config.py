@@ -349,3 +349,13 @@ MSG_CACHE_DAYS    = 14
 MSG_CACHE_MAX_LEN = 3000
 
 BACKUP_KEEP = 10
+
+# Salon où le bot dépose la sauvegarde hebdomadaire.
+# ID explicite : le resolver ne le remplacera jamais par un salon
+# trouvé par son nom. None = repli sur bot_logs puis staff_chat.
+BACKUP_CHANNEL_ID = 1545538121729310892
+
+# La boucle hebdomadaire repart à zéro à chaque démarrage du bot : sans
+# ce garde-fou, dix `pm2 restart` dans la journée = dix sauvegardes.
+# Nombre de jours minimum entre deux sauvegardes automatiques.
+BACKUP_MIN_DAYS = 6
