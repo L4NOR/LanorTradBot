@@ -176,6 +176,10 @@ ROLE_NAMES = {
     "ping_sat":      ("🔪 ⋆ Satsudou", "Satsudou"),
     "ping_one":      ("📜 ⋆ Oneshots", "📜 Oneshots"),
 
+    # ─── Suivi de fabrication (créé par /suivi_setup) ───
+    "ping_workshop": ("🔔 Suivi de fabrication", "Suivi de fabrication",
+                      "🔔 ⋆ Suivi de fabrication"),
+
     # ─── Pings communauté ───
     "ping_all":           "🔔 ⋆ Toutes sorties",
     "ping_announcements": ("📢 ⋆ Announcements", "📢 ⋆ Annonces"),

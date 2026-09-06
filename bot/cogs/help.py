@@ -42,7 +42,9 @@ class Help(commands.Cog):
                 "`/planning` — le rythme de parution, jour par jour\n"
                 "`/atelier` — où en est chaque prochain chapitre\n"
                 "`/sorties` — les derniers chapitres publiés\n"
-                "`/alertes` — choisir les séries qui te pinguent"
+                "`/alertes` — choisir les séries qui te pinguent\n"
+                "*et le 🔔 suivi de fabrication, pour voir les "
+                "chapitres avancer entre deux sorties*"
             ),
             inline=False,
         )
@@ -105,6 +107,7 @@ class Help(commands.Cog):
                     "`/atelier_etape` `/atelier_retirer` — corriger une fiche\n"
                     "`/atelier_pousser` — écrire `atelier.js` dans le dépôt du site\n"
                     "`/panneau_alertes` · `/ticket_setup` · `/recrutement_panel`\n"
+                    "`/suivi_setup` — créer le rôle de suivi de fabrication\n"
                     "`/raid` · `/lockdown` — protection du serveur\n"
                     "`/backup` — sauvegarde de la structure\n"
                     "`/logs` — état du cache des messages\n"

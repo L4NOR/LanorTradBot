@@ -40,7 +40,7 @@ import time
 import aiohttp
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from bot import site as sitelib
 from bot import siteexport
@@ -49,6 +49,10 @@ from bot.config import (
     COLOR_NEUTRAL, COLOR_SUCCESS, COLOR_WARNING, COLOR_ERROR,
     ATELIER_CHANNEL, ATELIER_ANNONCE_ETAPE,
     ATELIER_ETAPE_ROLES, ATELIER_ROLES_JOKER,
+    ATELIER_RELANCE, ATELIER_RELANCE_JOURS, ATELIER_RELANCE_INTERVALLE,
+    ATELIER_RELANCE_MAX,
+    ATELIER_SUIVI_PUBLIC, ATELIER_SUIVI_CHANNEL, ATELIER_SUIVI_ROLE,
+    ATELIER_SUIVI_ETAPES,
     SITE_REPO, SITE_REPO_BRANCH, SITE_REPO_TOKEN,
     manga_url,
 )
@@ -116,6 +120,22 @@ def _role_de(guild, etape: str):
 
 def _cle(manga: str, chapitre: str) -> str:
     return f"{manga}:{str(chapitre).strip()}"
+
+
+def _immobile_depuis(fiche: dict) -> float:
+    """Jours écoulés depuis le dernier mouvement de la fiche.
+
+    Prise de l'étape en cours si quelqu'un l'a prise, sinon dernière
+    étape validée, sinon ouverture. Sert au ⏳ et à la relance.
+    """
+    faites = (fiche.get("etapes") or {}).values()
+    dernier = max(fiche.get("pris_le") or 0,
+                  max((e.get("le", 0) for e in faites), default=0))
+    # `ouvert_le` ne bouge jamais : il ne sert que de repli pour une fiche
+    # toute neuve, sinon il ferait passer une fiche endormie pour active.
+    if not dernier:
+        dernier = fiche.get("ouvert_le") or 0
+    return (time.time() - dernier) / 86400 if dernier else 0.0
 
 
 # ═══════════════════════════════════════════════════════
@@ -209,6 +229,8 @@ class FicheView(discord.ui.View):
 
         fiche["pris_par"] = None
         fiche["pris_le"] = None
+        fiche["relances"] = 0
+        fiche["relance_le"] = None
         cog.sauver()
         await cog.rafraichir(interaction, fiche)
         log.info("Atelier : %s rendu par %s", fiche["cle"], interaction.user)
@@ -228,6 +250,12 @@ class Atelier(commands.Cog):
 
     async def cog_load(self):
         self.bot.add_view(FicheView())
+        if ATELIER_RELANCE:
+            self.relance.start()
+
+    def cog_unload(self):
+        if self.relance.is_running():
+            self.relance.cancel()
 
     # ─────────────────────────────────────────────
     # État
@@ -335,11 +363,14 @@ class Atelier(commands.Cog):
                       + (f"\n*{info[3]}*" if info[3] else ""),
                 inline=False)
             preneur = fiche.get("pris_par")
-            embed.add_field(
-                name="🙋 Sur le coup",
-                value=(f"<@{preneur}> · <t:{int(fiche.get('pris_le') or 0)}:R>"
-                       if preneur else "*personne pour l'instant*"),
-                inline=True)
+            dort = _immobile_depuis(fiche)
+            valeur = (f"<@{preneur}> · <t:{int(fiche.get('pris_le') or 0)}:R>"
+                      if preneur else "*personne pour l'instant*")
+            if dort >= ATELIER_RELANCE_JOURS:
+                # Factuel, sans désigner de coupable : l'équipe voit que
+                # ça dort, la personne reçoit le rappel en privé.
+                valeur += f"\n⏳ *rien n'a bougé depuis {dort:.0f} jours*"
+            embed.add_field(name="🙋 Sur le coup", value=valeur, inline=True)
 
         faites = fiche.get("etapes", {})
         if faites:
@@ -408,6 +439,8 @@ class Atelier(commands.Cog):
         suivante = _suivante(etape)
         fiche["pris_par"] = None
         fiche["pris_le"] = None
+        fiche["relances"] = 0          # la fiche a bougé : on repart à zéro
+        fiche["relance_le"] = None
 
         if suivante is None or suivante == DERNIERE:
             fiche["etape"] = DERNIERE
@@ -418,6 +451,7 @@ class Atelier(commands.Cog):
 
         log.info("Atelier : %s — %s valide par %s", fiche["cle"], etape, auteur)
         await self._prevenir(guild, fiche)
+        await self._suivi_public(guild, fiche)
 
     async def _prevenir(self, guild, fiche):
         """Une ligne dans le salon pour passer le relais."""
@@ -447,6 +481,104 @@ class Atelier(commands.Cog):
             await salon.send(texte, allowed_mentions=mentions)
         except discord.HTTPException as e:
             log.warning("Relais %s non envoye : %s", fiche.get("cle"), e)
+
+    # ─────────────────────────────────────────────
+    # Suivi public : les lecteurs voient avancer
+    # ─────────────────────────────────────────────
+    async def _suivi_public(self, guild, fiche):
+        """Une ligne pour les lecteurs abonnés, sans rien d'interne.
+
+        Ni note d'atelier, ni nom d'équipier : le public suit un chapitre,
+        pas les gens qui le fabriquent.
+        """
+        if not ATELIER_SUIVI_PUBLIC:
+            return
+        etape = fiche.get("etape")
+        if etape not in ATELIER_SUIVI_ETAPES:
+            return
+
+        salon_id = CHANNELS.get(ATELIER_SUIVI_CHANNEL)
+        salon = guild.get_channel(salon_id) if salon_id else None
+        if salon is None:
+            return
+
+        role_id = ROLES.get(ATELIER_SUIVI_ROLE)
+        role = guild.get_role(role_id) if role_id else None
+        info = ETAPE_INFO.get(etape, (etape, etape, "•", ""))
+        titre = f"{_nom_manga(fiche['manga'])} **ch. {fiche['chapitre']}**"
+
+        if fiche.get("termine"):
+            corps = (f"\U0001f389 {titre} est **bouclé**. "
+                     "Il ne reste plus qu'à le mettre en ligne.")
+        else:
+            restantes = len(ETAPES) - 1 - ETAPES.index(etape)
+            reste = ("dernière ligne droite" if restantes <= 1
+                     else f"encore {restantes} étapes avant la sortie")
+            corps = (f"{info[2]} {titre} passe en **{info[1]}**.\n"
+                     f"*{info[3]}*\n→ {reste}.")
+
+        texte = (f"{role.mention}\n{corps}" if role else corps)
+        try:
+            await salon.send(
+                texte, allowed_mentions=discord.AllowedMentions(roles=True))
+        except discord.HTTPException as e:
+            log.warning("Suivi public %s non envoye : %s", fiche.get("cle"), e)
+
+    # ─────────────────────────────────────────────
+    # Relance douce — en privé, jamais en public
+    # ─────────────────────────────────────────────
+    @tasks.loop(hours=ATELIER_RELANCE_INTERVALLE)
+    async def relance(self):
+        if not ATELIER_RELANCE:
+            return
+        guild = self.bot.get_guild(GUILD_ID)
+        if guild is None:
+            return
+
+        for fiche in list(self._store.get("fiches", {}).values()):
+            if fiche.get("termine") or not fiche.get("pris_par"):
+                continue
+            if _immobile_depuis(fiche) < ATELIER_RELANCE_JOURS:
+                continue
+            if fiche.get("relances", 0) >= ATELIER_RELANCE_MAX:
+                continue
+            # Un rappel par période, pas un par passage de boucle.
+            depuis_rappel = (time.time() - (fiche.get("relance_le") or 0)) / 86400
+            if fiche.get("relance_le") and depuis_rappel < ATELIER_RELANCE_JOURS:
+                continue
+
+            membre = guild.get_member(fiche["pris_par"])
+            if membre is None:
+                continue
+
+            info = ETAPE_INFO.get(fiche.get("etape"), ("", "?", "•", ""))
+            jours = _immobile_depuis(fiche)
+            try:
+                await membre.send(
+                    f"{info[2]} **Petit rappel, sans pression**\n\n"
+                    f"Tu as pris le **{info[1]}** de "
+                    f"{_nom_manga(fiche['manga'])} ch. {fiche['chapitre']} "
+                    f"il y a {jours:.0f} jours.\n\n"
+                    "Si tu es toujours dessus, ignore ce message — il ne "
+                    "reviendra pas avant plusieurs jours.\n"
+                    "Si tu n'as plus le temps, le bouton **↩️ Je rends** "
+                    "libère le chapitre pour quelqu'un d'autre. Personne ne "
+                    "te demandera pourquoi.\n\n"
+                    f"→ {fiche.get('url', '')}")
+                log.info("Atelier : relance envoyee a %s pour %s",
+                         membre, fiche["cle"])
+            except discord.HTTPException:
+                # MP fermés : on note quand même le passage pour ne pas
+                # réessayer toutes les douze heures.
+                log.info("Atelier : MP impossible pour %s", membre)
+
+            fiche["relances"] = fiche.get("relances", 0) + 1
+            fiche["relance_le"] = time.time()
+            self.sauver()
+
+    @relance.before_loop
+    async def _avant_relance(self):
+        await self.bot.wait_until_ready()
 
     # ─────────────────────────────────────────────
     # Autocomplétion des chapitres ouverts
@@ -802,6 +934,9 @@ class Atelier(commands.Cog):
                     preneur = fiche.get("pris_par")
                     etat = (f"{info[2]} {info[1]} — <@{preneur}>" if preneur
                             else f"{info[2]} {info[1]} — *libre*")
+                    dort = _immobile_depuis(fiche)
+                    if dort >= ATELIER_RELANCE_JOURS:
+                        etat += f" ⏳ {dort:.0f}j"
                 lignes.append(f"**ch. {fiche.get('chapitre')}** · {etat} · "
                               f"[fiche]({fiche.get('url')})")
             blocs.append(f"{_nom_manga(cle_manga)}\n" + "\n".join(lignes))

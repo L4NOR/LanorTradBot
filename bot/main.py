@@ -60,6 +60,7 @@ COGS = [
     "bot.cogs.logs",
     "bot.cogs.backup",
     # ─── Divers ───
+    "bot.cogs.presence",      # statut dynamique du bot
     "bot.cogs.info",          # /ping /membre /serveur /dis /annonce
     "bot.cogs.help",
 ]

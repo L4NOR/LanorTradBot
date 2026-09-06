@@ -296,6 +296,27 @@ ATELIER_ETAPE_ROLES = {
 # avant d'avoir reçu leur rôle métier.
 ATELIER_ROLES_JOKER = ("founder", "moderator")
 
+# ── Relance douce ─────────────────────────────────────────────────
+# Quelqu'un prend une étape puis disparaît : le bot lui écrit en privé,
+# jamais dans un salon. Personne ne se fait reprendre en public.
+ATELIER_RELANCE = True
+ATELIER_RELANCE_JOURS = 5          # jours sans bouger avant le premier rappel
+ATELIER_RELANCE_INTERVALLE = 12    # heures entre deux passages de la boucle
+ATELIER_RELANCE_MAX = 2            # au-delà, on arrête d'écrire
+
+# ── Suivi public de fabrication ──────────────────────────────────
+# Les lecteurs qui prennent le rôle « 🔔 Suivi de fabrication » voient
+# les chapitres avancer. Aucune note interne, aucun nom d'équipier.
+ATELIER_SUIVI_PUBLIC = True
+ATELIER_SUIVI_CHANNEL = "notifications"
+ATELIER_SUIVI_ROLE = "ping_workshop"
+ATELIER_SUIVI_ETAPES = ("clean", "trad", "edit", "qcheck", "sortie")
+
+# ── Statut du bot ──────────────────────────────────────────────
+# Le bot raconte ce qui se passe au lieu d'afficher toujours la même ligne.
+PRESENCE_ENABLED = True
+PRESENCE_INTERVALLE = 10           # minutes entre deux changements
+
 
 # ═══════════════════════════════════════════════════════
 # 🎫 TICKETS
