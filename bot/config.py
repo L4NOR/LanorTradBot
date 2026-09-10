@@ -296,13 +296,59 @@ ATELIER_ETAPE_ROLES = {
 # avant d'avoir reçu leur rôle métier.
 ATELIER_ROLES_JOKER = ("founder", "moderator")
 
+# ── Délai par étape ───────────────────────────────────────────────
+# Prendre une étape, c'est prendre une échéance. Elle s'affiche sur la
+# fiche en compte à rebours ; elle sert de repère, pas de couperet — la
+# rallonge est à un bouton et personne n'a à se justifier.
+# En jours. Une étape absente d'ici n'a pas d'échéance du tout.
+ATELIER_DELAIS = {
+    "clean":  5,
+    "trad":   4,
+    "edit":   5,
+    "qcheck": 2,
+}
+
+# Un chapitre de 40 pages ne se clean pas dans le temps d'un chapitre de
+# 15. Pour ces étapes-là, le délai suit le volume : plein tarif à
+# ATELIER_DELAI_PAGES_REF pages, borné pour ne jamais devenir absurde.
+ATELIER_DELAI_PAGES = ("clean", "edit")
+ATELIER_DELAI_PAGES_REF = 20       # le chapitre « normal » de référence
+ATELIER_DELAI_PAGES_MIN = 0.7      # jamais moins de 70 % du délai de base
+ATELIER_DELAI_PAGES_MAX = 1.6      # jamais plus de 160 %
+
+# La rallonge, au bouton « ⏰ Plus de temps » sur la fiche.
+ATELIER_RALLONGE_JOURS = 3
+ATELIER_RALLONGE_MAX = 2           # au-delà, il vaut mieux rendre
+
 # ── Relance douce ─────────────────────────────────────────────────
 # Quelqu'un prend une étape puis disparaît : le bot lui écrit en privé,
 # jamais dans un salon. Personne ne se fait reprendre en public.
 ATELIER_RELANCE = True
-ATELIER_RELANCE_JOURS = 5          # jours sans bouger avant le premier rappel
+ATELIER_RELANCE_JOURS = 5          # jours sans bouger — sert au ⏳ des fiches
 ATELIER_RELANCE_INTERVALLE = 12    # heures entre deux passages de la boucle
-ATELIER_RELANCE_MAX = 2            # au-delà, on arrête d'écrire
+ATELIER_RELANCE_MAX = 2            # étapes sans délai : nombre de MP maximum
+
+# Rappels d'échéance, en MP. Chacun n'est envoyé qu'une fois par prise.
+#   veille  : il reste moins d'un jour
+#   jour_j  : l'échéance est passée
+#   retard  : n jours après l'échéance — et le staff reçoit un récap
+ATELIER_RAPPEL_RETARD_JOURS = 2
+
+# Au bout de ce délai après l'échéance, l'étape se libère toute seule :
+# elle redevient prenable et le métier est repingé. Le MP qui l'accompagne
+# dit bien que ce n'est pas un reproche.
+ATELIER_LIBERATION = True        # False = le staff libère à la main
+ATELIER_LIBERATION_JOURS = 6       # après l'échéance, pas après la prise
+
+# Une étape que personne ne prend ne réveille personne : le métier est
+# repingé dans le salon d'atelier tous les n jours, puis on passe la main
+# au staff plutôt que d'insister.
+ATELIER_RAPPEL_LIBRE_JOURS = 3
+ATELIER_RAPPEL_LIBRE_MAX = 3
+
+# Salon où le staff voit les retards et les libérations (jamais de nom
+# de personne dans un salon public : ce salon est celui de l'équipe).
+ATELIER_STAFF_CHANNEL = "workshop_chat"
 
 # ── Suivi public de fabrication ──────────────────────────────────
 # Les lecteurs qui prennent le rôle « 🔔 Suivi de fabrication » voient

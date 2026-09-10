@@ -73,6 +73,32 @@ est ignoré, et toute commande lancée depuis un autre serveur est refusée.
 `/verrou` · `/deverrou` · `/timeout` · `/kick` · `/ban` · `/warn` · `/warns` ·
 `/delwarn` · `/clearwarns`
 
+### L'atelier
+
+Un chapitre = **une fiche** qui se réécrit à chaque étape, dans le salon d'équipe.
+
+| Commande | Ce qu'elle fait |
+|---|---|
+| `/atelier_raws` | ouvre la fiche : les pages japonaises sont là |
+| `/atelier_clean` · `/atelier_trad` · `/atelier_edit` · `/atelier_qcheck` | valide une étape et passe le relais à la suivante |
+| `/mes_taches` | ton établi : ce que tu as pris, ce qui attend ton métier |
+| `/atelier_liste` | tout ce qui est en cours, par série |
+| `/atelier_fiche` · `/atelier_eta` | revoir une fiche · fixer la sortie visée |
+| `/atelier_etape` · `/atelier_retirer` | (staff) corriger l'étape · supprimer la fiche |
+| `/atelier_export` · `/atelier_pousser` | régénérer `atelier.js` · l'écrire dans le dépôt du site |
+
+Prendre une étape, c'est prendre une **échéance** — 5 jours pour un clean,
+4 pour une traduction, 5 pour une édition, 2 pour un Q-check, ajustés au
+nombre de pages. La fiche affiche le compte à rebours ; le bot écrit en
+privé la veille, puis le jour dit, puis deux jours après. Le bouton
+**⏰ Plus de temps** ajoute trois jours sans avoir à se justifier, et
+**↩️ Je rends** libère le chapitre sans que personne ne demande pourquoi.
+Passé six jours de retard, l'étape retourne au pot commun toute seule.
+
+Une étape que personne ne prend repingue son métier tous les trois jours,
+puis passe la main au staff. Rien de tout ça n'est public : les rappels
+partent en MP, les retards vont dans le salon d'équipe. Tous les délais se
+règlent dans `bot/config.py` (bloc `ATELIER_`).
 ### Gestion des rôles
 
 | Commande | Ce qu'elle fait |
