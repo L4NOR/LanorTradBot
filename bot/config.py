@@ -296,6 +296,15 @@ ATELIER_ETAPE_ROLES = {
 # avant d'avoir reçu leur rôle métier.
 ATELIER_ROLES_JOKER = ("founder", "moderator")
 
+# ── Le fil du chapitre ────────────────────────────────────────────
+# Une commande slash plafonne à 25 options, et chaque pièce jointe en
+# consomme une : on ne dépose pas vingt pages par ce chemin. La fiche
+# ouvre donc un fil, et les pages s'y glissent normalement — Discord en
+# prend dix par message. Le bot compte ce qui arrive et l'affiche sur la
+# fiche, étape par étape.
+ATELIER_FIL = True
+ATELIER_FIL_ARCHIVE = 10080        # minutes avant archivage auto (7 jours)
+
 # ── Délai par étape ───────────────────────────────────────────────
 # Prendre une étape, c'est prendre une échéance. Elle s'affiche sur la
 # fiche en compte à rebours ; elle sert de repère, pas de couperet — la

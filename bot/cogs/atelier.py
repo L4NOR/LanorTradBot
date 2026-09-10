@@ -29,6 +29,11 @@ Quatre principes :
     avec un lien vers la fiche — personne n'a à surveiller un salon.
   • **Tout est faisable au bouton.** Prendre, terminer, demander du temps,
     rendre : les commandes ne servent qu'à joindre un aperçu ou une note.
+  • **Les pages vivent dans le fil de la fiche.** Une commande slash
+    plafonne à 25 options et chaque pièce jointe en mange une : on ne
+    dépose pas vingt pages par ce chemin. La fiche ouvre donc un fil où
+    le glisser-déposer marche normalement (dix fichiers par message), et
+    le bot compte les images reçues étape par étape.
   • **Une échéance est un repère, pas un couperet.** Prendre une étape,
     c'est prendre une date (`ATELIER_DELAIS`, modulée par le nombre de
     pages). Le bot écrit en privé quand elle approche, puis quand elle
@@ -59,6 +64,7 @@ from bot.config import (
     GUILD_ID, MANGAS, CHANNELS, ROLES, SITE_URL,
     COLOR_NEUTRAL, COLOR_SUCCESS, COLOR_WARNING, COLOR_ERROR,
     ATELIER_CHANNEL, ATELIER_ANNONCE_ETAPE,
+    ATELIER_FIL, ATELIER_FIL_ARCHIVE,
     ATELIER_ETAPE_ROLES, ATELIER_ROLES_JOKER,
     ATELIER_RELANCE, ATELIER_RELANCE_JOURS, ATELIER_RELANCE_INTERVALLE,
     ATELIER_RELANCE_MAX,
@@ -429,7 +435,9 @@ class Atelier(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self._store = JSONStore("atelier.json", default={"fiches": {}, "messages": {}})
+        self._store = JSONStore(
+            "atelier.json",
+            default={"fiches": {}, "messages": {}, "fils": {}})
         self._migrer()
 
     async def cog_load(self):
@@ -528,6 +536,19 @@ class Atelier(commands.Cog):
                 cases.append(emoji)
         return " → ".join(cases)
 
+    def _ligne_depot(self, fiche) -> str:
+        """« 🧽 clean · 14/20 » — ce que le fil a reçu pour l'étape en cours."""
+        etape = fiche.get("etape")
+        depose = (fiche.get("depots") or {}).get(etape, 0)
+        attendu = fiche.get("pages")
+        info = ETAPE_INFO.get(etape, (etape, etape, "•", ""))
+        if not depose:
+            return f"{info[2]} *rien de déposé pour le {info[1]}*"
+        if attendu and depose >= attendu:
+            return f"{info[2]} **{depose}/{attendu}** déposées ✅"
+        if attendu:
+            return f"{info[2]} **{depose}/{attendu}** déposées"
+        return f"{info[2]} **{depose}** déposée(s)"
     def _couleur(self, fiche) -> int:
         """Neutre, puis orange quand l'échéance approche, rouge une fois passée."""
         reste = _reste_jours(fiche)
@@ -567,9 +588,13 @@ class Atelier(commands.Cog):
             url=manga_url(manga),
         )
 
-        if fiche.get("pages"):
-            embed.add_field(name="📄 Pages", value=f"**{fiche['pages']}** pages",
-                            inline=True)
+        if fiche.get("pages") or fiche.get("depots"):
+            valeur = f"**{fiche['pages']}** pages" if fiche.get("pages") else ""
+            if not termine:
+                valeur += ("\n" if valeur else "") + self._ligne_depot(fiche)
+            if fiche.get("fil"):
+                valeur += f"\n→ <#{fiche['fil']}>"
+            embed.add_field(name="📄 Pages", value=valeur, inline=True)
 
         if fiche.get("eta"):
             embed.add_field(name="🎯 Sortie visée",
@@ -752,6 +777,103 @@ class Atelier(commands.Cog):
             log.warning("Suivi public %s non envoye : %s", fiche.get("cle"), e)
 
     # ─────────────────────────────────────────────
+    # Le fil du chapitre
+    # ─────────────────────────────────────────────
+    # Une commande slash ne prend pas vingt pièces jointes : chaque
+    # pièce y est une option nommée, et le plafond est de 25 options
+    # pour la commande entière. Les pages passent donc par un fil
+    # attaché à la fiche, où le glisser-déposer marche normalement.
+    # Le bot compte ce qui arrive et le reporte sur la fiche.
+
+    async def _ouvrir_fil(self, message, fiche):
+        """Crée le fil de la fiche et y explique quoi déposer."""
+        if not ATELIER_FIL:
+            return None
+        try:
+            fil = await message.create_thread(
+                name=f"{MANGAS.get(fiche['manga'], {}).get('name', '?')} "
+                     f"ch. {fiche['chapitre']}"[:100],
+                auto_archive_duration=ATELIER_FIL_ARCHIVE)
+        except discord.HTTPException as e:
+            # Pas de droit de créer un fil, ou salon inéligible : la fiche
+            # marche très bien sans, on ne bloque pas l'ouverture.
+            log.warning("Fil de %s non cree : %s", fiche.get("cle"), e)
+            return None
+
+        fiche["fil"] = fil.id
+        # Le fil d'un message public porte l'id de ce message, mais on
+        # indexe quand même : on ne fait pas reposer la relecture des
+        # dépôts sur une coïncidence d'identifiants.
+        self._store.setdefault("fils", {})[str(fil.id)] = fiche["cle"]
+        self.sauver()
+
+        attendu = (f"les **{fiche['pages']}** pages" if fiche.get("pages")
+                   else "les pages")
+        try:
+            await fil.send(
+                f"📥 **Le dossier du chapitre**\n\n"
+                f"Dépose {attendu} ici — Discord en prend **dix par message**, "
+                "donc deux ou trois glisser-déposer suffisent. Le compte "
+                "s'affiche tout seul sur la fiche.\n\n"
+                "Le fil sert à toute la chaîne : le clean, la traduction et "
+                "l'édition déposent leur rendu au même endroit, et le bot "
+                "compte séparément pour chaque étape.")
+        except discord.HTTPException as e:
+            log.warning("Message d'accueil du fil %s non envoye : %s",
+                        fiche.get("cle"), e)
+        return fil
+
+    def fiche_du_fil(self, fil_id: int):
+        cle = self._store.get("fils", {}).get(str(fil_id))
+        return self._store.get("fiches", {}).get(cle) if cle else None
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        """Compte les pages déposées dans le fil d'une fiche."""
+        if message.author.bot or not message.attachments:
+            return
+        if not isinstance(message.channel, discord.Thread):
+            return
+        fiche = self.fiche_du_fil(message.channel.id)
+        if fiche is None or fiche.get("termine"):
+            return
+
+        images = [p for p in message.attachments
+                  if p.filename.rsplit(".", 1)[-1].lower() in EXTENSIONS_OK]
+        if not images:
+            return
+
+        etape = fiche.get("etape")
+        depots = fiche.setdefault("depots", {})
+        avant = depots.get(etape, 0)
+        depots[etape] = avant + len(images)
+        self.sauver()
+
+        # Fiche ouverte sans aperçu : la première page déposée l'illustre.
+        # On la ré-héberge plutôt que de pointer l'URL du message, les
+        # liens de pièces jointes Discord expirant au bout de quelques heures.
+        fichier = None
+        if not fiche.get("image"):
+            ext = images[0].filename.rsplit(".", 1)[-1].lower()
+            try:
+                fichier = await images[0].to_file(filename=f"apercu.{ext}")
+            except discord.HTTPException:
+                fichier = None
+
+        await self._reecrire(message.guild, fiche, fichier)
+
+        attendu = fiche.get("pages")
+        if attendu and avant < attendu <= depots[etape]:
+            info = ETAPE_INFO.get(etape, (etape, etape, "•", ""))
+            try:
+                await message.channel.send(
+                    f"✅ **{depots[etape]}/{attendu}** — le compte y est "
+                    f"pour le **{info[1]}**.")
+            except discord.HTTPException:
+                pass
+        log.info("Atelier : %d page(s) deposee(s) sur %s (%s)",
+                 len(images), fiche["cle"], etape)
+
     # ─────────────────────────────────────────────
     # Relance douce — en privé, jamais en public
     # ─────────────────────────────────────────────
@@ -1036,7 +1158,7 @@ class Atelier(commands.Cog):
         manga="La série concernée",
         chapitre="Numéro du chapitre (58, 58.5…)",
         pages="Nombre de pages dans le lot",
-        apercu="Une page en aperçu (image)",
+        apercu="Une page en aperçu (facultatif : le fil accueille les pages)",
         apercu2="Aperçu supplémentaire (facultatif)",
         apercu3="Aperçu supplémentaire (facultatif)",
         apercu4="Aperçu supplémentaire (facultatif)",
@@ -1050,7 +1172,7 @@ class Atelier(commands.Cog):
         manga: app_commands.Choice[str],
         chapitre: app_commands.Range[str, 1, 12],
         pages: app_commands.Range[int, 1, 400],
-        apercu: discord.Attachment,
+        apercu: discord.Attachment = None,
         apercu2: discord.Attachment = None,
         apercu3: discord.Attachment = None,
         apercu4: discord.Attachment = None,
@@ -1108,12 +1230,13 @@ class Atelier(commands.Cog):
             "salon": cible.id,
             "message": None,
             "url": None,
-            "image": fichiers[0].filename,
+            "image": fichiers[0].filename if fichiers else None,
             "source": source,
             "ouvert_le": time.time(),
             "libre_le": time.time(),
             "pris_par": None,
             "pris_le": None,
+            "depots": {},
             "etapes": {"pages": {"par": interaction.user.id, "le": time.time(),
                                  "note": note, "lien": source}},
         }
@@ -1142,6 +1265,11 @@ class Atelier(commands.Cog):
         self._store.setdefault("messages", {})[str(message.id)] = fiche["cle"]
         self.sauver()
 
+        # Le fil ouvert, la fiche le mentionne : on la réécrit une fois.
+        fil = await self._ouvrir_fil(message, fiche)
+        if fil is not None:
+            await self._reecrire(interaction.guild, fiche)
+
         await self._prevenir(interaction.guild, fiche)
         log.info("Atelier : fiche ouverte %s (%d pages) par %s",
                  fiche["cle"], pages, interaction.user)
@@ -1151,9 +1279,11 @@ class Atelier(commands.Cog):
                 interaction.guild, title="✅ Fiche ouverte",
                 description=(
                     f"{_nom_manga(manga.value)} — chapitre **{chapitre}**, "
-                    f"**{pages}** pages, {len(fichiers)} aperçu(s).\n"
-                    f"Prochaine étape : **{_libelle(fiche['etape'])}**\n"
-                    f"→ {message.jump_url}"),
+                    f"**{pages}** pages.\n"
+                    + (f"Prochaine étape : **{_libelle(fiche['etape'])}**\n")
+                    + (f"📥 Dépose les pages dans <#{fiche['fil']}> — "
+                       "dix par message.\n" if fiche.get("fil") else "")
+                    + f"→ {message.jump_url}"),
                 color=COLOR_SUCCESS),
             ephemeral=True)
 
@@ -1553,6 +1683,7 @@ class Atelier(commands.Cog):
 
         self._store.setdefault("fiches", {}).pop(fiche["cle"], None)
         self._store.setdefault("messages", {}).pop(str(fiche.get("message")), None)
+        self._store.setdefault("fils", {}).pop(str(fiche.get("fil")), None)
         self.sauver()
 
         await interaction.followup.send(

@@ -79,13 +79,21 @@ Un chapitre = **une fiche** qui se réécrit à chaque étape, dans le salon d'�
 
 | Commande | Ce qu'elle fait |
 |---|---|
-| `/atelier_raws` | ouvre la fiche : les pages japonaises sont là |
+| `/atelier_raws` | ouvre la fiche et son fil : les pages se déposent dans le fil |
 | `/atelier_clean` · `/atelier_trad` · `/atelier_edit` · `/atelier_qcheck` | valide une étape et passe le relais à la suivante |
 | `/mes_taches` | ton établi : ce que tu as pris, ce qui attend ton métier |
 | `/atelier_liste` | tout ce qui est en cours, par série |
 | `/atelier_fiche` · `/atelier_eta` | revoir une fiche · fixer la sortie visée |
 | `/atelier_etape` · `/atelier_retirer` | (staff) corriger l'étape · supprimer la fiche |
 | `/atelier_export` · `/atelier_pousser` | régénérer `atelier.js` · l'écrire dans le dépôt du site |
+
+Les pages ne passent pas par la commande : une commande slash plafonne à 25
+options et chaque pièce jointe en consomme une. `/atelier_raws` ouvre donc un
+**fil sur la fiche**, où l'on glisse les pages normalement — dix par message.
+Le bot compte les images reçues et affiche `14/20` sur la fiche, séparément
+pour chaque étape : le clean, la traduction et l'édition déposent leur rendu
+au même endroit. L'aperçu de la commande est devenu facultatif ; sans lui, la
+première page déposée illustre la fiche.
 
 Prendre une étape, c'est prendre une **échéance** — 5 jours pour un clean,
 4 pour une traduction, 5 pour une édition, 2 pour un Q-check, ajustés au
