@@ -6,42 +6,56 @@ Le site montre l'avancement au public ; ce cog fait tourner l'atelier côté
 réécrit à chaque étape, plutôt que cinq messages empilés qu'il faut
 recoller mentalement.
 
-  /atelier_raws    — ouvre la fiche : les pages japonaises sont là
-  /atelier_clean   — le clean est fait      → au tour de la traduction
-  /atelier_trad    — la traduction est faite → au tour de l'édition
-  /atelier_edit    — l'édition est faite     → au tour du Q-check
-  /atelier_qcheck  — le Q-check est fait     → le chapitre est prêt à sortir
+**Une seule commande à retenir, et elle est pour l'admin :**
 
-  /atelier_avancement — où en est l'étape : 14 pages sur 20
-  /atelier_stock   — une plage de chapitres déjà avancés, sans fiche
-  /atelier_stock_retirer — sortir des chapitres du stock
+  /atelier_raws    — le titre, le numéro, les pages. Ça ouvre la fiche,
+                     ça ouvre son fil, ça pose le panneau des métiers.
+
+Ensuite plus rien à taper. Le panneau porte les cinq métiers de la chaîne
+et leur couleur dit tout :
+
+  📥 Pages · 🧽 Clean · 💬 Trad · ✍️ Edit · 🔍 Q-check
+     vert = c'est fait · bleu = c'est ton tour · gris = pas encore
+
+Un cleaner clique sur 🧽 quand il a fini. Le rôle suivant est pingé, le
+bouton d'après passe au bleu, le suivi public avance. Personne n'a à
+retenir de nom de commande ni à retaper un numéro de chapitre.
+
+Le reste, pour qui veut regarder :
+
   /mes_taches      — ton établi : ce que tu as pris, ce qui attend ton métier
   /atelier_fiche   — revoir une fiche
-  /atelier_liste   — tout ce qui est en cours, par série
+  /atelier_liste   — tout ce qui est en cours, par série, stock compris
+  /atelier_avancement — 14 pages sur 20, quand la fiche n'est pas sous la main
+  /atelier_stock   — une plage de chapitres déjà avancés, sans fiche
+  /atelier_stock_retirer — sortir des chapitres du stock
   /atelier_etape   — (staff) corriger l'étape d'une fiche
   /atelier_retirer — supprimer une fiche
 
 Les étapes sont celles du site (`bot/site.py` · STEPS) : le vocabulaire est
 le même sur le site, dans les embeds et dans la bouche des gens.
 
-Quatre principes :
+Les principes :
 
+  • **Rien à taper, rien à retenir.** Il y a eu des commandes par étape
+    (`/atelier_clean`, `/atelier_trad`…) : quatre noms à connaître, et il
+    fallait rappeler la série et le numéro à chaque fois, pour un
+    chapitre dont la fiche était déjà sous les yeux. Un bouton sur cette
+    fiche dit la même chose sans rien demander.
   • **Chaque étape appartient à son métier.** Un cleaner ne valide pas une
-    traduction ; la commande refuse poliment plutôt que de laisser passer.
+    traduction ; le bouton refuse poliment plutôt que de laisser passer.
   • **Une étape validée prévient la suivante.** Le rôle concerné est pingé
     avec un lien vers la fiche — personne n'a à surveiller un salon.
-  • **Tout est faisable au bouton.** Prendre, terminer, demander du temps,
-    rendre : les commandes ne servent qu'à joindre un aperçu ou une note.
   • **Les pages vivent dans le fil de la fiche.** Une commande slash
     plafonne à 25 options et chaque pièce jointe en mange une : on ne
     dépose pas vingt pages par ce chemin. La fiche ouvre donc un fil où
     le glisser-déposer marche normalement (dix fichiers par message), et
     le bot compte les images reçues étape par étape.
   • **Une étape n'est pas binaire.** Entre « pas commencé » et « fini »
-    il y a 14 pages sur 20. Le fil compte ce qu'il reçoit, et
-    `/atelier_avancement` sert à annoncer le reste quand le travail se
-    fait ailleurs ; la fiche en tire une jauge, et le suivi public la
-    montre en réécrivant son message au lieu d'en poster un de plus.
+    il y a 14 pages sur 20. Le fil compte ce qu'il reçoit, et le bouton
+    **📄 Où j'en suis** sert à annoncer le reste quand le travail se fait
+    ailleurs ; la fiche en tire une jauge, et le suivi public la montre
+    en réécrivant son message au lieu d'en poster un de plus.
   • **Une fiche par chapitre, mais pas pour le stock.** « Les chapitres
     248 à 293 sont nettoyés » ne mérite pas quarante-six fiches : ce
     serait quarante-six messages et un repingage de masse tous les trois
@@ -106,6 +120,16 @@ GUILD = discord.Object(id=GUILD_ID) if GUILD_ID else None
 ETAPES = [e[0] for e in sitelib.STEPS]
 ETAPE_INFO = sitelib.STEP_INFO          # id → (id, libellé, emoji, description)
 DERNIERE = ETAPES[-1]                   # "sortie" : la fiche est alors terminée
+
+# Sur un bouton, « Pages trouvées » tient mal à côté de quatre voisins :
+# le panneau doit se lire d'un coup d'œil, pas se déchiffrer.
+LIBELLE_COURT = {
+    "pages":  "Pages",
+    "clean":  "Clean",
+    "trad":   "Trad",
+    "edit":   "Edit",
+    "qcheck": "Q-check",
+}
 
 MANGA_CHOICES = [
     app_commands.Choice(name=f"{m['emoji']} {m['name']}", value=cle)
@@ -322,38 +346,223 @@ def _liberer(fiche: dict):
 
 
 # ═══════════════════════════════════════════════════════
-# Les boutons de la fiche
+# Le panneau de la fiche
 # ═══════════════════════════════════════════════════════
+# Il n'y a plus de commande par étape. Les cinq métiers de la chaîne sont
+# là, en boutons, et leur couleur dit tout : vert = fait, bleu = c'est
+# ton tour, gris = pas encore. On clique sur le sien quand on a fini,
+# point. Un cleaner n'a rien à retenir, rien à taper, rien à chercher.
+#
+# Les boutons survivent aux redémarrages : leur `custom_id` est fixe, et
+# c'est `bot.add_view(FicheView())` qui les rebranche. Seuls le libellé
+# et la couleur dépendent de la fiche, et ça ne regarde que l'affichage.
 
-class FicheView(discord.ui.View):
-    """Prendre · terminer · rallonger · rendre — persistants au redémarrage."""
+def _contexte(interaction):
+    """(cog, fiche) depuis le message cliqué, ou (None, None)."""
+    cog = interaction.client.get_cog("Atelier")
+    if cog is None:
+        return None, None
+    message = getattr(interaction, "message", None)
+    return cog, (cog.fiche_du_message(message.id) if message else None)
 
-    def __init__(self):
-        super().__init__(timeout=None)
 
-    def _contexte(self, interaction):
-        """(cog, fiche) ou (None, None) si le message n'est plus suivi."""
-        cog = interaction.client.get_cog("Atelier")
-        if cog is None:
-            return None, None
-        return cog, cog.fiche_du_message(interaction.message.id)
+def _contexte_cle(interaction, cle):
+    """(cog, fiche) depuis la clé de la fiche.
 
-    async def _refus(self, interaction, texte):
-        await interaction.response.send_message(texte, ephemeral=True)
+    Un formulaire n'est pas un clic : Discord ne garantit pas de rattacher
+    le message d'origine à sa soumission. On retient donc la clé au moment
+    d'ouvrir le formulaire, et on ne dépend plus de rien d'autre.
+    """
+    cog = interaction.client.get_cog("Atelier")
+    if cog is None:
+        return None, None
+    return cog, cog.fiche_par_cle(cle)
 
-    @discord.ui.button(label="Je prends", emoji="🙋",
-                       style=discord.ButtonStyle.primary,
-                       custom_id="lanortrad:atelier_prendre")
-    async def prendre(self, interaction: discord.Interaction, _b):
-        cog, fiche = self._contexte(interaction)
+
+async def _refus(interaction, texte):
+    await interaction.response.send_message(texte, ephemeral=True)
+
+
+class FiniModal(discord.ui.Modal):
+    """« C'est fait » — avec, si on veut, un lien et un mot pour la suite.
+
+    Les deux champs sont facultatifs : on peut valider en appuyant sur
+    Envoyer sans rien écrire. Ils remplacent les options `lien` et `note`
+    des anciennes commandes ; l'aperçu, lui, n'a plus lieu d'être — les
+    pages vivent dans le fil.
+    """
+
+    def __init__(self, fiche, etape):
+        info = ETAPE_INFO.get(etape, (etape, etape, "•", ""))
+        super().__init__(title=f"{info[1]} — ch. {fiche.get('chapitre')}"[:45])
+        self.etape = etape
+        self.cle = fiche.get("cle")
+        self.lien = discord.ui.TextInput(
+            label="Lien vers ton rendu (facultatif)",
+            placeholder="Un Drive, un Mega… ou rien du tout",
+            required=False, max_length=300)
+        self.note = discord.ui.TextInput(
+            label="Un mot pour la suite (facultatif)",
+            placeholder="Double page p.12, onomatopées laissées en jap…",
+            style=discord.TextStyle.paragraph, required=False, max_length=400)
+        self.add_item(self.lien)
+        self.add_item(self.note)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        cog, fiche = _contexte_cle(interaction, self.cle)
         if fiche is None:
-            return await self._refus(interaction, "❌ Cette fiche n'est plus suivie.")
+            return await _refus(interaction, "❌ Cette fiche n'est plus suivie.")
+        if fiche.get("etape") != self.etape:
+            return await _refus(
+                interaction, "⚠️ Quelqu'un est passé avant toi : la fiche a "
+                             "changé d'étape entre-temps.")
+
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        await cog.avancer(interaction.guild, fiche, self.etape,
+                          interaction.user,
+                          note=str(self.note) or None,
+                          lien=str(self.lien) or None)
+        # On réécrit la fiche par son message enregistré : la soumission
+        # d'un formulaire ne le porte pas forcément avec elle.
+        await cog._reecrire(interaction.guild, fiche)
+
+        suite = ("le chapitre est **prêt à sortir**" if fiche.get("termine")
+                 else f"au tour de **{_libelle(fiche['etape'])}**")
+        await interaction.followup.send(
+            f"✅ **{_libelle(self.etape)}** validé — {suite}.", ephemeral=True)
+
+
+class AvancementModal(discord.ui.Modal, title="Où tu en es"):
+    """Le compte de pages, sans passer par une commande."""
+
+    faites = discord.ui.TextInput(
+        label="Pages faites pour cette étape",
+        placeholder="14", required=True, max_length=4)
+    total = discord.ui.TextInput(
+        label="Total du chapitre (si ça a changé)",
+        placeholder="20", required=False, max_length=4)
+
+    def __init__(self, fiche):
+        super().__init__()
+        self.cle = fiche.get("cle")
+
+    async def on_submit(self, interaction: discord.Interaction):
+        cog, fiche = _contexte_cle(interaction, self.cle)
+        if fiche is None:
+            return await _refus(interaction, "❌ Cette fiche n'est plus suivie.")
+        try:
+            faites = int(str(self.faites).strip())
+            total = int(str(self.total).strip()) if str(self.total).strip() \
+                else fiche.get("pages")
+        except ValueError:
+            return await _refus(interaction, "❌ Des nombres, tout simplement.")
+        if faites < 0 or (total and faites > total):
+            return await _refus(
+                interaction,
+                f"❌ **{faites}** pages faites sur un chapitre qui en compte "
+                f"**{total}** — l'un des deux nombres est de trop.")
+
+        etape = fiche.get("etape")
+        if total:
+            fiche["pages"] = total
+        fiche.setdefault("avancement", {})[etape] = faites
+        fiche["avancement_le"] = time.time()
+        cog.sauver()
+
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        await cog._reecrire(interaction.guild, fiche)
+        await cog._suivi_public(interaction.guild, fiche, maj=True)
+        log.info("Atelier : %s — %s a %d/%s pages (bouton, par %s)",
+                 fiche["cle"], etape, faites, fiche.get("pages"),
+                 interaction.user)
+        await interaction.followup.send(
+            "📄 " + _ligne_pages(fiche, etape).replace("\n", " · "),
+            ephemeral=True)
+
+
+class MetierButton(discord.ui.Button):
+    """Un maillon de la chaîne. Sa couleur dit où en est le chapitre.
+
+    Vert : c'est fait. Bleu : c'est ton tour, clique quand tu as fini.
+    Gris : pas encore. Cliquer sur un maillon qui n'est pas le sien ne
+    casse rien — ça raconte juste où en est le chapitre.
+    """
+
+    def __init__(self, etape: str, fiche=None):
+        info = ETAPE_INFO.get(etape, (etape, etape, "•", ""))
+        faites = (fiche or {}).get("etapes", {})
+        courante = (fiche or {}).get("etape")
+
+        if etape in faites:
+            style = discord.ButtonStyle.success
+        elif fiche is not None and etape == courante and not fiche.get("termine"):
+            style = discord.ButtonStyle.primary
+        else:
+            style = discord.ButtonStyle.secondary
+
+        super().__init__(label=LIBELLE_COURT.get(etape, info[1]),
+                         emoji=info[2], style=style, row=0,
+                         custom_id=f"lanortrad:atelier_etape:{etape}")
+        self.etape = etape
+
+    async def callback(self, interaction: discord.Interaction):
+        cog, fiche = _contexte(interaction)
+        if fiche is None:
+            return await _refus(interaction, "❌ Cette fiche n'est plus suivie.")
+
+        fait = fiche.get("etapes", {}).get(self.etape)
+        if fait:
+            quand = f"<t:{int(fait.get('le') or 0)}:R>" if fait.get("le") else ""
+            details = f"✅ **{_libelle(self.etape)}** — <@{fait.get('par')}> {quand}"
+            if fait.get("lien"):
+                details += f"\n🔗 {fait['lien']}"
+            if fait.get("note"):
+                details += f"\n> {fait['note']}"
+            return await _refus(interaction, details)
+
         if fiche.get("termine"):
-            return await self._refus(interaction, "✅ Ce chapitre est déjà terminé.")
+            return await _refus(
+                interaction, "🎉 Ce chapitre est bouclé — il ne reste qu'à "
+                             "le sortir.")
+
+        courante = fiche.get("etape")
+        if self.etape != courante:
+            return await _refus(
+                interaction,
+                f"⏳ Pas encore : le chapitre en est à "
+                f"**{_libelle(courante)}**.\nC'est ce bouton-là qui est en "
+                "bleu — le tien s'allumera tout seul quand ce sera ton tour.")
+
+        if not _peut_valider(interaction.user, self.etape):
+            return await _refus(
+                interaction,
+                f"❌ **{_libelle(self.etape)}** est réservé à son métier.\n"
+                f"On recrute, d'ailleurs : {SITE_URL}/equipe")
+
+        await interaction.response.send_modal(FiniModal(fiche, self.etape))
+
+
+class PrendreButton(discord.ui.Button):
+    """Dire qu'on s'y met — pour que personne ne fasse le travail en double."""
+
+    def __init__(self, fiche=None):
+        pris = bool((fiche or {}).get("pris_par"))
+        super().__init__(
+            label="Je m'y mets", emoji="🙋", row=1,
+            style=(discord.ButtonStyle.secondary if pris
+                   else discord.ButtonStyle.primary),
+            custom_id="lanortrad:atelier_prendre")
+
+    async def callback(self, interaction: discord.Interaction):
+        cog, fiche = _contexte(interaction)
+        if fiche is None:
+            return await _refus(interaction, "❌ Cette fiche n'est plus suivie.")
+        if fiche.get("termine"):
+            return await _refus(interaction, "✅ Ce chapitre est déjà terminé.")
 
         etape = fiche["etape"]
         if not _peut_valider(interaction.user, etape):
-            return await self._refus(
+            return await _refus(
                 interaction,
                 f"❌ L'étape **{_libelle(etape)}** est réservée à son métier.\n"
                 f"On recrute, d'ailleurs : {SITE_URL}/equipe")
@@ -362,7 +571,7 @@ class FicheView(discord.ui.View):
         if deja and deja != interaction.user.id:
             membre = interaction.guild.get_member(deja)
             if membre is not None:
-                return await self._refus(
+                return await _refus(
                     interaction,
                     f"⚠️ {membre.display_name} est déjà dessus. "
                     "Il faut qu'iel rende d'abord.")
@@ -371,40 +580,46 @@ class FicheView(discord.ui.View):
         await cog.rafraichir(interaction, fiche)
         log.info("Atelier : %s pris par %s", fiche["cle"], interaction.user)
 
-    @discord.ui.button(label="J'ai terminé", emoji="✅",
-                       style=discord.ButtonStyle.success,
-                       custom_id="lanortrad:atelier_fini")
-    async def fini(self, interaction: discord.Interaction, _b):
-        cog, fiche = self._contexte(interaction)
+
+class AvancementButton(discord.ui.Button):
+    """« J'en suis à 14 sur 20 » — un chiffre, rien d'autre."""
+
+    def __init__(self):
+        super().__init__(label="Où j'en suis", emoji="📄", row=1,
+                         style=discord.ButtonStyle.secondary,
+                         custom_id="lanortrad:atelier_avancement")
+
+    async def callback(self, interaction: discord.Interaction):
+        cog, fiche = _contexte(interaction)
         if fiche is None:
-            return await self._refus(interaction, "❌ Cette fiche n'est plus suivie.")
+            return await _refus(interaction, "❌ Cette fiche n'est plus suivie.")
         if fiche.get("termine"):
-            return await self._refus(interaction, "✅ Ce chapitre est déjà terminé.")
+            return await _refus(interaction, "✅ Ce chapitre est déjà terminé.")
+        if not _peut_valider(interaction.user, fiche.get("etape")):
+            return await _refus(
+                interaction, "❌ Cette étape est réservée à son métier.")
+        await interaction.response.send_modal(AvancementModal(fiche))
 
-        etape = fiche["etape"]
-        if not _peut_valider(interaction.user, etape):
-            return await self._refus(
-                interaction,
-                f"❌ Seul le métier **{_libelle(etape)}** peut valider cette étape.")
 
-        await interaction.response.defer()
-        await cog.avancer(interaction.guild, fiche, etape, interaction.user)
-        await cog.rafraichir(interaction, fiche, deja_repondu=True)
+class RendreButton(discord.ui.Button):
+    """Rendre l'étape, sans avoir à se justifier."""
 
-    @discord.ui.button(label="Je rends", emoji="↩️",
-                       style=discord.ButtonStyle.secondary,
-                       custom_id="lanortrad:atelier_rendre")
-    async def rendre(self, interaction: discord.Interaction, _b):
-        cog, fiche = self._contexte(interaction)
+    def __init__(self):
+        super().__init__(label="Je rends", emoji="↩️", row=1,
+                         style=discord.ButtonStyle.secondary,
+                         custom_id="lanortrad:atelier_rendre")
+
+    async def callback(self, interaction: discord.Interaction):
+        cog, fiche = _contexte(interaction)
         if fiche is None:
-            return await self._refus(interaction, "❌ Cette fiche n'est plus suivie.")
+            return await _refus(interaction, "❌ Cette fiche n'est plus suivie.")
 
         preneur = fiche.get("pris_par")
         if preneur is None:
-            return await self._refus(interaction, "ℹ️ Personne n'est dessus.")
+            return await _refus(interaction, "ℹ️ Personne n'est dessus.")
         if preneur != interaction.user.id and not _peut_valider(
                 interaction.user, DERNIERE):
-            return await self._refus(
+            return await _refus(
                 interaction,
                 "❌ Seule la personne qui a pris l'étape (ou le staff) peut rendre.")
 
@@ -413,24 +628,29 @@ class FicheView(discord.ui.View):
         await cog.rafraichir(interaction, fiche)
         log.info("Atelier : %s rendu par %s", fiche["cle"], interaction.user)
 
-    @discord.ui.button(label="Plus de temps", emoji="⏰",
-                       style=discord.ButtonStyle.secondary,
-                       custom_id="lanortrad:atelier_rallonge")
-    async def rallonge(self, interaction: discord.Interaction, _b):
-        """Repousse l'échéance sans avoir à se justifier."""
-        cog, fiche = self._contexte(interaction)
+
+class RallongeButton(discord.ui.Button):
+    """Repousse l'échéance sans avoir à se justifier."""
+
+    def __init__(self):
+        super().__init__(label="Plus de temps", emoji="⏰", row=1,
+                         style=discord.ButtonStyle.secondary,
+                         custom_id="lanortrad:atelier_rallonge")
+
+    async def callback(self, interaction: discord.Interaction):
+        cog, fiche = _contexte(interaction)
         if fiche is None:
-            return await self._refus(interaction, "❌ Cette fiche n'est plus suivie.")
+            return await _refus(interaction, "❌ Cette fiche n'est plus suivie.")
         if fiche.get("pris_par") != interaction.user.id:
-            return await self._refus(
+            return await _refus(
                 interaction, "ℹ️ Seule la personne qui a pris l'étape peut "
                              "demander du temps.")
         if not fiche.get("echeance"):
-            return await self._refus(
+            return await _refus(
                 interaction, "ℹ️ Cette étape n'a pas d'échéance — prends "
                              "le temps qu'il te faut.")
         if fiche.get("rallonges", 0) >= ATELIER_RALLONGE_MAX:
-            return await self._refus(
+            return await _refus(
                 interaction,
                 f"⚠️ Tu as déjà repoussé {ATELIER_RALLONGE_MAX} fois. Ce n'est "
                 "pas grave : **↩️ Je rends** libère le chapitre, et tu pourras "
@@ -454,6 +674,24 @@ class FicheView(discord.ui.View):
             ephemeral=True)
         log.info("Atelier : %s rallonge de %dj par %s",
                  fiche["cle"], ATELIER_RALLONGE_JOURS, interaction.user)
+
+
+class FicheView(discord.ui.View):
+    """La chaîne en haut, ce qu'on peut faire en bas.
+
+    `FicheView()` sans fiche sert au rebranchement au démarrage : les
+    `custom_id` sont les mêmes, seules les couleurs manquent — et elles
+    ne servent qu'à l'affichage.
+    """
+
+    def __init__(self, fiche=None):
+        super().__init__(timeout=None)
+        for etape in ETAPES[:-1]:      # « sortie » n'est le métier de personne
+            self.add_item(MetierButton(etape, fiche))
+        self.add_item(PrendreButton(fiche))
+        self.add_item(AvancementButton())
+        self.add_item(RendreButton())
+        self.add_item(RallongeButton())
 
 
 # ═══════════════════════════════════════════════════════
@@ -603,6 +841,9 @@ class Atelier(commands.Cog):
     def fiche(self, manga: str, chapitre: str):
         return self._store.get("fiches", {}).get(_cle(manga, chapitre))
 
+    def fiche_par_cle(self, cle: str):
+        return self._store.get("fiches", {}).get(cle) if cle else None
+
     def fiche_du_message(self, message_id: int):
         cle = self._store.get("messages", {}).get(str(message_id))
         return self._store.get("fiches", {}).get(cle) if cle else None
@@ -714,10 +955,18 @@ class Atelier(commands.Cog):
                 name="🎉 Terminé",
                 value="Prêt à sortir — `/release` pour publier.", inline=True)
         else:
+            # Le rôle concerné est nommé ici : dans un embed, une mention
+            # s'affiche sans pinger. Le panneau dit donc qui est attendu
+            # sans réveiller le métier une deuxième fois.
+            role = _role_de(guild, etape) if guild else None
+            qui = f" — {role.mention}" if role else ""
             embed.add_field(
-                name="🔄 Étape en cours",
-                value=f"{info[2]} **{info[1]}**"
-                      + (f"\n*{info[3]}*" if info[3] else ""),
+                name="🔄 Au tour de",
+                value=f"{info[2]} **{info[1]}**{qui}"
+                      + (f"\n*{info[3]}*" if info[3] else "")
+                      + f"\n> Clique sur **{info[2]} "
+                        f"{LIBELLE_COURT.get(etape, info[1])}** ci-dessous "
+                        "quand c'est fait.",
                 inline=False)
             preneur = fiche.get("pris_par")
             dort = _immobile_depuis(fiche)
@@ -762,10 +1011,11 @@ class Atelier(commands.Cog):
         """Réécrit la fiche à partir de l'interaction qui vient d'avoir lieu."""
         embed = self._embed(interaction.guild, fiche)
         try:
+            vue = FicheView(fiche)
             if deja_repondu:
-                await interaction.message.edit(embed=embed, view=FicheView())
+                await interaction.message.edit(embed=embed, view=vue)
             else:
-                await interaction.response.edit_message(embed=embed, view=FicheView())
+                await interaction.response.edit_message(embed=embed, view=vue)
         except discord.HTTPException as e:
             log.warning("Fiche %s non rafraichie : %s", fiche.get("cle"), e)
 
@@ -785,9 +1035,9 @@ class Atelier(commands.Cog):
         try:
             if fichier is not None:
                 await message.edit(embed=embed, attachments=[fichier],
-                                   view=FicheView())
+                                   view=FicheView(fiche))
             else:
-                await message.edit(embed=embed, view=FicheView())
+                await message.edit(embed=embed, view=FicheView(fiche))
         except discord.HTTPException as e:
             log.warning("Fiche %s non reecrite : %s", fiche.get("cle"), e)
         return message
@@ -1431,7 +1681,7 @@ class Atelier(commands.Cog):
 
         try:
             message = await cible.send(embeds=embeds, files=fichiers,
-                                       view=FicheView())
+                                       view=FicheView(fiche))
         except discord.Forbidden:
             return await interaction.followup.send(
                 f"❌ Je n'ai pas le droit d'écrire dans {cible.mention}. "
@@ -1487,135 +1737,6 @@ class Atelier(commands.Cog):
                     + f"→ {message.jump_url}"),
                 color=COLOR_SUCCESS),
             ephemeral=True)
-
-    # ─────────────────────────────────────────────
-    # Les quatre étapes suivantes
-    # ─────────────────────────────────────────────
-    async def _valider(self, interaction, etape, manga, chapitre, apercu, lien, note):
-        chapitre = str(chapitre).strip()
-        fiche = self.fiche(manga.value, chapitre)
-        if fiche is None:
-            return await interaction.response.send_message(
-                f"❌ Aucune fiche pour **{_nom_manga(manga.value)} ch. {chapitre}**.\n"
-                "Elle s'ouvre avec `/atelier_raws`.", ephemeral=True)
-
-        if fiche.get("termine"):
-            return await interaction.response.send_message(
-                "✅ Ce chapitre est déjà terminé — `/release` pour le publier.",
-                ephemeral=True)
-
-        if fiche["etape"] != etape:
-            deja = etape in fiche.get("etapes", {})
-            return await interaction.response.send_message(
-                (f"⚠️ L'étape **{_libelle(etape)}** est déjà validée."
-                 if deja else
-                 f"⚠️ Ce chapitre en est à **{_libelle(fiche['etape'])}**, "
-                 f"pas à **{_libelle(etape)}**.")
-                + "\nLe staff peut corriger avec `/atelier_etape`.",
-                ephemeral=True)
-
-        if not _peut_valider(interaction.user, etape):
-            return await interaction.response.send_message(
-                f"❌ L'étape **{_libelle(etape)}** est réservée à son métier.\n"
-                f"On recrute : {SITE_URL}/equipe", ephemeral=True)
-
-        if apercu is not None:
-            ext = apercu.filename.rsplit(".", 1)[-1].lower()
-            if ext not in EXTENSIONS_OK:
-                return await interaction.response.send_message(
-                    f"❌ `{apercu.filename}` n'est pas une image "
-                    f"({', '.join(EXTENSIONS_OK)}).", ephemeral=True)
-
-        await interaction.response.defer(ephemeral=True, thinking=True)
-
-        fichier = None
-        if apercu is not None:
-            ext = apercu.filename.rsplit(".", 1)[-1].lower()
-            try:
-                fichier = await apercu.to_file(filename=f"{etape}.{ext}")
-            except discord.HTTPException as e:
-                return await interaction.followup.send(
-                    f"❌ Aperçu illisible : {e}", ephemeral=True)
-
-        await self.avancer(interaction.guild, fiche, etape, interaction.user,
-                           note=note, lien=lien)
-        await self._reecrire(interaction.guild, fiche, fichier)
-
-        suite = ("le chapitre est **prêt à sortir**" if fiche.get("termine")
-                 else f"au tour de **{_libelle(fiche['etape'])}**")
-        await interaction.followup.send(
-            embed=brand_embed(
-                interaction.guild,
-                title=f"✅ {_libelle(etape)} validé",
-                description=(f"{_nom_manga(manga.value)} — chapitre "
-                             f"**{chapitre}** : {suite}.\n→ {fiche.get('url')}"),
-                color=COLOR_SUCCESS),
-            ephemeral=True)
-
-    @app_commands.command(name="atelier_clean",
-                          description="Le clean est fait → passe à la traduction")
-    @app_commands.describe(manga="La série", chapitre="Numéro du chapitre",
-                           apercu="Une page nettoyée, en aperçu",
-                           lien="Lien vers le dossier des pages clean",
-                           note="Un mot pour la traduction")
-    @app_commands.choices(manga=MANGA_CHOICES)
-    @app_commands.guilds(GUILD)
-    async def atelier_clean(self, interaction: discord.Interaction,
-                            manga: app_commands.Choice[str], chapitre: str,
-                            apercu: discord.Attachment = None,
-                            lien: app_commands.Range[str, 1, 300] = None,
-                            note: app_commands.Range[str, 1, 400] = None):
-        await self._valider(interaction, "clean", manga, chapitre, apercu, lien, note)
-
-    @app_commands.command(name="atelier_trad",
-                          description="La traduction est faite → passe à l'édition")
-    @app_commands.describe(manga="La série", chapitre="Numéro du chapitre",
-                           apercu="Un aperçu (facultatif)",
-                           lien="Lien vers le script traduit",
-                           note="Un mot pour l'édition")
-    @app_commands.choices(manga=MANGA_CHOICES)
-    @app_commands.guilds(GUILD)
-    async def atelier_trad(self, interaction: discord.Interaction,
-                           manga: app_commands.Choice[str], chapitre: str,
-                           apercu: discord.Attachment = None,
-                           lien: app_commands.Range[str, 1, 300] = None,
-                           note: app_commands.Range[str, 1, 400] = None):
-        await self._valider(interaction, "trad", manga, chapitre, apercu, lien, note)
-
-    @app_commands.command(name="atelier_edit",
-                          description="L'édition est faite → passe au Q-check")
-    @app_commands.describe(manga="La série", chapitre="Numéro du chapitre",
-                           apercu="Une page éditée, en aperçu",
-                           lien="Lien vers les pages éditées",
-                           note="Un mot pour le Q-check")
-    @app_commands.choices(manga=MANGA_CHOICES)
-    @app_commands.guilds(GUILD)
-    async def atelier_edit(self, interaction: discord.Interaction,
-                           manga: app_commands.Choice[str], chapitre: str,
-                           apercu: discord.Attachment = None,
-                           lien: app_commands.Range[str, 1, 300] = None,
-                           note: app_commands.Range[str, 1, 400] = None):
-        await self._valider(interaction, "edit", manga, chapitre, apercu, lien, note)
-
-    @app_commands.command(name="atelier_qcheck",
-                          description="Le Q-check est fait → le chapitre peut sortir")
-    @app_commands.describe(manga="La série", chapitre="Numéro du chapitre",
-                           apercu="Un aperçu final (facultatif)",
-                           lien="Lien vers la version finale",
-                           note="Dernières remarques")
-    @app_commands.choices(manga=MANGA_CHOICES)
-    @app_commands.guilds(GUILD)
-    async def atelier_qcheck(self, interaction: discord.Interaction,
-                             manga: app_commands.Choice[str], chapitre: str,
-                             apercu: discord.Attachment = None,
-                             lien: app_commands.Range[str, 1, 300] = None,
-                             note: app_commands.Range[str, 1, 400] = None):
-        await self._valider(interaction, "qcheck", manga, chapitre, apercu, lien, note)
-
-    # Autocomplétion partagée par les quatre commandes d'étape
-    for _cmd in (atelier_clean, atelier_trad, atelier_edit, atelier_qcheck):
-        _cmd.autocomplete("chapitre")(_ac_chapitre)
-    del _cmd
 
     # ─────────────────────────────────────────────
     # /atelier_avancement — la moitié du chemin, ça se dit

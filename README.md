@@ -77,11 +77,31 @@ est ignoré, et toute commande lancée depuis un autre serveur est refusée.
 
 Un chapitre = **une fiche** qui se réécrit à chaque étape, dans le salon d'équipe.
 
+**Il y a une commande à retenir, et elle est pour l'admin.** `/atelier_raws`
+prend le titre, le numéro et les pages : ça ouvre la fiche, ça ouvre son fil,
+ça pose le panneau. Ensuite plus personne ne tape quoi que ce soit — le
+panneau porte les cinq métiers de la chaîne, et leur couleur dit tout :
+
+```
+📥 Pages   🧽 Clean   💬 Trad   ✍️ Edit   🔍 Q-check
+  vert       vert      bleu      gris       gris
+  fait       fait    ton tour  pas encore pas encore
+```
+
+Un cleaner clique sur 🧽 quand il a fini — un petit formulaire propose un
+lien et un mot pour la suite, les deux facultatifs. Le rôle suivant est
+pingé, le bouton d'après passe au bleu, le suivi public avance. Cliquer sur
+un métier qui n'est pas le sien ne casse rien : ça raconte qui a fait quoi,
+ou ça dit poliment que ce n'est pas encore le tour.
+
+Les commandes par étape (`/atelier_clean`, `/atelier_trad`…) ont disparu :
+quatre noms à connaître, et il fallait rappeler la série et le numéro à
+chaque fois, pour un chapitre dont la fiche était déjà sous les yeux.
+
 | Commande | Ce qu'elle fait |
 |---|---|
-| `/atelier_raws` | ouvre la fiche et son fil : les pages se déposent dans le fil |
-| `/atelier_clean` · `/atelier_trad` · `/atelier_edit` · `/atelier_qcheck` | valide une étape et passe le relais à la suivante |
-| `/atelier_avancement` | où en est une étape : `14` pages faites sur `20` |
+| `/atelier_raws` | ouvre la fiche, son fil et le panneau des métiers |
+| `/atelier_avancement` | `14` pages faites sur `20` — le bouton **📄 Où j'en suis** fait pareil depuis la fiche |
 | `/atelier_stock` · `/atelier_stock_retirer` | une plage de chapitres déjà avancés, sans fiche · l'en sortir |
 | `/mes_taches` | ton établi : ce que tu as pris, ce qui attend ton métier |
 | `/atelier_liste` | tout ce qui est en cours, par série, stock compris |
@@ -99,8 +119,8 @@ première page déposée illustre la fiche.
 
 **Une étape n'est pas binaire.** Entre « pas commencé » et « fini » il y a
 14 pages sur 20, et le travail se fait souvent ailleurs que dans Discord —
-le clean dans Photoshop, la traduction dans un doc. `/atelier_avancement`
-annonce simplement le compte ; la fiche en tire une jauge
+le clean dans Photoshop, la traduction dans un doc. Le bouton **📄 Où j'en
+suis** annonce simplement le compte ; la fiche en tire une jauge
 `▰▰▰▰▰▰▰▱▱▱ 70 %`, et le suivi public la montre aux lecteurs. Le lot de
 raws lui-même peut être incomplet : `/atelier_raws … trouvees:12` le dit,
 et la fiche garde le `⚠️ incomplet : 📥 12/20` sous les yeux jusqu'à ce

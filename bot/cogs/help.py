@@ -73,16 +73,18 @@ class Help(commands.Cog):
                 name="🏭 L'atelier — la chaîne de fabrication",
                 value=(
                     "`/atelier_raws` — ouvrir la fiche d'un chapitre\n"
-                    "`/atelier_clean` `/atelier_trad` `/atelier_edit` "
-                    "`/atelier_qcheck` — valider son étape\n"
-                    "`/atelier_avancement` — où en est l'étape : 14 pages sur 20\n"
+                    "*Tout le reste est au bouton, sur la fiche : les cinq "
+                    "métiers y sont, clique sur le tien quand c'est fait.*\n"
+                    "`/atelier_avancement` — 14 pages sur 20, sans la fiche "
+                    "sous la main\n"
                     "`/atelier_stock` — une plage déjà avancée, sans ouvrir de fiche\n"
                     "`/atelier_liste` — tout ce qui est en cours, stock compris\n"
                     "`/atelier_fiche` — revoir une fiche\n"
                     "`/atelier_eta` — fixer la date de sortie visée\n"
                     "`/atelier_export` — le `atelier.js` du site, "
                     "à jour depuis les fiches\n"
-                    "*Chaque étape validée ping le métier suivant.*"
+                    "*Vert = fait · bleu = c'est ton tour · gris = pas encore. "
+                    "Chaque étape validée ping le métier suivant.*"
                 ),
                 inline=False,
             )
