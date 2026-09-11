@@ -6,15 +6,23 @@ est pingé à chaque nouveau chapitre. Reclic = désabonnement.
 
   /panneau_alertes — (admin) pose le panneau dans le salon des alertes
   /alertes         — ouvre le panneau pour soi, en éphémère
-  /suivi_setup     — (admin) crée le rôle « 🔔 Suivi de fabrication »
+  /suivi_setup     — (admin) crée le rôle ET le salon du suivi de fabrication
 
 Un dernier bouton, à part : **🔔 Suivi de fabrication**. Il ne prévient pas
 des sorties mais de l'avancement — « le chapitre passe en édition ». Pour
 les gens qui trouvent l'attente moins longue quand ils la voient bouger.
 
+L'avancement a son propre salon. Mélangé aux sorties, il noierait ce que
+tout le monde vient y chercher : un salon pour « c'est en ligne », un
+autre pour « ça avance ». `/suivi_setup` crée les deux pièces — le rôle
+et le salon — et tant que le salon manque, le suivi retombe sur les
+alertes plutôt que de disparaître.
+
 Les rôles de séries existent déjà sur le serveur : le bot les retrouve par
-leur nom au démarrage (voir resolver.py), il n'en crée aucun. Seul le rôle
-de suivi peut être créé, et seulement sur demande explicite.
+leur nom au démarrage (voir resolver.py), il n'en crée aucun. Seuls le rôle
+et le salon de suivi peuvent être créés, et seulement sur demande explicite
+— `/suivi_setup` ne touche à rien d'autre, et ne recrée rien de ce qui
+existe déjà sous ce nom.
 """
 import logging
 
@@ -23,8 +31,9 @@ from discord import app_commands
 from discord.ext import commands
 
 from bot.config import (
-    GUILD_ID, ROLES, MANGAS, COLOR_NEUTRAL, COLOR_SUCCESS, COLOR_WARNING,
-    SITE, ATELIER_SUIVI_ROLE,
+    GUILD_ID, CHANNELS, ROLES, MANGAS,
+    COLOR_NEUTRAL, COLOR_SUCCESS, COLOR_WARNING,
+    SITE, ATELIER_SUIVI_ROLE, ATELIER_SUIVI_CHANNEL, ATELIER_SUIVI_CHANNEL_REPLI,
 )
 from bot.embeds import brand_embed
 
@@ -33,6 +42,11 @@ log = logging.getLogger("lanortrad.alerts")
 GUILD = discord.Object(id=GUILD_ID) if GUILD_ID else None
 
 NOM_SUIVI = "🔔 Suivi de fabrication"
+NOM_SALON_SUIVI = "🛠️・suivi-fabrication"
+SUJET_SALON = (
+    "Les chapitres en cours de fabrication, étape par étape. "
+    "Le rôle 🔔 Suivi de fabrication se prend dans le salon des alertes."
+)
 
 
 async def _basculer(interaction: discord.Interaction, role_id, libelle: str,
@@ -59,6 +73,59 @@ async def _basculer(interaction: discord.Interaction, role_id, libelle: str,
         await interaction.response.send_message(
             f"❌ Je n'ai pas pu modifier **{libelle}** — mon rôle doit être "
             "au-dessus du sien dans la liste.", ephemeral=True)
+
+
+async def _assurer_salon(guild: discord.Guild):
+    """Le salon du suivi : retrouvé s'il existe, créé sinon.
+
+    Retourne (salon, créé, erreur). Un salon en lecture seule : le bot y
+    écrit, tout le monde y lit et peut réagir. Il se range juste sous les
+    alertes de sorties, parce que c'est là qu'on ira le chercher.
+    """
+    salon_id = CHANNELS.get(ATELIER_SUIVI_CHANNEL)
+    salon = guild.get_channel(salon_id) if salon_id else None
+    if salon is None:
+        # Peut-être créé à la main depuis le dernier démarrage : on regarde
+        # par le nom avant d'en fabriquer un deuxième.
+        salon = discord.utils.find(
+            lambda c: "suivi-fabrication" in c.name.lower()
+            or "avancement" in c.name.lower(),
+            guild.text_channels)
+    if salon is not None:
+        CHANNELS[ATELIER_SUIVI_CHANNEL] = salon.id
+        return salon, False, None
+
+    voisin = guild.get_channel(CHANNELS.get(ATELIER_SUIVI_CHANNEL_REPLI) or 0)
+    surcharges = {
+        guild.default_role: discord.PermissionOverwrite(
+            view_channel=True, read_message_history=True,
+            send_messages=False, add_reactions=True,
+            create_public_threads=False, create_private_threads=False),
+        guild.me: discord.PermissionOverwrite(
+            view_channel=True, send_messages=True, embed_links=True,
+            manage_messages=True, read_message_history=True),
+    }
+    try:
+        salon = await guild.create_text_channel(
+            name=NOM_SALON_SUIVI,
+            category=voisin.category if voisin is not None else None,
+            topic=SUJET_SALON,
+            overwrites=surcharges,
+            reason="Salon du suivi de fabrication")
+    except discord.Forbidden:
+        return None, False, "Il me manque la permission **Gérer les salons**."
+    except discord.HTTPException as e:
+        return None, False, f"Discord a refusé la création : {e}"
+
+    if voisin is not None and voisin.category_id == salon.category_id:
+        try:
+            await salon.edit(position=voisin.position + 1)
+        except discord.HTTPException:
+            pass
+
+    CHANNELS[ATELIER_SUIVI_CHANNEL] = salon.id
+    log.info("Salon de suivi cree : %s (%s)", salon.name, salon.id)
+    return salon, True, None
 
 
 class SeriesPanel(discord.ui.View):
@@ -102,9 +169,12 @@ class SuiviButton(discord.ui.Button):
         )
 
     async def callback(self, interaction: discord.Interaction):
+        salon = interaction.guild.get_channel(
+            CHANNELS.get(ATELIER_SUIVI_CHANNEL) or 0)
+        ou = f" dans {salon.mention}" if salon is not None else ""
         await _basculer(
             interaction, ROLES.get(ATELIER_SUIVI_ROLE), "Suivi de fabrication",
-            ajoute=("🔔 Tu suivras maintenant **l'avancement** des chapitres : "
+            ajoute=(f"🔔 Tu suivras maintenant **l'avancement** des chapitres{ou} : "
                     "clean, traduction, édition, Q-check.\n"
                     "*Ça fait quelques messages par semaine. Reclique sur le "
                     "bouton quand tu en as assez.*"),
@@ -123,6 +193,8 @@ class Alerts(commands.Cog):
         self.bot.add_view(SeriesPanel())
 
     def _embed(self, guild) -> discord.Embed:
+        salon = guild.get_channel(CHANNELS.get(ATELIER_SUIVI_CHANNEL) or 0)
+        ou = f" dans {salon.mention}" if salon is not None else ""
         return brand_embed(
             guild,
             title="🔔 Alertes de sorties",
@@ -132,7 +204,8 @@ class Alerts(commands.Cog):
                 "Reclique sur un bouton pour te désabonner.\n\n"
                 "**🔔 Suivi de fabrication** est à part : il ne prévient pas "
                 "des sorties, mais de l'**avancement** — quand un chapitre "
-                "passe en clean, en traduction, en édition.\n\n"
+                f"passe en clean, en traduction, en édition. Ça se passe{ou}, "
+                "pas ici : ce salon-ci reste réservé aux sorties.\n\n"
                 f"📚 Les chapitres se lisent sur {SITE['catalogue']}"
             ),
             color=COLOR_NEUTRAL,
@@ -158,35 +231,22 @@ class Alerts(commands.Cog):
             embed=self._embed(interaction.guild), view=SeriesPanel(),
             ephemeral=True)
 
-    @app_commands.command(
-        name="suivi_setup",
-        description="(Admin) Crée le rôle « Suivi de fabrication »")
-    @app_commands.default_permissions(administrator=True)
-    @app_commands.guilds(GUILD)
-    async def suivi_setup(self, interaction: discord.Interaction):
-        guild = interaction.guild
-        existant = guild.get_role(ROLES.get(ATELIER_SUIVI_ROLE) or 0)
-        if existant is None:
+    async def _assurer_role(self, guild, auteur):
+        """Le rôle de ping : retrouvé s'il existe, créé sinon.
+
+        Retourne (rôle, créé, erreur).
+        """
+        role = guild.get_role(ROLES.get(ATELIER_SUIVI_ROLE) or 0)
+        if role is None:
             # Peut-être créé à la main sous ce nom : on regarde avant.
-            existant = discord.utils.find(
+            role = discord.utils.find(
                 lambda r: r.name.strip() == NOM_SUIVI
                 or r.name.strip().lower() == "suivi de fabrication",
                 guild.roles)
+        if role is not None:
+            ROLES[ATELIER_SUIVI_ROLE] = role.id
+            return role, False, None
 
-        if existant is not None:
-            ROLES[ATELIER_SUIVI_ROLE] = existant.id
-            return await interaction.response.send_message(
-                embed=brand_embed(
-                    guild, title="✅ Le rôle existe déjà",
-                    description=(
-                        f"{existant.mention} est branché sur le suivi.\n"
-                        f"**{len(existant.members)}** membre(s) abonné(s).\n\n"
-                        "Si le bouton manque sur le panneau, relance "
-                        "`/panneau_alertes` pour en poser un neuf."),
-                    color=COLOR_SUCCESS),
-                ephemeral=True)
-
-        await interaction.response.defer(ephemeral=True, thinking=True)
         try:
             role = await guild.create_role(
                 name=NOM_SUIVI,
@@ -194,14 +254,11 @@ class Alerts(commands.Cog):
                 mentionable=True,
                 hoist=False,
                 permissions=discord.Permissions.none(),
-                reason=f"Suivi de fabrication, demandé par {interaction.user}")
+                reason=f"Suivi de fabrication, demandé par {auteur}")
         except discord.Forbidden:
-            return await interaction.followup.send(
-                embed=brand_embed(
-                    guild, title="❌ Création refusée",
-                    description="Il me manque la permission **Gérer les rôles**.",
-                    color=COLOR_WARNING),
-                ephemeral=True)
+            return None, False, "Il me manque la permission **Gérer les rôles**."
+        except discord.HTTPException as e:
+            return None, False, f"Discord a refusé la création du rôle : {e}"
 
         ROLES[ATELIER_SUIVI_ROLE] = role.id
         log.info("Role de suivi cree : %s (%s)", role.name, role.id)
@@ -211,19 +268,65 @@ class Alerts(commands.Cog):
             await role.edit(position=max(1, guild.me.top_role.position - 1))
         except discord.HTTPException:
             pass
+        return role, True, None
 
+    @app_commands.command(
+        name="suivi_setup",
+        description="(Admin) Crée le rôle et le salon du suivi de fabrication")
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.guilds(GUILD)
+    async def suivi_setup(self, interaction: discord.Interaction):
+        guild = interaction.guild
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
+        role, role_cree, souci_role = await self._assurer_role(
+            guild, interaction.user)
+        salon, salon_cree, souci_salon = await _assurer_salon(guild)
+
+        lignes, reste = [], []
+        if role is not None:
+            lignes.append(
+                f"🔔 **Rôle** — {role.mention}"
+                + (" · créé à l'instant" if role_cree else
+                   f" · **{len(role.members)}** abonné(s)"))
+        else:
+            lignes.append(f"❌ **Rôle** — {souci_role}")
+
+        if salon is not None:
+            lignes.append(
+                f"🛠️ **Salon** — {salon.mention}"
+                + (" · créé à l'instant, en lecture seule" if salon_cree
+                   else " · déjà en place"))
+        else:
+            lignes.append(f"❌ **Salon** — {souci_salon}")
+            repli = guild.get_channel(
+                CHANNELS.get(ATELIER_SUIVI_CHANNEL_REPLI) or 0)
+            if repli is not None:
+                lignes.append(f"↩️ En attendant, le suivi continue dans "
+                              f"{repli.mention}.")
+
+        if role_cree:
+            reste.append("relance `/panneau_alertes` pour poser un panneau "
+                         "avec le bouton — les panneaux déjà postés ne l'ont pas")
+        if salon_cree:
+            reste.append("le prochain message d'avancement partira dans le "
+                         "nouveau salon, rien d'autre à faire")
+
+        description = "\n".join(lignes)
+        if reste:
+            description += "\n\n**Il reste :**\n" + "\n".join(
+                f"• {r}" for r in reste)
+        description += ("\n\nRôle et salon sont retrouvés par leur nom aux "
+                        "prochains démarrages : rien à noter dans la config.")
+
+        rate = role is None or salon is None
         await interaction.followup.send(
             embed=brand_embed(
-                guild, title="🔔 Rôle créé",
-                description=(
-                    f"{role.mention} est prêt. Aucune permission, aucun "
-                    "affichage séparé : il ne sert qu'à être pingé.\n\n"
-                    "**Il reste une chose à faire :** relance "
-                    "`/panneau_alertes` pour poser un panneau contenant le "
-                    "nouveau bouton — les panneaux déjà postés ne l'ont pas.\n\n"
-                    "Le bot retrouvera ce rôle par son nom aux prochains "
-                    "démarrages, rien à noter dans la config."),
-                color=COLOR_SUCCESS),
+                guild,
+                title="🔧 Suivi de fabrication"
+                      + ("" if rate else " — en place"),
+                description=description,
+                color=COLOR_WARNING if rate else COLOR_SUCCESS),
             ephemeral=True)
 
 

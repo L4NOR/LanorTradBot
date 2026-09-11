@@ -193,6 +193,80 @@ def entrees_depuis_fiches(fiches: list, noms: dict, *,
 
 
 # ═══════════════════════════════════════════════════════
+# Le stock, pour les séries sans fiche
+# ═══════════════════════════════════════════════════════
+# Une série peut n'avoir aucune fiche ouverte et quand même un stock de
+# quarante chapitres nettoyés qui attendent. Sans ça, le site n'aurait
+# rien à dire d'elle alors que l'équipe sait très bien où elle en est.
+
+# Le champ `chapter` du site répond à « quel chapitre arrive ? » et
+# attend une poignée de numéros (« 250 », « 45-46 »). Annoncer
+# « 248-293 » ferait croire que quarante-six chapitres sortent ensemble :
+# au-delà de ce seuil, on ne montre que le premier de la file.
+ETENDUE_MAX = 4
+
+
+def _etendue(plage: dict) -> str:
+    """Le `chapter` à écrire pour une plage — « 44-46 », ou juste « 248 »."""
+    import math
+    if plage["de"] == plage["a"]:
+        return plage["de"]
+    entiers = math.floor(plage["a_n"]) - math.ceil(plage["de_n"]) + 1
+    if entiers <= ETENDUE_MAX:
+        return f"{plage['de']}-{plage['a']}"
+    return plage["de"]
+
+
+def entrees_depuis_stock(stock: dict, noms: dict, *, deja: dict = None,
+                         maintenant: float = None):
+    """Complète les entrées du site avec le stock des séries sans fiche.
+
+    `stock` : {clé de série → [plages]}, tel que le cog le range.
+    `deja`  : les entrées déjà produites par les fiches — elles priment,
+              une fiche étant toujours plus précise qu'une plage.
+
+    Retourne (entrées, remarques).
+    """
+    import time
+    maintenant = maintenant if maintenant is not None else time.time()
+    deja = deja or {}
+    entrees, remarques = {}, []
+
+    for cle_serie, plages in (stock or {}).items():
+        nom = noms.get(cle_serie)
+        if not nom:
+            remarques.append(
+                f"⚠️ `{cle_serie}` n'a pas de nom connu sur le site — "
+                "stock ignoré.")
+            continue
+        if nom in deja:
+            remarques.append(
+                f"ℹ️ **{nom}** : une fiche ouverte passe avant le stock.")
+            continue
+        if not plages:
+            continue
+
+        # La plus basse : le stock avance du plus ancien vers le plus
+        # récent, donc c'est elle le prochain chapitre à sortir.
+        tete = min(plages, key=lambda p: p["de_n"])
+        etendue = _etendue(tete)
+
+        entree = {
+            "chapter": etendue,
+            # Même convention que pour les fiches : l'étape TERMINÉE.
+            "step": tete.get("fait") or "pages",
+            "updated": _jour(tete.get("le") or maintenant),
+        }
+        if tete.get("note"):
+            entree["note"] = tete["note"]
+        entrees[nom] = entree
+        remarques.append(
+            f"📦 **{nom}** — depuis le stock : ch. {etendue}, {entree['step']}.")
+
+    return entrees, remarques
+
+
+# ═══════════════════════════════════════════════════════
 # Fusion avec ce que le site affiche déjà
 # ═══════════════════════════════════════════════════════
 

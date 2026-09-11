@@ -88,6 +88,7 @@ PLAN_SALONS = {
     "welcome": "lecture", "rules": "lecture", "faq": "lecture",
     "site_links": "lecture", "site_forum": "lecture", "incidents": "lecture",
     "sorties_fr": "lecture", "planning": "lecture", "announcements": "lecture",
+    "suivi_fabrication": "lecture",
 
     "notifications": "panneau", "tickets": "panneau", "recrutement": "panneau",
 

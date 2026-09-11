@@ -69,6 +69,10 @@ CHANNEL_SLUGS = {
     "translations_en":  "translations-en",
     "planning":         "planning",
     "releases_forum":   "releases",      # optionnel (mode forum, cf. RELEASE_FORUM_MODE)
+    # Le suivi de fabrication a son salon, distinct des alertes de sorties.
+    # Créé par /suivi_setup ; à défaut le suivi retombe sur « notifications ».
+    "suivi_fabrication": ("suivi-fabrication", "en-fabrication",
+                          "fabrication", "avancement"),
 
     # ─── Perks ───
     "vip_lounge":       "vip-lounge",

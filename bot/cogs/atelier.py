@@ -12,6 +12,9 @@ recoller mentalement.
   /atelier_edit    — l'édition est faite     → au tour du Q-check
   /atelier_qcheck  — le Q-check est fait     → le chapitre est prêt à sortir
 
+  /atelier_avancement — où en est l'étape : 14 pages sur 20
+  /atelier_stock   — une plage de chapitres déjà avancés, sans fiche
+  /atelier_stock_retirer — sortir des chapitres du stock
   /mes_taches      — ton établi : ce que tu as pris, ce qui attend ton métier
   /atelier_fiche   — revoir une fiche
   /atelier_liste   — tout ce qui est en cours, par série
@@ -34,6 +37,16 @@ Quatre principes :
     dépose pas vingt pages par ce chemin. La fiche ouvre donc un fil où
     le glisser-déposer marche normalement (dix fichiers par message), et
     le bot compte les images reçues étape par étape.
+  • **Une étape n'est pas binaire.** Entre « pas commencé » et « fini »
+    il y a 14 pages sur 20. Le fil compte ce qu'il reçoit, et
+    `/atelier_avancement` sert à annoncer le reste quand le travail se
+    fait ailleurs ; la fiche en tire une jauge, et le suivi public la
+    montre en réécrivant son message au lieu d'en poster un de plus.
+  • **Une fiche par chapitre, mais pas pour le stock.** « Les chapitres
+    248 à 293 sont nettoyés » ne mérite pas quarante-six fiches : ce
+    serait quarante-six messages et un repingage de masse tous les trois
+    jours. `/atelier_stock` le dit en une plage (`bot/stock.py`), et la
+    fiche n'arrive que quand un chapitre entre vraiment en fabrication.
   • **Une échéance est un repère, pas un couperet.** Prendre une étape,
     c'est prendre une date (`ATELIER_DELAIS`, modulée par le nombre de
     pages). Le bot écrit en privé quand elle approche, puis quand elle
@@ -60,6 +73,7 @@ from discord.ext import commands, tasks
 
 from bot import site as sitelib
 from bot import siteexport
+from bot import stock as stocklib
 from bot.config import (
     GUILD_ID, MANGAS, CHANNELS, ROLES, SITE_URL,
     COLOR_NEUTRAL, COLOR_SUCCESS, COLOR_WARNING, COLOR_ERROR,
@@ -75,8 +89,9 @@ from bot.config import (
     ATELIER_LIBERATION, ATELIER_LIBERATION_JOURS,
     ATELIER_RAPPEL_LIBRE_JOURS, ATELIER_RAPPEL_LIBRE_MAX,
     ATELIER_STAFF_CHANNEL,
-    ATELIER_SUIVI_PUBLIC, ATELIER_SUIVI_CHANNEL, ATELIER_SUIVI_ROLE,
-    ATELIER_SUIVI_ETAPES,
+    ATELIER_SUIVI_PUBLIC, ATELIER_SUIVI_CHANNEL, ATELIER_SUIVI_CHANNEL_REPLI,
+    ATELIER_SUIVI_ROLE, ATELIER_SUIVI_ETAPES, ATELIER_SUIVI_EDITE,
+    ATELIER_JAUGE, ATELIER_JAUGE_CASES,
     SITE_REPO, SITE_REPO_BRANCH, SITE_REPO_TOKEN,
     manga_url,
 )
@@ -98,6 +113,17 @@ MANGA_CHOICES = [
 ]
 
 EXTENSIONS_OK = ("png", "jpg", "jpeg", "webp", "gif")
+
+# « Qu'est-ce qui est déjà fait ? » — on demande la dernière étape
+# TERMINÉE, parce que c'est comme ça que les gens le disent : « pages
+# trouvées et clean du 248 au 293 ». Le bot en déduit ce qui attend.
+# « sortie » n'y figure pas : un chapitre sorti n'est plus du stock.
+FAIT_CHOICES = (
+    [app_commands.Choice(name="— rien encore (raws pas trouvées)",
+                         value="aucune")]
+    + [app_commands.Choice(name=f"{e[2]} {e[1]} — fait", value=e[0])
+       for e in sitelib.STEPS if e[0] != "sortie"]
+)
 
 
 # ═══════════════════════════════════════════════════════
@@ -154,6 +180,75 @@ def _role_de(guild, etape: str):
 
 def _cle(manga: str, chapitre: str) -> str:
     return f"{manga}:{str(chapitre).strip()}"
+
+
+# ═══════════════════════════════════════════════════════
+# L'avancement d'une étape
+# ═══════════════════════════════════════════════════════
+# Deux façons de savoir où en est une étape, et elles coexistent :
+#   • le fil compte les pages qu'on y dépose (`depots`) ;
+#   • quelqu'un annonce un nombre à la main (`avancement`), parce que le
+#     clean se fait dans Photoshop et pas dans Discord.
+# On retient la plus avancée des deux : ni l'une ni l'autre ne peut
+# défaire du travail que l'autre a déjà vu passer.
+
+def _fait(fiche: dict, etape: str) -> int:
+    """Nombre de pages faites pour cette étape, tout compte fait."""
+    declare = (fiche.get("avancement") or {}).get(etape) or 0
+    depose = (fiche.get("depots") or {}).get(etape, 0) or 0
+    return max(int(declare), int(depose))
+
+
+def _jauge(fait: int, total) -> str:
+    """« ▰▰▰▰▰▰▱▱▱▱ 70 % » — vide si on ne sait pas sur combien."""
+    if not ATELIER_JAUGE or not total or total <= 0:
+        return ""
+    part = max(0.0, min(1.0, fait / float(total)))
+    pleines = int(round(part * ATELIER_JAUGE_CASES))
+    barre = "▰" * pleines + "▱" * (ATELIER_JAUGE_CASES - pleines)
+    return f"{barre} {part * 100:.0f} %"
+
+
+def _ligne_pages(fiche: dict, etape: str) -> str:
+    """« 🧽 **14/20** ▰▰▰▰▰▰▱▱▱▱ 70 % » pour une étape donnée."""
+    info = ETAPE_INFO.get(etape, (etape, etape, "•", ""))
+    fait = _fait(fiche, etape)
+    total = fiche.get("pages")
+    if not fait:
+        return f"{info[2]} *rien de fait pour le {info[1]}*"
+    if not total:
+        return f"{info[2]} **{fait}** page(s)"
+    tete = f"{info[2]} **{fait}/{total}**" + (" ✅" if fait >= total else "")
+    jauge = _jauge(fait, total)
+    return "\n".join([tete, jauge]) if jauge else tete
+
+
+def _bloc_pages(fiche: dict) -> str:
+    """Le champ « 📄 Pages » de la fiche : le total, puis la jauge en cours."""
+    total = fiche.get("pages")
+    etape = fiche.get("etape")
+    lignes = []
+    if total:
+        lignes.append(f"**{total}** pages au total")
+    if not fiche.get("termine"):
+        lignes.append(_ligne_pages(fiche, etape))
+
+    # Une étape validée dont le compte n'est pas au complet — trois raws
+    # manquantes, par exemple. Ça se paie six étapes plus loin si personne
+    # ne le voit passer : la fiche le garde sous les yeux.
+    incomplets = []
+    for eid in ETAPES:
+        if eid == etape or eid not in (fiche.get("etapes") or {}):
+            continue
+        fait = _fait(fiche, eid)
+        if total and fait and fait < total:
+            incomplets.append(f"{ETAPE_INFO[eid][2]} {fait}/{total}")
+    if incomplets:
+        lignes.append("⚠️ incomplet : " + " · ".join(incomplets))
+
+    if fiche.get("fil"):
+        lignes.append(f"→ <#{fiche['fil']}>")
+    return "\n".join(lignes)
 
 
 def _immobile_depuis(fiche: dict) -> float:
@@ -437,7 +532,7 @@ class Atelier(commands.Cog):
         self.bot = bot
         self._store = JSONStore(
             "atelier.json",
-            default={"fiches": {}, "messages": {}, "fils": {}})
+            default={"fiches": {}, "messages": {}, "fils": {}, "stock": {}})
         self._migrer()
 
     async def cog_load(self):
@@ -520,6 +615,38 @@ class Atelier(commands.Cog):
         return sorted(fiches, key=lambda f: f.get("ouvert_le", 0))
 
     # ─────────────────────────────────────────────
+    # Le stock — ce qui est fait d'avance
+    # ─────────────────────────────────────────────
+    # Quarante-six chapitres nettoyés qui attendent la traduction, ce
+    # n'est pas quarante-six fiches : c'est une ligne. Le détail vit dans
+    # `bot/stock.py`, qui ne connaît rien à Discord.
+
+    def stock(self, manga: str = None) -> list:
+        """Les plages d'une série, ou de toutes, triées par numéro."""
+        tout = self._store.get("stock", {}) or {}
+        if manga is not None:
+            return sorted(tout.get(manga, []), key=lambda p: p["de_n"])
+        return sorted((p for lot in tout.values() for p in lot),
+                      key=lambda p: p["de_n"])
+
+    def _poser_stock(self, manga: str, plage: dict) -> list:
+        entrepot = self._store.setdefault("stock", {})
+        entrepot[manga] = stocklib.poser(entrepot.get(manga, []), plage)
+        self.sauver()
+        return entrepot[manga]
+
+    def _retirer_stock(self, manga: str, de_n: float, a_n: float) -> list:
+        """Efface des chapitres du stock. Rend ce qu'il reste pour la série."""
+        entrepot = self._store.setdefault("stock", {})
+        if manga not in entrepot:
+            return []
+        entrepot[manga] = stocklib.retirer(entrepot[manga], de_n, a_n)
+        if not entrepot[manga]:
+            entrepot.pop(manga)
+        self.sauver()
+        return entrepot.get(manga, [])
+
+    # ─────────────────────────────────────────────
     # L'embed de la fiche
     # ─────────────────────────────────────────────
     def _progression(self, fiche) -> str:
@@ -536,19 +663,6 @@ class Atelier(commands.Cog):
                 cases.append(emoji)
         return " → ".join(cases)
 
-    def _ligne_depot(self, fiche) -> str:
-        """« 🧽 clean · 14/20 » — ce que le fil a reçu pour l'étape en cours."""
-        etape = fiche.get("etape")
-        depose = (fiche.get("depots") or {}).get(etape, 0)
-        attendu = fiche.get("pages")
-        info = ETAPE_INFO.get(etape, (etape, etape, "•", ""))
-        if not depose:
-            return f"{info[2]} *rien de déposé pour le {info[1]}*"
-        if attendu and depose >= attendu:
-            return f"{info[2]} **{depose}/{attendu}** déposées ✅"
-        if attendu:
-            return f"{info[2]} **{depose}/{attendu}** déposées"
-        return f"{info[2]} **{depose}** déposée(s)"
     def _couleur(self, fiche) -> int:
         """Neutre, puis orange quand l'échéance approche, rouge une fois passée."""
         reste = _reste_jours(fiche)
@@ -588,13 +702,8 @@ class Atelier(commands.Cog):
             url=manga_url(manga),
         )
 
-        if fiche.get("pages") or fiche.get("depots"):
-            valeur = f"**{fiche['pages']}** pages" if fiche.get("pages") else ""
-            if not termine:
-                valeur += ("\n" if valeur else "") + self._ligne_depot(fiche)
-            if fiche.get("fil"):
-                valeur += f"\n→ <#{fiche['fil']}>"
-            embed.add_field(name="📄 Pages", value=valeur, inline=True)
+        if fiche.get("pages") or fiche.get("depots") or fiche.get("avancement"):
+            embed.add_field(name="📄 Pages", value=_bloc_pages(fiche), inline=True)
 
         if fiche.get("eta"):
             embed.add_field(name="🎯 Sortie visée",
@@ -737,11 +846,56 @@ class Atelier(commands.Cog):
     # ─────────────────────────────────────────────
     # Suivi public : les lecteurs voient avancer
     # ─────────────────────────────────────────────
-    async def _suivi_public(self, guild, fiche):
+    # Le suivi a son salon à lui (`suivi-fabrication`) : « alertes-sorties »
+    # sert à prendre ses rôles de série et à recevoir les sorties, deux
+    # publics qui ne se recouvrent pas. Tant que le salon dédié n'existe
+    # pas, on retombe sur l'ancien plutôt que de se taire.
+
+    def _salon_suivi(self, guild):
+        for cle in (ATELIER_SUIVI_CHANNEL, ATELIER_SUIVI_CHANNEL_REPLI):
+            salon_id = CHANNELS.get(cle)
+            if not salon_id:
+                continue
+            salon = guild.get_channel(salon_id)
+            if salon is not None:
+                return salon
+        return None
+
+    def _texte_suivi(self, fiche) -> str:
+        """Ce que lit un abonné : un chapitre qui avance, personne d'autre."""
+        etape = fiche.get("etape")
+        info = ETAPE_INFO.get(etape, (etape, etape, "•", ""))
+        titre = f"{_nom_manga(fiche['manga'])} **ch. {fiche['chapitre']}**"
+
+        if fiche.get("termine"):
+            return (f"\U0001f389 {titre} est **bouclé**. "
+                    "Il ne reste plus qu'à le mettre en ligne.")
+
+        restantes = len(ETAPES) - 1 - ETAPES.index(etape)
+        reste = ("dernière ligne droite" if restantes <= 1
+                 else f"encore {restantes} étapes avant la sortie")
+        lignes = [f"{info[2]} {titre} passe en **{info[1]}**.", f"*{info[3]}*"]
+
+        # La jauge : c'est tout l'intérêt pour qui attend. Pas de nom, pas
+        # de date d'échéance — juste le nombre de pages passées.
+        total = fiche.get("pages")
+        fait = _fait(fiche, etape)
+        if total and fait:
+            jauge = _jauge(fait, total)
+            ligne = f"**{fait}/{total}** pages"
+            lignes.append(f"{jauge} · {ligne}" if jauge else ligne)
+        lignes.append(f"→ {reste}.")
+        return "\n".join(lignes)
+
+    async def _suivi_public(self, guild, fiche, *, maj=False):
         """Une ligne pour les lecteurs abonnés, sans rien d'interne.
 
         Ni note d'atelier, ni nom d'équipier : le public suit un chapitre,
         pas les gens qui le fabriquent.
+
+        `maj=True` : l'avancement a bougé sans changer d'étape. On réécrit
+        le message déjà posté au lieu d'en empiler un autre — la jauge
+        monte sous les yeux de qui regarde, et personne n'est repingé.
         """
         if not ATELIER_SUIVI_PUBLIC:
             return
@@ -749,32 +903,48 @@ class Atelier(commands.Cog):
         if etape not in ATELIER_SUIVI_ETAPES:
             return
 
-        salon_id = CHANNELS.get(ATELIER_SUIVI_CHANNEL)
-        salon = guild.get_channel(salon_id) if salon_id else None
+        salon = self._salon_suivi(guild)
         if salon is None:
+            return
+
+        corps = self._texte_suivi(fiche)
+        suivi = fiche.get("suivi") or {}
+
+        if maj:
+            # Rien à réécrire (message effacé, étape changée entre-temps,
+            # fiche d'avant cette version) : on ne poste surtout pas, ce
+            # serait un ping de plus pour une jauge qui bouge.
+            if not ATELIER_SUIVI_EDITE or suivi.get("etape") != etape:
+                return
+            salon_suivi = guild.get_channel(suivi.get("salon") or 0) or salon
+            if not suivi.get("message"):
+                return
+            try:
+                message = await salon_suivi.fetch_message(suivi["message"])
+                # La première ligne porte la mention du rôle : on la garde
+                # telle quelle, `allowed_mentions` empêchant qu'elle repingue.
+                tete = (message.content.split("\n", 1)[0] + "\n"
+                        if message.content.startswith("<@&") else "")
+                await message.edit(
+                    content=tete + corps,
+                    allowed_mentions=discord.AllowedMentions.none())
+            except (discord.NotFound, discord.HTTPException) as e:
+                log.debug("Suivi public %s non reecrit : %s", fiche.get("cle"), e)
             return
 
         role_id = ROLES.get(ATELIER_SUIVI_ROLE)
         role = guild.get_role(role_id) if role_id else None
-        info = ETAPE_INFO.get(etape, (etape, etape, "•", ""))
-        titre = f"{_nom_manga(fiche['manga'])} **ch. {fiche['chapitre']}**"
-
-        if fiche.get("termine"):
-            corps = (f"\U0001f389 {titre} est **bouclé**. "
-                     "Il ne reste plus qu'à le mettre en ligne.")
-        else:
-            restantes = len(ETAPES) - 1 - ETAPES.index(etape)
-            reste = ("dernière ligne droite" if restantes <= 1
-                     else f"encore {restantes} étapes avant la sortie")
-            corps = (f"{info[2]} {titre} passe en **{info[1]}**.\n"
-                     f"*{info[3]}*\n→ {reste}.")
-
         texte = (f"{role.mention}\n{corps}" if role else corps)
         try:
-            await salon.send(
+            message = await salon.send(
                 texte, allowed_mentions=discord.AllowedMentions(roles=True))
         except discord.HTTPException as e:
-            log.warning("Suivi public %s non envoye : %s", fiche.get("cle"), e)
+            return log.warning("Suivi public %s non envoye : %s",
+                               fiche.get("cle"), e)
+
+        fiche["suivi"] = {"salon": salon.id, "message": message.id,
+                          "etape": etape}
+        self.sauver()
 
     # ─────────────────────────────────────────────
     # Le fil du chapitre
@@ -861,6 +1031,7 @@ class Atelier(commands.Cog):
                 fichier = None
 
         await self._reecrire(message.guild, fiche, fichier)
+        await self._suivi_public(message.guild, fiche, maj=True)
 
         attendu = fiche.get("pages")
         if attendu and avant < attendu <= depots[etape]:
@@ -1157,7 +1328,8 @@ class Atelier(commands.Cog):
     @app_commands.describe(
         manga="La série concernée",
         chapitre="Numéro du chapitre (58, 58.5…)",
-        pages="Nombre de pages dans le lot",
+        pages="Nombre de pages que compte le chapitre",
+        trouvees="Pages déjà récupérées, si le lot est incomplet (défaut : toutes)",
         apercu="Une page en aperçu (facultatif : le fil accueille les pages)",
         apercu2="Aperçu supplémentaire (facultatif)",
         apercu3="Aperçu supplémentaire (facultatif)",
@@ -1172,6 +1344,7 @@ class Atelier(commands.Cog):
         manga: app_commands.Choice[str],
         chapitre: app_commands.Range[str, 1, 12],
         pages: app_commands.Range[int, 1, 400],
+        trouvees: app_commands.Range[int, 0, 400] = None,
         apercu: discord.Attachment = None,
         apercu2: discord.Attachment = None,
         apercu3: discord.Attachment = None,
@@ -1192,6 +1365,12 @@ class Atelier(commands.Cog):
                 f"⚠️ Une fiche existe déjà pour **{_nom_manga(manga.value)} "
                 f"ch. {chapitre}**.\n`/atelier_fiche` pour la revoir, "
                 "`/atelier_retirer` pour repartir de zéro.", ephemeral=True)
+
+        if trouvees is not None and trouvees > pages:
+            return await interaction.response.send_message(
+                f"❌ **{trouvees}** pages trouvées pour un chapitre qui en "
+                f"compte **{pages}** : l'un des deux nombres est de trop.",
+                ephemeral=True)
 
         images = [a for a in (apercu, apercu2, apercu3, apercu4) if a]
         mauvaises = [a.filename for a in images
@@ -1237,6 +1416,9 @@ class Atelier(commands.Cog):
             "pris_par": None,
             "pris_le": None,
             "depots": {},
+            # Le lot peut être incomplet : trois raws manquantes se voient
+            # tout de suite sur la fiche plutôt qu'au moment de l'édition.
+            "avancement": {"pages": pages if trouvees is None else trouvees},
             "etapes": {"pages": {"par": interaction.user.id, "le": time.time(),
                                  "note": note, "lien": source}},
         }
@@ -1265,12 +1447,26 @@ class Atelier(commands.Cog):
         self._store.setdefault("messages", {})[str(message.id)] = fiche["cle"]
         self.sauver()
 
+        # Ce chapitre avait peut-être une plage de stock à son nom. La
+        # fiche est plus précise qu'une plage : elle prend la main, et le
+        # stock se réduit d'autant plutôt que d'annoncer deux vérités.
+        couvert = stocklib.contient(self.stock(manga.value), chapitre)
+        if couvert is not None:
+            n = stocklib.num(chapitre)
+            self._retirer_stock(manga.value, n, n)
+
         # Le fil ouvert, la fiche le mentionne : on la réécrit une fois.
         fil = await self._ouvrir_fil(message, fiche)
         if fil is not None:
             await self._reecrire(interaction.guild, fiche)
 
         await self._prevenir(interaction.guild, fiche)
+        # Le suivi public commence ici. `avancer()` n'est jamais appelé pour
+        # l'étape « pages » — sans cette ligne, les abonnés n'apprenaient
+        # jamais qu'un chapitre entrait en clean, alors que l'étape figure
+        # bien dans ATELIER_SUIVI_ETAPES. C'est aussi le message que les
+        # dépôts du fil réécriront ensuite, jauge comprise.
+        await self._suivi_public(interaction.guild, fiche)
         log.info("Atelier : fiche ouverte %s (%d pages) par %s",
                  fiche["cle"], pages, interaction.user)
 
@@ -1280,6 +1476,11 @@ class Atelier(commands.Cog):
                 description=(
                     f"{_nom_manga(manga.value)} — chapitre **{chapitre}**, "
                     f"**{pages}** pages.\n"
+                    + (f"⚠️ **{trouvees}** seulement de récupérées — "
+                       "`/atelier_avancement` pour compléter.\n"
+                       if trouvees is not None and trouvees < pages else "")
+                    + ("📦 Ce chapitre était en stock — il en sort, la fiche "
+                       "fait foi.\n" if couvert is not None else "")
                     + (f"Prochaine étape : **{_libelle(fiche['etape'])}**\n")
                     + (f"📥 Dépose les pages dans <#{fiche['fil']}> — "
                        "dix par message.\n" if fiche.get("fil") else "")
@@ -1417,6 +1618,216 @@ class Atelier(commands.Cog):
     del _cmd
 
     # ─────────────────────────────────────────────
+    # /atelier_avancement — la moitié du chemin, ça se dit
+    # ─────────────────────────────────────────────
+    # Le fil compte ce qu'on y dépose, mais le clean se fait dans
+    # Photoshop et la traduction dans un doc : le travail existe souvent
+    # avant d'arriver ici. Cette commande dit simplement où on en est.
+    @app_commands.command(
+        name="atelier_avancement",
+        description="Où en est une étape : 14 pages sur 20")
+    @app_commands.describe(
+        manga="La série", chapitre="Numéro du chapitre",
+        faites="Nombre de pages faites pour l'étape",
+        etape="Quelle étape (par défaut : celle en cours)",
+        total="Corrige le nombre de pages du chapitre, si besoin")
+    @app_commands.choices(
+        manga=MANGA_CHOICES,
+        etape=[app_commands.Choice(name=f"{e[2]} {e[1]}", value=e[0])
+               for e in sitelib.STEPS if e[0] != "sortie"])
+    @app_commands.guilds(GUILD)
+    async def atelier_avancement(
+        self, interaction: discord.Interaction,
+        manga: app_commands.Choice[str], chapitre: str,
+        faites: app_commands.Range[int, 0, 400],
+        etape: app_commands.Choice[str] = None,
+        total: app_commands.Range[int, 1, 400] = None,
+    ):
+        fiche = self.fiche(manga.value, chapitre)
+        if fiche is None:
+            return await interaction.response.send_message(
+                f"❌ Aucune fiche pour **{_nom_manga(manga.value)} "
+                f"ch. {str(chapitre).strip()}**.\n"
+                "Elle s'ouvre avec `/atelier_raws`.", ephemeral=True)
+
+        cible = etape.value if etape else (fiche.get("etape") or "pages")
+        if cible == DERNIERE:
+            return await interaction.response.send_message(
+                "❌ La **sortie** ne se compte pas en pages.", ephemeral=True)
+        if not _peut_valider(interaction.user, cible):
+            return await interaction.response.send_message(
+                f"❌ L'étape **{_libelle(cible)}** est réservée à son métier.\n"
+                f"On recrute : {SITE_URL}/equipe", ephemeral=True)
+
+        attendu = total or fiche.get("pages")
+        if attendu and faites > attendu:
+            return await interaction.response.send_message(
+                f"❌ **{faites}** pages faites sur un chapitre qui en compte "
+                f"**{attendu}**. Passe `total:` si c'est le total qui a changé.",
+                ephemeral=True)
+
+        if total:
+            fiche["pages"] = total
+        fiche.setdefault("avancement", {})[cible] = faites
+        fiche["avancement_le"] = time.time()
+        self.sauver()
+
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        await self._reecrire(interaction.guild, fiche)
+        # Étape en cours : les abonnés voient la jauge monter sur le message
+        # déjà posté. Une étape corrigée après coup ne réveille personne.
+        if cible == fiche.get("etape"):
+            await self._suivi_public(interaction.guild, fiche, maj=True)
+
+        log.info("Atelier : %s — %s a %d/%s pages (par %s)",
+                 fiche["cle"], cible, faites, fiche.get("pages"),
+                 interaction.user)
+
+        retenu = _fait(fiche, cible)
+        reste = (fiche["pages"] - retenu) if fiche.get("pages") else None
+        # Le fil a peut-être déjà reçu plus que le nombre annoncé : on ne
+        # défait pas du travail qu'on a vu passer, mais on le dit.
+        ecart = ""
+        if retenu > faites:
+            ecart = (f"\n*Le fil a déjà reçu **{retenu}** pages pour cette "
+                     "étape : c'est ce compte-là qui reste affiché.*")
+        await interaction.followup.send(
+            embed=brand_embed(
+                interaction.guild, title="📄 Avancement noté",
+                description=(
+                    f"{_nom_manga(manga.value)} — chapitre "
+                    f"**{fiche['chapitre']}**\n"
+                    + _ligne_pages(fiche, cible) + ecart
+                    + (f"\n\nIl reste **{reste}** page(s)." if reste
+                       else "\n\nL'étape est au complet.")
+                    + f"\n→ {fiche.get('url')}"),
+                color=COLOR_SUCCESS),
+            ephemeral=True)
+
+    atelier_avancement.autocomplete("chapitre")(_ac_chapitre)
+
+    # ─────────────────────────────────────────────
+    # /atelier_stock — ce qui est fait d'avance
+    # ─────────────────────────────────────────────
+    # « Pages trouvées et clean du 248 au 293 » : quarante-six chapitres
+    # qui attendent la traduction. Une fiche chacun, ce serait quarante-six
+    # messages, quarante-six fils, et le métier repingué tous les trois
+    # jours pour rien. Une plage le dit en une ligne, sans réveiller
+    # personne — la fiche viendra quand le chapitre entrera vraiment en
+    # fabrication.
+    @app_commands.command(
+        name="atelier_stock",
+        description="Déclare une plage de chapitres déjà avancés (sans fiche)")
+    @app_commands.describe(
+        manga="La série",
+        du="Premier chapitre de la plage (44, 45.5…)",
+        au="Dernier chapitre de la plage",
+        fait="La dernière étape TERMINÉE sur ces chapitres",
+        note="Une précision qui vaut pour toute la plage (facultatif)")
+    @app_commands.choices(manga=MANGA_CHOICES, fait=FAIT_CHOICES)
+    @app_commands.guilds(GUILD)
+    async def atelier_stock(
+        self, interaction: discord.Interaction,
+        manga: app_commands.Choice[str],
+        du: app_commands.Range[str, 1, 12],
+        au: app_commands.Range[str, 1, 12],
+        fait: app_commands.Choice[str],
+        note: app_commands.Range[str, 1, 300] = None,
+    ):
+        try:
+            de_n, a_n = stocklib.num(du), stocklib.num(au)
+        except ValueError:
+            return await interaction.response.send_message(
+                "❌ Les chapitres s'écrivent en chiffres — `44`, `45.5`, `293`.",
+                ephemeral=True)
+
+        etape_faite = None if fait.value == "aucune" else fait.value
+        # Le droit suit le travail : c'est le métier qui a fait l'étape
+        # qui l'annonce (le staff passe partout, comme ailleurs).
+        garde = etape_faite or "pages"
+        if not _peut_valider(interaction.user, garde):
+            return await interaction.response.send_message(
+                f"❌ L'étape **{_libelle(garde)}** est réservée à son métier.\n"
+                f"On recrute : {SITE_URL}/equipe", ephemeral=True)
+
+        plage = stocklib.plage(du, au, etape_faite, note=note,
+                               le=time.time(), par=interaction.user.id)
+        restant = self._poser_stock(manga.value, plage)
+
+        log.info("Atelier : stock %s %s→%s (%s fait) par %s",
+                 manga.value, plage["de"], plage["a"],
+                 etape_faite or "rien", interaction.user)
+
+        lignes = [stocklib.ligne(p) for p in restant]
+        # Les fiches ouvertes sur ces chapitres priment : elles sont plus
+        # précises que la plage, et on ne veut pas deux vérités.
+        doublons = [f["chapitre"] for f in self.en_cours(manga.value)
+                    if stocklib.contient([plage], f.get("chapitre"))]
+
+        await interaction.response.send_message(
+            embed=brand_embed(
+                interaction.guild, title="📦 Stock mis à jour",
+                description=(
+                    f"{_nom_manga(manga.value)}\n\n" + "\n".join(lignes)
+                    + ("\n\n⚠️ Fiche(s) déjà ouverte(s) sur cette plage : "
+                       + ", ".join(f"ch. {c}" for c in doublons)
+                       + "\nLa fiche fait foi pour ces chapitres — "
+                         "`/atelier_stock_retirer` pour les sortir du stock."
+                       if doublons else "")
+                    + "\n\n`/atelier_pousser` pour le reporter sur le site."),
+                color=COLOR_SUCCESS),
+            ephemeral=True)
+
+    @app_commands.command(
+        name="atelier_stock_retirer",
+        description="Efface une plage de chapitres du stock")
+    @app_commands.describe(manga="La série",
+                           du="Premier chapitre à retirer",
+                           au="Dernier chapitre à retirer (défaut : le même)")
+    @app_commands.choices(manga=MANGA_CHOICES)
+    @app_commands.guilds(GUILD)
+    async def atelier_stock_retirer(
+        self, interaction: discord.Interaction,
+        manga: app_commands.Choice[str],
+        du: app_commands.Range[str, 1, 12],
+        au: app_commands.Range[str, 1, 12] = None,
+    ):
+        try:
+            de_n = stocklib.num(du)
+            a_n = stocklib.num(au) if au else de_n
+        except ValueError:
+            return await interaction.response.send_message(
+                "❌ Les chapitres s'écrivent en chiffres — `44`, `45.5`, `293`.",
+                ephemeral=True)
+        if de_n > a_n:
+            de_n, a_n = a_n, de_n
+
+        avant = self.stock(manga.value)
+        if not avant:
+            return await interaction.response.send_message(
+                f"📭 **{_nom_manga(manga.value)}** n'a rien en stock.",
+                ephemeral=True)
+        if not _peut_valider(interaction.user, DERNIERE):
+            return await interaction.response.send_message(
+                "❌ Retirer du stock est réservé au staff.", ephemeral=True)
+
+        restant = self._retirer_stock(manga.value, de_n, a_n)
+        log.info("Atelier : stock %s — %s→%s retire par %s",
+                 manga.value, stocklib.label(de_n), stocklib.label(a_n),
+                 interaction.user)
+
+        corps = ("\n".join(stocklib.ligne(p) for p in restant) if restant
+                 else "*plus rien en stock pour cette série.*")
+        await interaction.response.send_message(
+            embed=brand_embed(
+                interaction.guild, title="📦 Stock allégé",
+                description=(f"{_nom_manga(manga.value)} — chapitres "
+                             f"**{stocklib.label(de_n)} → "
+                             f"{stocklib.label(a_n)}** retirés.\n\n{corps}"),
+                color=COLOR_SUCCESS),
+            ephemeral=True)
+
+    # ─────────────────────────────────────────────
     # /atelier_fiche
     # ─────────────────────────────────────────────
     @app_commands.command(name="atelier_fiche",
@@ -1457,20 +1868,29 @@ class Atelier(commands.Cog):
         if not tout:
             fiches = [f for f in fiches if not f.get("termine")]
 
-        if not fiches:
+        entrepot = {cle: lot for cle, lot in
+                    (self._store.get("stock", {}) or {}).items()
+                    if lot and (not manga or cle == manga.value)}
+
+        if not fiches and not entrepot:
             return await interaction.response.send_message(
                 embed=brand_embed(
                     interaction.guild, title="📭 Atelier vide",
                     description="Aucun chapitre en fabrication."
                                 + ("" if tout else "\n`tout:True` pour voir "
-                                   "les chapitres déjà terminés."),
+                                   "les chapitres déjà terminés.")
+                                + "\n`/atelier_stock` pour déclarer ce qui "
+                                  "est déjà fait d'avance.",
                     color=COLOR_WARNING),
                 ephemeral=True)
 
-        # Regroupé par série, comme sur le site
+        # Regroupé par série, comme sur le site — fiches et stock ensemble :
+        # une série peut n'avoir que l'un ou que l'autre.
         par_serie = {}
         for fiche in fiches:
             par_serie.setdefault(fiche.get("manga"), []).append(fiche)
+        for cle_manga in entrepot:
+            par_serie.setdefault(cle_manga, [])
 
         blocs = []
         for cle_manga, lot in par_serie.items():
@@ -1493,16 +1913,31 @@ class Atelier(commands.Cog):
                         etat += f" ⏳ {dort:.0f}j"
                 lignes.append(f"**ch. {fiche.get('chapitre')}** · {etat} · "
                               f"[fiche]({fiche.get('url')})")
+            reste_fiches = len(lot) - len(lignes)
+            if reste_fiches > 0:
+                lignes.append(f"*…et {reste_fiches} fiche(s) de plus.*")
+
+            # Le stock ferme le bloc : il se lit comme une réserve derrière
+            # les chapitres en cours, pas comme du travail en attente d'être
+            # pris tout de suite.
+            for p in sorted(entrepot.get(cle_manga, []),
+                            key=lambda x: x["de_n"]):
+                lignes.append("📦 " + stocklib.ligne(p))
             blocs.append(f"{_nom_manga(cle_manga)}\n" + "\n".join(lignes))
 
         libres = sum(1 for f in fiches
                      if not f.get("termine") and not f.get("pris_par"))
+        en_stock = sum(stocklib.compte(p)
+                       for lot in entrepot.values() for p in lot)
+        pied = (f"\n\n**{libres}** étape(s) sans personne dessus "
+                f"sur {len(fiches)} fiche(s).")
+        if en_stock:
+            pied += (f"\n📦 **~{en_stock}** chapitre(s) d'avance en stock — "
+                     "`/atelier_stock` pour le corriger.")
         await interaction.response.send_message(
             embed=brand_embed(
                 interaction.guild, title="🏭 L'atelier en ce moment",
-                description="\n\n".join(blocs)
-                + f"\n\n**{libres}** étape(s) sans personne dessus "
-                  f"sur {len(fiches)} chapitre(s).",
+                description=("\n\n".join(blocs) + pied)[:4096],
                 color=COLOR_NEUTRAL),
             ephemeral=True)
 
@@ -1737,8 +2172,14 @@ class Atelier(commands.Cog):
         brut = await self._atelier_en_ligne()
         actuel = sitelib.parse_js_literal(brut, siteexport.VARIABLE)
         fiches = list(self._store.get("fiches", {}).values())
-        depuis_bot, remarques = siteexport.entrees_depuis_fiches(
-            fiches, self._noms_site())
+        noms = self._noms_site()
+        depuis_bot, remarques = siteexport.entrees_depuis_fiches(fiches, noms)
+        # Le stock complète : une série sans fiche ouverte a quand même de
+        # quoi dire au site si elle a des chapitres d'avance.
+        depuis_stock, notes_stock = siteexport.entrees_depuis_stock(
+            self._store.get("stock", {}), noms, deja=depuis_bot)
+        depuis_bot.update(depuis_stock)
+        remarques.extend(notes_stock)
         fusion, changements = siteexport.fusionner(actuel, depuis_bot)
         return siteexport.rendre(fusion, siteexport.entete(brut)), \
             changements, remarques, brut

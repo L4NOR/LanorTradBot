@@ -363,9 +363,32 @@ ATELIER_STAFF_CHANNEL = "workshop_chat"
 # Les lecteurs qui prennent le rôle « 🔔 Suivi de fabrication » voient
 # les chapitres avancer. Aucune note interne, aucun nom d'équipier.
 ATELIER_SUIVI_PUBLIC = True
-ATELIER_SUIVI_CHANNEL = "notifications"
+
+# Le suivi a son salon à lui. « alertes-sorties » sert à autre chose : on
+# y prend ses rôles de série et on y attend une sortie. Cinq messages
+# d'avancement par chapitre au milieu de ça, et le salon devient illisible
+# pour qui ne voulait que les sorties — les deux publics ne se recouvrent
+# pas. `/suivi_setup` crée le salon ; tant qu'il n'existe pas, le suivi
+# retombe sur le salon de repli plutôt que de se taire.
+ATELIER_SUIVI_CHANNEL = "suivi_fabrication"
+ATELIER_SUIVI_CHANNEL_REPLI = "notifications"
 ATELIER_SUIVI_ROLE = "ping_workshop"
 ATELIER_SUIVI_ETAPES = ("clean", "trad", "edit", "qcheck", "sortie")
+
+# Le message de suivi de l'étape en cours se réécrit quand l'avancement
+# bouge (« 14/20 pages nettoyées ») au lieu d'en empiler un nouveau. Le
+# ping ne part donc qu'au changement d'étape : une jauge qui monte ne
+# réveille personne.
+ATELIER_SUIVI_EDITE = True
+
+# ── Avancement page par page ─────────────────────────────────────
+# Une étape n'est pas binaire : entre « pas commencé » et « fini » il y a
+# 14 pages sur 20. Deux sources s'en occupent — les pages déposées dans le
+# fil, comptées toutes seules, et le nombre annoncé à la main avec
+# `/atelier_avancement` quand le travail se fait ailleurs. Aucune des deux
+# n'efface l'autre : la fiche affiche la plus avancée.
+ATELIER_JAUGE = True
+ATELIER_JAUGE_CASES = 10           # longueur de la barre ▰▰▰▰▱▱▱▱▱▱
 
 # ── Statut du bot ──────────────────────────────────────────────
 # Le bot raconte ce qui se passe au lieu d'afficher toujours la même ligne.

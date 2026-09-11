@@ -81,8 +81,10 @@ Un chapitre = **une fiche** qui se réécrit à chaque étape, dans le salon d'�
 |---|---|
 | `/atelier_raws` | ouvre la fiche et son fil : les pages se déposent dans le fil |
 | `/atelier_clean` · `/atelier_trad` · `/atelier_edit` · `/atelier_qcheck` | valide une étape et passe le relais à la suivante |
+| `/atelier_avancement` | où en est une étape : `14` pages faites sur `20` |
+| `/atelier_stock` · `/atelier_stock_retirer` | une plage de chapitres déjà avancés, sans fiche · l'en sortir |
 | `/mes_taches` | ton établi : ce que tu as pris, ce qui attend ton métier |
-| `/atelier_liste` | tout ce qui est en cours, par série |
+| `/atelier_liste` | tout ce qui est en cours, par série, stock compris |
 | `/atelier_fiche` · `/atelier_eta` | revoir une fiche · fixer la sortie visée |
 | `/atelier_etape` · `/atelier_retirer` | (staff) corriger l'étape · supprimer la fiche |
 | `/atelier_export` · `/atelier_pousser` | régénérer `atelier.js` · l'écrire dans le dépôt du site |
@@ -94,6 +96,34 @@ Le bot compte les images reçues et affiche `14/20` sur la fiche, séparément
 pour chaque étape : le clean, la traduction et l'édition déposent leur rendu
 au même endroit. L'aperçu de la commande est devenu facultatif ; sans lui, la
 première page déposée illustre la fiche.
+
+**Une étape n'est pas binaire.** Entre « pas commencé » et « fini » il y a
+14 pages sur 20, et le travail se fait souvent ailleurs que dans Discord —
+le clean dans Photoshop, la traduction dans un doc. `/atelier_avancement`
+annonce simplement le compte ; la fiche en tire une jauge
+`▰▰▰▰▰▰▰▱▱▱ 70 %`, et le suivi public la montre aux lecteurs. Le lot de
+raws lui-même peut être incomplet : `/atelier_raws … trouvees:12` le dit,
+et la fiche garde le `⚠️ incomplet : 📥 12/20` sous les yeux jusqu'à ce
+que les trois pages manquantes arrivent. Les dépôts du fil et le nombre
+annoncé cohabitent — la fiche retient le plus avancé des deux, aucun ne
+peut défaire du travail que l'autre a vu passer.
+
+**Le stock, c'est ce qui est fait d'avance.** « Pages trouvées et clean du
+248 au 293 » : quarante-six chapitres qui attendent la traduction. Une
+fiche chacun, ce serait quarante-six messages, quarante-six fils et un
+repingage du métier tous les trois jours pour rien. `/atelier_stock` le dit
+en une plage — `248 → 293 · ~46 ch. — attend 💬 Traduction` — et la fiche
+n'arrive que quand un chapitre entre vraiment en fabrication (il sort alors
+du stock tout seul).
+
+Les plages d'une série **ne se chevauchent jamais** : quand on en pose une
+sur un terrain déjà occupé, la plus avancée garde le sien. Déclarer « 44 à
+97 nettoyés » puis « 44 à 46 Q-checkés » donne donc le même résultat que
+l'inverse — `44 → 46` prêt à sortir, `47 → 97` en attente de traduction.
+Toute la mécanique d'intervalles vit dans `bot/stock.py`, sans une ligne de
+Discord : `python -m bot.stock` la vérifie hors-ligne. Une série qui n'a que
+du stock alimente quand même `atelier.js` (le premier chapitre de la file,
+avec son étape).
 
 Prendre une étape, c'est prendre une **échéance** — 5 jours pour un clean,
 4 pour une traduction, 5 pour une édition, 2 pour un Q-check, ajustés au
@@ -107,6 +137,20 @@ Une étape que personne ne prend repingue son métier tous les trois jours,
 puis passe la main au staff. Rien de tout ça n'est public : les rappels
 partent en MP, les retards vont dans le salon d'équipe. Tous les délais se
 règlent dans `bot/config.py` (bloc `ATELIER_`).
+
+**Le suivi public a son salon à lui** — `🛠️・suivi-fabrication`, créé par
+`/suivi_setup` avec le rôle `🔔 Suivi de fabrication`. Les alertes de
+sorties servent à autre chose : on y prend ses rôles de série et on y
+attend un « c'est en ligne ». Cinq messages d'avancement par chapitre au
+milieu de ça, et le salon devient illisible pour qui ne voulait que les
+sorties. Tant que le salon dédié n'existe pas, le suivi retombe sur les
+alertes plutôt que de se taire.
+
+Dans ce salon, le message de l'étape en cours **se réécrit** au lieu de
+s'empiler : la jauge monte sous les yeux de qui regarde, et le ping ne
+part qu'au changement d'étape. Aucun nom d'équipier, aucune note interne,
+aucune échéance — le public suit un chapitre, pas les gens qui le
+fabriquent.
 ### Gestion des rôles
 
 | Commande | Ce qu'elle fait |
@@ -159,6 +203,8 @@ bot/
 ├── config.py      tous les réglages
 ├── servers.py     registre prod / test + la question au lancement
 ├── site.py        client du site — la source de vérité
+├── siteexport.py  fiches + stock → js/data/atelier.js
+├── stock.py       les plages de chapitres faits d'avance (pur, testable seul)
 ├── resolver.py    retrouve salons et rôles par leur NOM (aucun ID à coller)
 ├── storage.py     persistance JSON atomique
 ├── msgcache.py    cache SQLite des messages (logs qui survivent au redémarrage)
