@@ -28,6 +28,8 @@ try:
 except Exception:                                  # pragma: no cover
     FUSEAU = None
 
+from bot.site import STEP_IDS
+
 log = logging.getLogger("lanortrad.siteexport")
 
 VARIABLE = "ATELIER"
@@ -111,12 +113,21 @@ def rendre(entrees: dict, tete: str = "") -> str:
 # ═══════════════════════════════════════════════════════
 
 def _derniere_etape(fiche: dict):
-    """(id de l'étape, horodatage, note) de la dernière étape validée."""
+    """(id de l'étape, horodatage, note) de l'étape validée la plus avancée.
+
+    La plus avancée dans la chaîne, pas la plus récente : une fiche ouverte
+    depuis le stock valide ses pages aujourd'hui et son clean il y a un
+    mois, et c'est bien le clean que le site doit montrer. L'horodatage,
+    lui, reste celui du dernier mouvement.
+    """
     faites = fiche.get("etapes") or {}
     if not faites:
         return None, fiche.get("ouvert_le", 0), None
-    eid, detail = max(faites.items(), key=lambda kv: kv[1].get("le", 0))
-    return eid, detail.get("le", 0), detail.get("note")
+    eid, detail = max(
+        faites.items(),
+        key=lambda kv: STEP_IDS.index(kv[0]) if kv[0] in STEP_IDS else -1)
+    quand = max((d.get("le") or 0) for d in faites.values())
+    return eid, quand, detail.get("note")
 
 
 def fiche_a_retenir(fiches: list):

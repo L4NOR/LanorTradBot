@@ -143,9 +143,22 @@ def soustraire(p: dict, de_n: float, a_n: float) -> list:
     return morceaux
 
 
+def _net(n: float, etiquette: str) -> bool:
+    """Le bord tombe-t-il pile sur un chapitre ? Faux pour un bord rogné."""
+    try:
+        return num(etiquette) == n
+    except ValueError:
+        return False
+
+
 def _souder(plages: list) -> list:
     """Fond les plages voisines de même étape — 44→46 et 47→97 en clean
-    n'ont aucune raison de rester deux lignes."""
+    n'ont aucune raison de rester deux lignes.
+
+    Deux bords rognés, en revanche, se font face autour d'un trou voulu :
+    58 retiré de 55→60 laisse 55→57 et 59→60, et les ressouder remettrait
+    le 58 en stock. On ne fond donc que des bords nets.
+    """
     ordre = sorted(plages, key=lambda p: p["de_n"])
     fondues = []
     for p in ordre:
@@ -153,7 +166,10 @@ def _souder(plages: list) -> list:
         colle = (precedente is not None
                  and precedente["etape"] == p["etape"]
                  and precedente["note"] == p["note"]
-                 and p["de_n"] <= precedente["a_n"] + 1.0)
+                 and (p["de_n"] <= precedente["a_n"]
+                      or (p["de_n"] <= precedente["a_n"] + 1.0
+                          and _net(precedente["a_n"], precedente["a"])
+                          and _net(p["de_n"], p["de"]))))
         if colle:
             if p["a_n"] > precedente["a_n"]:
                 precedente["a_n"], precedente["a"] = p["a_n"], p["a"]
@@ -274,6 +290,12 @@ if __name__ == "__main__":                          # pragma: no cover
     f = poser(f, plage(6, 9, "clean"))
     montre("Deux plages de même étape se ressoudent :", f)
     assert len(f) == 1 and f[0]["a"] == "9", f
+
+    g = poser([], plage(55, 60, "clean"))
+    g = retirer(g, num(58), num(58))
+    montre("Un chapitre retiré au milieu (58 de 55→60) :", g)
+    assert contient(g, "58") is None, g
+    assert [(p["de"], p["a"]) for p in g] == [("55", "57"), ("59", "60")], g
 
     print("\nÉtiquettes :", label_apres(46), label_apres(45.5),
           label_avant(57), label_avant(45.5))

@@ -67,6 +67,22 @@ Les principes :
     passe ; la rallonge est à un bouton et ne se paie pas. Au bout du
     compte l'étape retourne au pot commun toute seule — un chapitre
     endormi bloque toute la chaîne derrière lui, et c'est la seule raison.
+  • **Déposer, c'est prendre.** Quelqu'un du métier qui dépose ses pages
+    dans le fil est déjà au travail : la fiche le note sur l'étape sans
+    attendre qu'il pense à 🙋.
+  • **On valide ce qu'on voit.** Valider une étape à 14 pages sur 20
+    demande une confirmation : parfois il en manque vraiment, parfois
+    le compte est juste en retard. Dans les deux cas, on le dit avant.
+  • **Le chemin retour existe.** Le Q-check (ou n'importe quel maillon)
+    peut **🔁 Renvoyer** le chapitre à une étape déjà passée, avec ce qui
+    ne va pas. La personne qui l'avait faite la reprend directement, le
+    motif reste sur la fiche, et la suite de la chaîne repasse derrière.
+  • **Une sortie ferme la fiche.** `/release` (à la main ou depuis le
+    site) marque le chapitre sorti, archive son fil et met le suivi
+    public à jour sans repinger. Un chapitre sorti sort aussi du stock.
+  • **Le stock sait où il en est.** Un chapitre déjà nettoyé en stock
+    ouvre sa fiche directement à la traduction : personne n'est pingé
+    pour refaire ce qui est fait.
 
 Rien de tout ça ne se dit en public : les rappels partent en MP, les
 retards vont dans le salon d'équipe, et le suivi que voient les lecteurs
@@ -220,7 +236,16 @@ def _fait(fiche: dict, etape: str) -> int:
     """Nombre de pages faites pour cette étape, tout compte fait."""
     declare = (fiche.get("avancement") or {}).get(etape) or 0
     depose = (fiche.get("depots") or {}).get(etape, 0) or 0
-    return max(int(declare), int(depose))
+    fait = max(int(declare), int(depose))
+    # Après un renvoi, les pages corrigées reviennent dans le fil : elles
+    # ne rendent pas le chapitre plus long pour autant.
+    total = fiche.get("pages")
+    return min(fait, total) if total else fait
+
+
+def _qui(par) -> str:
+    """La mention de qui a fait une étape — le bot, pour une sortie auto."""
+    return f"<@{par}>" if par else "*le bot*"
 
 
 def _jauge(fait: int, total) -> str:
@@ -513,7 +538,7 @@ class MetierButton(discord.ui.Button):
         fait = fiche.get("etapes", {}).get(self.etape)
         if fait:
             quand = f"<t:{int(fait.get('le') or 0)}:R>" if fait.get("le") else ""
-            details = f"✅ **{_libelle(self.etape)}** — <@{fait.get('par')}> {quand}"
+            details = f"✅ **{_libelle(self.etape)}** — {_qui(fait.get('par'))} {quand}"
             if fait.get("lien"):
                 details += f"\n🔗 {fait['lien']}"
             if fait.get("note"):
@@ -539,7 +564,118 @@ class MetierButton(discord.ui.Button):
                 f"❌ **{_libelle(self.etape)}** est réservé à son métier.\n"
                 f"On recrute, d'ailleurs : {SITE_URL}/equipe")
 
+        # Le compte dit qu'il manque des pages : on le dit avant de valider.
+        # À zéro, en revanche, personne n'a rien compté (le travail s'est
+        # fait ailleurs) — l'alerte ne serait qu'un clic de plus.
+        total = fiche.get("pages")
+        fait_ici = _fait(fiche, self.etape)
+        if total and 0 < fait_ici < total:
+            return await interaction.response.send_message(
+                f"⚠️ Le compte affiche **{fait_ici}/{total}** pages pour le "
+                f"**{_libelle(self.etape)}**.\n\n"
+                "• S'il en manque vraiment, tu peux valider quand même : la "
+                "fiche gardera le manque en vue pour la suite de la chaîne.\n"
+                "• Si tout est fait et que le compte est juste en retard, "
+                "**📄 Où j'en suis** le remet à jour.",
+                view=ConfirmerView(fiche["cle"], self.etape), ephemeral=True)
+
         await interaction.response.send_modal(FiniModal(fiche, self.etape))
+
+
+class ConfirmerView(discord.ui.View):
+    """« Il manque des pages, tu valides quand même ? » — éphémère."""
+
+    def __init__(self, cle, etape):
+        super().__init__(timeout=180)
+        self.cle = cle
+        self.etape = etape
+
+    @discord.ui.button(label="Valider quand même", emoji="✅",
+                       style=discord.ButtonStyle.success)
+    async def valider(self, interaction: discord.Interaction, _bouton):
+        cog, fiche = _contexte_cle(interaction, self.cle)
+        if fiche is None:
+            return await _refus(interaction, "❌ Cette fiche n'est plus suivie.")
+        if fiche.get("etape") != self.etape or fiche.get("termine"):
+            return await _refus(
+                interaction, "⚠️ La fiche a changé d'étape entre-temps.")
+        await interaction.response.send_modal(FiniModal(fiche, self.etape))
+
+    @discord.ui.button(label="Pas encore", style=discord.ButtonStyle.secondary)
+    async def annuler(self, interaction: discord.Interaction, _bouton):
+        await interaction.response.edit_message(
+            content="👌 Rien n'a été validé.", view=None)
+
+
+# ─────────────────────────────────────────────
+# Le chemin retour
+# ─────────────────────────────────────────────
+# Le Q-check trouve un contresens page 7 : avant, il n'avait que
+# `/atelier_etape`, réservé au staff, qui effaçait le parcours sans rien
+# dire à personne. Le renvoi dit ce qui ne va pas, à qui l'avait fait.
+
+class RenvoiModal(discord.ui.Modal):
+    """Ce qui ne va pas — obligatoire : un renvoi sans motif ne sert à rien."""
+
+    def __init__(self, fiche, cible):
+        info = ETAPE_INFO.get(cible, (cible, cible, "•", ""))
+        super().__init__(
+            title=f"Renvoyer au {info[1]} — ch. {fiche.get('chapitre')}"[:45])
+        self.cle = fiche.get("cle")
+        self.cible = cible
+        self.motif = discord.ui.TextInput(
+            label="Ce qui ne va pas",
+            placeholder="p.7 bulle 3 : contresens · p.12 le texte déborde…",
+            style=discord.TextStyle.paragraph, required=True, max_length=500)
+        self.add_item(self.motif)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        cog, fiche = _contexte_cle(interaction, self.cle)
+        if fiche is None:
+            return await _refus(interaction, "❌ Cette fiche n'est plus suivie.")
+        if self.cible not in (fiche.get("etapes") or {}) or fiche.get("sortie"):
+            return await _refus(
+                interaction, "⚠️ La fiche a bougé entre-temps : ce renvoi "
+                             "n'a plus lieu d'être.")
+
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        repreneur = await cog.renvoyer(interaction.guild, fiche, self.cible,
+                                       interaction.user, str(self.motif).strip())
+        await cog._reecrire(interaction.guild, fiche)
+        qui = (f"{repreneur.mention} la reprend et vient d'être prévenu·e"
+               if repreneur else "le métier vient d'être prévenu")
+        await interaction.followup.send(
+            f"🔁 Renvoyé au **{_libelle(self.cible)}** — {qui}.", ephemeral=True)
+
+
+class RenvoiSelect(discord.ui.Select):
+    """Quelle étape reprendre, parmi celles déjà passées."""
+
+    def __init__(self, fiche, cibles):
+        faites = fiche.get("etapes") or {}
+        options = []
+        for eid in cibles:
+            info = ETAPE_INFO.get(eid, (eid, eid, "•", ""))
+            par = (faites.get(eid) or {}).get("par")
+            options.append(discord.SelectOption(
+                label=info[1], value=eid, emoji=info[2],
+                description=("La personne qui l'a faite la reprend"
+                             if par else "Le métier sera prévenu")))
+        super().__init__(placeholder="🔁 Quelle étape reprendre ?",
+                         options=options, min_values=1, max_values=1)
+        self.cle = fiche.get("cle")
+
+    async def callback(self, interaction: discord.Interaction):
+        cog, fiche = _contexte_cle(interaction, self.cle)
+        if fiche is None:
+            return await _refus(interaction, "❌ Cette fiche n'est plus suivie.")
+        await interaction.response.send_modal(RenvoiModal(fiche, self.values[0]))
+
+
+class RenvoiView(discord.ui.View):
+    def __init__(self, fiche, cibles):
+        super().__init__(timeout=180)
+        self.add_item(RenvoiSelect(fiche, cibles))
 
 
 class PrendreButton(discord.ui.Button):
@@ -676,6 +812,44 @@ class RallongeButton(discord.ui.Button):
                  fiche["cle"], ATELIER_RALLONGE_JOURS, interaction.user)
 
 
+class RenvoyerButton(discord.ui.Button):
+    """Renvoyer le chapitre à une étape déjà passée, avec ce qui ne va pas."""
+
+    def __init__(self):
+        super().__init__(label="Renvoyer", emoji="🔁", row=1,
+                         style=discord.ButtonStyle.secondary,
+                         custom_id="lanortrad:atelier_renvoyer")
+
+    async def callback(self, interaction: discord.Interaction):
+        cog, fiche = _contexte(interaction)
+        if fiche is None:
+            return await _refus(interaction, "❌ Cette fiche n'est plus suivie.")
+        if fiche.get("sortie"):
+            return await _refus(interaction, "🚀 Ce chapitre est déjà sorti.")
+
+        # Le renvoi appartient à l'étape en cours : c'est elle qui tombe sur
+        # le problème. Sur une fiche bouclée, le Q-check a eu le dernier mot.
+        courante = fiche.get("etape")
+        garde = ETAPES[-2] if fiche.get("termine") else courante
+        if not _peut_valider(interaction.user, garde):
+            return await _refus(
+                interaction,
+                f"❌ Renvoyer, c'est le rôle de l'étape en cours "
+                f"(**{_libelle(garde)}**).")
+
+        faites = fiche.get("etapes") or {}
+        cibles = [e for e in ETAPES[:-1] if e in faites]
+        if not cibles:
+            return await _refus(
+                interaction, "ℹ️ Rien à renvoyer : aucune étape n'est encore passée.")
+
+        await interaction.response.send_message(
+            f"🔁 **{_nom_manga(fiche['manga'])} ch. {fiche['chapitre']}** — "
+            "à quelle étape faut-il revenir ?\n"
+            "*Les étapes d'après repasseront derrière, comme d'habitude.*",
+            view=RenvoiView(fiche, cibles), ephemeral=True)
+
+
 class FicheView(discord.ui.View):
     """La chaîne en haut, ce qu'on peut faire en bas.
 
@@ -688,10 +862,15 @@ class FicheView(discord.ui.View):
         super().__init__(timeout=None)
         for etape in ETAPES[:-1]:      # « sortie » n'est le métier de personne
             self.add_item(MetierButton(etape, fiche))
+        # Un chapitre sorti ne se travaille plus : on garde la chaîne pour
+        # relire qui a fait quoi, et rien d'autre.
+        if (fiche or {}).get("sortie"):
+            return
         self.add_item(PrendreButton(fiche))
         self.add_item(AvancementButton())
         self.add_item(RendreButton())
         self.add_item(RallongeButton())
+        self.add_item(RenvoyerButton())
 
 
 # ═══════════════════════════════════════════════════════
@@ -943,6 +1122,18 @@ class Atelier(commands.Cog):
             url=manga_url(manga),
         )
 
+        # Un renvoi en cours passe avant tout le reste : c'est la première
+        # chose que doit lire la personne qui reprend l'étape.
+        retour = fiche.get("retour")
+        if retour and not termine:
+            de = ETAPE_INFO.get(retour.get("de"), ("", "?", "•", ""))
+            embed.add_field(
+                name=f"🔁 Renvoyé par le {de[1]}",
+                value=(f"> {retour.get('motif') or '…'}\n"
+                       f"— {_qui(retour.get('par'))} "
+                       f"<t:{int(retour.get('le') or 0)}:R>")[:1024],
+                inline=False)
+
         if fiche.get("pages") or fiche.get("depots") or fiche.get("avancement"):
             embed.add_field(name="📄 Pages", value=_bloc_pages(fiche), inline=True)
 
@@ -950,10 +1141,19 @@ class Atelier(commands.Cog):
             embed.add_field(name="🎯 Sortie visée",
                             value=f"**{fiche['eta']}**", inline=True)
 
-        if termine:
+        if fiche.get("sortie"):
+            sortie = fiche["sortie"]
+            embed.add_field(
+                name="🚀 Sorti",
+                value=(f"Publié <t:{int(sortie.get('le') or 0)}:R>"
+                       + (f" — [la release]({sortie['url']})"
+                          if sortie.get("url") else "")),
+                inline=True)
+        elif termine:
             embed.add_field(
                 name="🎉 Terminé",
-                value="Prêt à sortir — `/release` pour publier.", inline=True)
+                value="Prêt à sortir — `/release` le publie, et la fiche se "
+                      "fermera toute seule.", inline=True)
         else:
             # Le rôle concerné est nommé ici : dans un embed, une mention
             # s'affiche sans pinger. Le panneau dit donc qui est attendu
@@ -986,19 +1186,36 @@ class Atelier(commands.Cog):
             embed.add_field(name="🙋 Sur le coup", value=valeur, inline=True)
 
         faites = fiche.get("etapes", {})
-        if faites:
+        retours = fiche.get("retours") or []
+        if faites or retours:
             lignes = []
             for eid in ETAPES:
                 fait = faites.get(eid)
                 if not fait:
                     continue
-                ligne = f"{ETAPE_INFO[eid][2]} **{ETAPE_INFO[eid][1]}** — <@{fait['par']}>"
+                ligne = (f"{ETAPE_INFO[eid][2]} **{ETAPE_INFO[eid][1]}** — "
+                         f"{_qui(fait.get('par'))}")
+                if fait.get("stock"):
+                    ligne += " · 📦 stock"
                 if fait.get("lien"):
-                    ligne += f" · [fichier]({fait['lien']})"
+                    ligne += (" · [release]" if eid == DERNIERE
+                              else " · [fichier]") + f"({fait['lien']})"
                 if fait.get("note"):
                     ligne += f"\n> {fait['note']}"
                 lignes.append(ligne)
-            embed.add_field(name="🧾 Parcours", value="\n".join(lignes), inline=False)
+            # Les allers-retours restent visibles une fois corrigés : ils
+            # disent où le chapitre a accroché, sans désigner personne.
+            for r in retours[-3:]:
+                de = ETAPE_INFO.get(r.get("de"), ("", "?", "•", ""))
+                vers = ETAPE_INFO.get(r.get("vers"), ("", "?", "•", ""))
+                motif = (r.get("motif") or "")
+                motif = motif if len(motif) <= 80 else motif[:79] + "…"
+                lignes.append(f"🔁 {de[2]} → {vers[2]} "
+                              f"<t:{int(r.get('le') or 0)}:d> — *{motif}*")
+            if len(retours) > 3:
+                lignes.append(f"*…{len(retours)} renvois en tout.*")
+            embed.add_field(name="🧾 Parcours",
+                            value="\n".join(lignes)[:1024], inline=False)
 
         if fiche.get("image"):
             embed.set_image(url=f"attachment://{fiche['image']}")
@@ -1058,11 +1275,93 @@ class Atelier(commands.Cog):
             fiche["termine"] = True
         else:
             fiche["etape"] = suivante
+
+        # Le renvoi est réglé une fois que la chaîne a dépassé l'étape qui
+        # l'avait fait : le motif quitte alors le haut de la fiche (il reste
+        # dans le parcours).
+        retour = fiche.get("retour")
+        if retour and (fiche["termine"] or ETAPES.index(fiche["etape"])
+                       > ETAPES.index(retour.get("de", DERNIERE))):
+            fiche.pop("retour", None)
         self.sauver()
 
         log.info("Atelier : %s — %s valide par %s", fiche["cle"], etape, auteur)
         await self._prevenir(guild, fiche)
         await self._suivi_public(guild, fiche)
+
+    async def renvoyer(self, guild, fiche, cible, auteur, motif):
+        """Ramène la fiche à `cible`. Rend le membre qui reprend, s'il y en a un.
+
+        Tout ce qui suit `cible` est à revalider : une traduction corrigée
+        se ré-édite. La personne qui avait fait l'étape la reprend
+        directement — c'est son travail, elle sait où chercher — à moins
+        qu'elle ne soit plus là ou plus du métier : le métier est alors
+        pingé comme pour n'importe quelle étape libre.
+        """
+        depuis = fiche.get("etape")
+        faites = fiche.setdefault("etapes", {})
+        avant = faites.get(cible) or {}
+        for eid in ETAPES[ETAPES.index(cible):]:
+            faites.pop(eid, None)
+
+        retour = {"de": depuis, "vers": cible, "par": auteur.id,
+                  "le": time.time(), "motif": motif, "auteur": avant.get("par")}
+        fiche.setdefault("retours", []).append(retour)
+        fiche["retour"] = retour
+        fiche["etape"] = cible
+        fiche["termine"] = False
+        _liberer(fiche)
+
+        repreneur = guild.get_member(avant.get("par") or 0)
+        if repreneur is not None and _peut_valider(repreneur, cible):
+            self.attribuer(fiche, repreneur.id)
+        else:
+            repreneur = None
+            self.sauver()
+
+        log.info("Atelier : %s renvoye de %s a %s par %s",
+                 fiche["cle"], depuis, cible, auteur)
+        await self._annoncer_retour(guild, fiche, retour, repreneur)
+        return repreneur
+
+    async def _annoncer_retour(self, guild, fiche, retour, repreneur):
+        """Le motif, dans le fil du chapitre — là où sont les pages."""
+        cible = retour["vers"]
+        info = ETAPE_INFO.get(cible, (cible, cible, "•", ""))
+        de = ETAPE_INFO.get(retour["de"], ("", "?", "•", ""))
+        if repreneur is not None:
+            qui = repreneur.mention
+        else:
+            role = _role_de(guild, cible)
+            qui = role.mention if role else f"**{info[1]}**"
+
+        # Ce qui repassera derrière : dit une fois, pour que l'édition ne
+        # découvre pas en se faisant pinger qu'elle doit tout relire.
+        fin = ETAPES.index(retour["de"])
+        a_refaire = [ETAPE_INFO[e][2] + " " + ETAPE_INFO[e][1]
+                     for e in ETAPES[ETAPES.index(cible) + 1:fin + 1]
+                     if e != DERNIERE]
+        suite = (f"\nEnsuite : {' → '.join(a_refaire)}, comme d'habitude."
+                 if a_refaire else "")
+        echeance = (f"\nÀ rendre <t:{int(fiche['echeance'])}:R> — **⏰ Plus de "
+                    "temps** sur la fiche si besoin."
+                    if repreneur is not None and fiche.get("echeance") else "")
+
+        texte = (f"🔁 **Retour du {de[1]}** → {qui}\n"
+                 f"Le **{info[1]}** est à reprendre :\n"
+                 f"> {retour['motif']}"
+                 f"{suite}{echeance}\n{fiche.get('url', '')}")
+
+        cible_salon = await self._fil(guild, fiche) \
+            or guild.get_channel(fiche.get("salon") or 0)
+        if cible_salon is None:
+            return
+        try:
+            await cible_salon.send(
+                texte, allowed_mentions=discord.AllowedMentions(
+                    users=True, roles=True))
+        except discord.HTTPException as e:
+            log.warning("Renvoi %s non annonce : %s", fiche.get("cle"), e)
 
     async def _prevenir(self, guild, fiche):
         """Une ligne dans le salon pour passer le relais."""
@@ -1077,7 +1376,8 @@ class Atelier(commands.Cog):
 
         if fiche.get("termine"):
             texte = (f"🎉 **{titre}** a passé le Q-check — prêt à sortir.\n"
-                     f"`/release` quand tu veux. {lien}")
+                     f"`/release` quand tu veux, la fiche se fermera "
+                     f"toute seule. {lien}")
             mentions = discord.AllowedMentions.none()
         else:
             etape = fiche["etape"]
@@ -1166,20 +1466,13 @@ class Atelier(commands.Cog):
             # serait un ping de plus pour une jauge qui bouge.
             if not ATELIER_SUIVI_EDITE or suivi.get("etape") != etape:
                 return
-            salon_suivi = guild.get_channel(suivi.get("salon") or 0) or salon
-            if not suivi.get("message"):
-                return
-            try:
-                message = await salon_suivi.fetch_message(suivi["message"])
-                # La première ligne porte la mention du rôle : on la garde
-                # telle quelle, `allowed_mentions` empêchant qu'elle repingue.
-                tete = (message.content.split("\n", 1)[0] + "\n"
-                        if message.content.startswith("<@&") else "")
-                await message.edit(
-                    content=tete + corps,
-                    allowed_mentions=discord.AllowedMentions.none())
-            except (discord.NotFound, discord.HTTPException) as e:
-                log.debug("Suivi public %s non reecrit : %s", fiche.get("cle"), e)
+            await self._reecrire_suivi(guild, fiche, corps)
+            return
+
+        # Un chapitre renvoyé repasse par des étapes déjà annoncées : les
+        # lecteurs n'ont pas à être repingés pour une correction interne.
+        annonces = fiche.setdefault("annonces", [])
+        if etape in annonces:
             return
 
         role_id = ROLES.get(ATELIER_SUIVI_ROLE)
@@ -1194,7 +1487,104 @@ class Atelier(commands.Cog):
 
         fiche["suivi"] = {"salon": salon.id, "message": message.id,
                           "etape": etape}
+        annonces.append(etape)
         self.sauver()
+
+    async def _reecrire_suivi(self, guild, fiche, corps):
+        """Réécrit le dernier message de suivi public, sans repinger."""
+        suivi = fiche.get("suivi") or {}
+        if not suivi.get("message"):
+            return
+        salon = guild.get_channel(suivi.get("salon") or 0) \
+            or self._salon_suivi(guild)
+        if salon is None:
+            return
+        try:
+            message = await salon.fetch_message(suivi["message"])
+            # La première ligne porte la mention du rôle : on la garde
+            # telle quelle, `allowed_mentions` empêchant qu'elle repingue.
+            tete = (message.content.split("\n", 1)[0] + "\n"
+                    if message.content.startswith("<@&") else "")
+            await message.edit(
+                content=tete + corps,
+                allowed_mentions=discord.AllowedMentions.none())
+        except (discord.NotFound, discord.HTTPException) as e:
+            log.debug("Suivi public %s non reecrit : %s", fiche.get("cle"), e)
+
+    # ─────────────────────────────────────────────
+    # La sortie ferme la fiche
+    # ─────────────────────────────────────────────
+    # `/release` ne savait rien de l'atelier : une fois publié, le chapitre
+    # restait « prêt à sortir » pour toujours, son fil ouvert, et le suivi
+    # public ne disait jamais qu'il était sorti. C'est `Release.post_release`
+    # qui appelle ceci — à la main comme depuis le site.
+
+    def _fiche_souple(self, manga: str, chapitre):
+        """La fiche d'un chapitre, « 142 » et « 142.0 » étant le même."""
+        fiche = self.fiche(manga, chapitre)
+        if fiche is not None:
+            return fiche
+        try:
+            n = stocklib.num(chapitre)
+        except ValueError:
+            return None
+        for autre in self._store.get("fiches", {}).values():
+            if autre.get("manga") != manga:
+                continue
+            try:
+                if stocklib.num(autre.get("chapitre")) == n:
+                    return autre
+            except ValueError:
+                continue
+        return None
+
+    async def cloturer(self, guild, manga: str, chapitre, *, url=None, par=None):
+        """Une release est partie : la fiche se ferme, le stock s'allège."""
+        # Un chapitre sorti n'est plus d'avance, qu'il ait eu une fiche ou non.
+        if stocklib.contient(self.stock(manga), chapitre) is not None:
+            n = stocklib.num(chapitre)
+            self._retirer_stock(manga, n, n)
+
+        fiche = self._fiche_souple(manga, chapitre)
+        if fiche is None or fiche.get("sortie"):
+            return None
+
+        maintenant = time.time()
+        fiche.setdefault("etapes", {})[DERNIERE] = {
+            "par": par, "le": maintenant, "note": None, "lien": url}
+        fiche["sortie"] = {"le": maintenant, "url": url, "par": par}
+        fiche["etape"] = DERNIERE
+        fiche["termine"] = True
+        fiche.pop("retour", None)
+        _liberer(fiche)
+        fiche.pop("libre_le", None)
+        self.sauver()
+
+        await self._reecrire(guild, fiche)
+
+        if ATELIER_SUIVI_PUBLIC and ATELIER_SUIVI_EDITE:
+            titre = f"{_nom_manga(fiche['manga'])} **ch. {fiche['chapitre']}**"
+            await self._reecrire_suivi(
+                guild, fiche,
+                f"🚀 {titre} est **sorti** !" + (f"\n→ {url}" if url else ""))
+
+        fil = await self._fil(guild, fiche)
+        if fil is not None:
+            try:
+                await fil.send("🚀 **Sorti.** Merci à toute la chaîne — "
+                               "le fil se ferme." + (f"\n{url}" if url else ""))
+                await fil.edit(archived=True, locked=True)
+            except discord.Forbidden:
+                # Verrouiller demande « Gérer les fils » ; archiver suffit.
+                try:
+                    await fil.edit(archived=True)
+                except discord.HTTPException:
+                    pass
+            except discord.HTTPException as e:
+                log.debug("Fil de %s non ferme : %s", fiche.get("cle"), e)
+
+        log.info("Atelier : %s sorti, fiche fermee", fiche["cle"])
+        return fiche
 
     # ─────────────────────────────────────────────
     # Le fil du chapitre
@@ -1237,7 +1627,8 @@ class Atelier(commands.Cog):
                 "s'affiche tout seul sur la fiche.\n\n"
                 "Le fil sert à toute la chaîne : le clean, la traduction et "
                 "l'édition déposent leur rendu au même endroit, et le bot "
-                "compte séparément pour chaque étape.")
+                "compte séparément pour chaque étape. Déposer ton rendu te "
+                "note sur l'étape : pas besoin de cliquer 🙋 avant.")
         except discord.HTTPException as e:
             log.warning("Message d'accueil du fil %s non envoye : %s",
                         fiche.get("cle"), e)
@@ -1246,6 +1637,19 @@ class Atelier(commands.Cog):
     def fiche_du_fil(self, fil_id: int):
         cle = self._store.get("fils", {}).get(str(fil_id))
         return self._store.get("fiches", {}).get(cle) if cle else None
+
+    async def _fil(self, guild, fiche):
+        """Le fil de la fiche, même archivé (il n'est plus en cache alors)."""
+        fil_id = fiche.get("fil")
+        if not fil_id:
+            return None
+        fil = guild.get_thread(fil_id)
+        if fil is None:
+            try:
+                fil = await guild.fetch_channel(fil_id)
+            except discord.HTTPException:
+                return None
+        return fil if isinstance(fil, discord.Thread) else None
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -1267,7 +1671,17 @@ class Atelier(commands.Cog):
         depots = fiche.setdefault("depots", {})
         avant = depots.get(etape, 0)
         depots[etape] = avant + len(images)
-        self.sauver()
+
+        # Déposer ses pages, c'est être dessus : la fiche le note sans
+        # attendre un clic sur 🙋. Seulement pour le métier lui-même — le
+        # staff qui dépose une raw oubliée ne prend pas le clean pour autant.
+        pris = (not fiche.get("pris_par")
+                and isinstance(message.author, discord.Member)
+                and _est_du_metier(message.author, etape))
+        if pris:
+            self.attribuer(fiche, message.author.id)
+        else:
+            self.sauver()
 
         # Fiche ouverte sans aperçu : la première page déposée l'illustre.
         # On la ré-héberge plutôt que de pointer l'URL du message, les
@@ -1283,9 +1697,23 @@ class Atelier(commands.Cog):
         await self._reecrire(message.guild, fiche, fichier)
         await self._suivi_public(message.guild, fiche, maj=True)
 
+        info = ETAPE_INFO.get(etape, (etape, etape, "•", ""))
+        if pris:
+            echeance = fiche.get("echeance")
+            try:
+                await message.channel.send(
+                    f"🙋 C'est noté : {message.author.mention} est sur le "
+                    f"**{info[1]}**."
+                    + (f" À rendre <t:{int(echeance)}:R> — **⏰ Plus de "
+                       "temps** sur la fiche si besoin." if echeance else ""),
+                    allowed_mentions=discord.AllowedMentions.none())
+            except discord.HTTPException:
+                pass
+            log.info("Atelier : %s pris par %s (depot dans le fil)",
+                     fiche["cle"], message.author)
+
         attendu = fiche.get("pages")
         if attendu and avant < attendu <= depots[etape]:
-            info = ETAPE_INFO.get(etape, (etape, etape, "•", ""))
             try:
                 await message.channel.send(
                     f"✅ **{depots[etape]}/{attendu}** — le compte y est "
@@ -1445,7 +1873,7 @@ class Atelier(commands.Cog):
                 "Ce n'est pas un reproche et ça ne compte nulle part : un "
                 "chapitre qui dort bloque toute la chaîne derrière lui, alors "
                 "le bot le remet à disposition tout seul.\n\n"
-                "Si tu veux le reprendre, le bouton **🙋 Je prends** est "
+                "Si tu veux le reprendre, le bouton **🙋 Je m'y mets** est "
                 "toujours là.\n\n"
                 f"→ {fiche.get('url', '')}")
         except discord.HTTPException:
@@ -1649,28 +2077,44 @@ class Atelier(commands.Cog):
                 return await interaction.followup.send(
                     f"❌ Aperçu `{piece.filename}` illisible : {e}", ephemeral=True)
 
+        # Ce chapitre était peut-être en stock, avec du travail déjà fait :
+        # la fiche reprend là où en est la plage, pas au clean. Sinon le
+        # cleaner serait pingé pour un chapitre nettoyé depuis un mois.
+        maintenant = time.time()
+        couvert = stocklib.contient(self.stock(manga.value), chapitre)
+        deja = (couvert or {}).get("fait")
+        etapes = {"pages": {"par": interaction.user.id, "le": maintenant,
+                            "note": note, "lien": source}}
+        avancement = {"pages": pages if trouvees is None else trouvees}
+        if deja and deja != "pages":
+            for eid in ETAPES[1:stocklib.rang(deja) + 1]:
+                etapes[eid] = {"par": couvert.get("par") or interaction.user.id,
+                               "le": couvert.get("le") or maintenant,
+                               "note": None, "lien": None, "stock": True}
+                avancement[eid] = pages
+        depart = stocklib.attendue(deja) if deja else _suivante("pages")
+
         fiche = {
             "cle": _cle(manga.value, chapitre),
             "manga": manga.value,
             "chapitre": chapitre,
             "pages": pages,
-            "etape": _suivante("pages"),
-            "termine": False,
+            "etape": depart,
+            "termine": depart == DERNIERE,
             "salon": cible.id,
             "message": None,
             "url": None,
             "image": fichiers[0].filename if fichiers else None,
             "source": source,
-            "ouvert_le": time.time(),
-            "libre_le": time.time(),
+            "ouvert_le": maintenant,
+            "libre_le": maintenant,
             "pris_par": None,
             "pris_le": None,
             "depots": {},
             # Le lot peut être incomplet : trois raws manquantes se voient
             # tout de suite sur la fiche plutôt qu'au moment de l'édition.
-            "avancement": {"pages": pages if trouvees is None else trouvees},
-            "etapes": {"pages": {"par": interaction.user.id, "le": time.time(),
-                                 "note": note, "lien": source}},
+            "avancement": avancement,
+            "etapes": etapes,
         }
 
         embeds = [self._embed(interaction.guild, fiche)]
@@ -1697,10 +2141,8 @@ class Atelier(commands.Cog):
         self._store.setdefault("messages", {})[str(message.id)] = fiche["cle"]
         self.sauver()
 
-        # Ce chapitre avait peut-être une plage de stock à son nom. La
-        # fiche est plus précise qu'une plage : elle prend la main, et le
-        # stock se réduit d'autant plutôt que d'annoncer deux vérités.
-        couvert = stocklib.contient(self.stock(manga.value), chapitre)
+        # La fiche est plus précise qu'une plage : elle prend la main, et
+        # le stock se réduit d'autant plutôt que d'annoncer deux vérités.
         if couvert is not None:
             n = stocklib.num(chapitre)
             self._retirer_stock(manga.value, n, n)
@@ -1729,9 +2171,14 @@ class Atelier(commands.Cog):
                     + (f"⚠️ **{trouvees}** seulement de récupérées — "
                        "`/atelier_avancement` pour compléter.\n"
                        if trouvees is not None and trouvees < pages else "")
-                    + ("📦 Ce chapitre était en stock — il en sort, la fiche "
-                       "fait foi.\n" if couvert is not None else "")
-                    + (f"Prochaine étape : **{_libelle(fiche['etape'])}**\n")
+                    + ((f"📦 Ce chapitre était en stock ({_libelle(deja)} "
+                        "fait) — la fiche démarre directement là où il en "
+                        "était.\n" if deja and deja != "pages" else
+                        "📦 Ce chapitre était en stock — il en sort, la "
+                        "fiche fait foi.\n") if couvert is not None else "")
+                    + ("🎉 Il ne reste qu'à le sortir : `/release`.\n"
+                       if fiche["termine"] else
+                       f"Prochaine étape : **{_libelle(fiche['etape'])}**\n")
                     + (f"📥 Dépose les pages dans <#{fiche['fil']}> — "
                        "dix par message.\n" if fiche.get("fil") else "")
                     + f"→ {message.jump_url}"),

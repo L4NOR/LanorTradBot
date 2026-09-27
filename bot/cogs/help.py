@@ -84,7 +84,8 @@ class Help(commands.Cog):
                     "`/atelier_export` — le `atelier.js` du site, "
                     "à jour depuis les fiches\n"
                     "*Vert = fait · bleu = c'est ton tour · gris = pas encore. "
-                    "Chaque étape validée ping le métier suivant.*"
+                    "Chaque étape validée ping le métier suivant ; 🔁 renvoie "
+                    "à une étape déjà passée, et `/release` ferme la fiche.*"
                 ),
                 inline=False,
             )

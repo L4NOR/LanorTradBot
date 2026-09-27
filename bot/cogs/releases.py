@@ -200,6 +200,20 @@ class Release(commands.Cog):
         })
         log.info("Release %s Ch.%s (%s) publiée via %s.", name, chapter, lang, source)
 
+        # La sortie FR ferme la fiche d'atelier du chapitre (et le sort du
+        # stock). L'atelier n'est pas chargé partout : sans lui, rien à faire.
+        # Une fiche qui refuse de se fermer ne doit jamais faire échouer
+        # une release déjà partie.
+        atelier = self.bot.get_cog("Atelier")
+        if is_fr and atelier is not None:
+            try:
+                await atelier.cloturer(
+                    guild, manga_key, chapter,
+                    url=message.jump_url if message else None, par=author_id)
+            except Exception:                          # noqa: BLE001
+                log.exception("Fiche d'atelier non fermée (%s ch.%s)",
+                              manga_key, chapter)
+
         return message, channel
 
     # ─────────────────────────────────────────────
