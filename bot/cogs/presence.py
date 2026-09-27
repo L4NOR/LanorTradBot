@@ -64,27 +64,32 @@ class Presence(commands.Cog):
     # De quoi parler
     # ─────────────────────────────────────────────
     def _depuis_fiches(self):
-        """(compteur par étape, chapitres prêts) d'après les fiches Discord."""
+        """(compteur par étape, chapitres prêts, chapitres en cours) d'après les fiches."""
         cog = self.bot.get_cog("Atelier")
         if cog is None:
-            return {}, []
-        compte, prets = {}, []
+            return {}, [], 0
+        compte, prets, nb = {}, [], 0
         for fiche in cog._store.get("fiches", {}).values():
+            if fiche.get("sortie"):
+                continue                    # publié : plus rien à en dire
             if fiche.get("termine"):
                 prets.append(f"{_nom_court(fiche.get('manga'))} "
                              f"{fiche.get('chapitre')}")
                 continue
-            etape = fiche.get("etape")
-            if etape in ETAPES_TRAVAIL:
-                compte[etape] = compte.get(etape, 0) + 1
-        return compte, prets
+            # Le clean et la trad avancent ensemble : un chapitre peut
+            # compter dans deux étapes à la fois.
+            nb += 1
+            for etape in cog.ouvertes(fiche):
+                if etape in ETAPES_TRAVAIL:
+                    compte[etape] = compte.get(etape, 0) + 1
+        return compte, prets, nb
 
     def _depuis_site(self):
         """Même chose, lue sur le site — utile tant qu'aucune fiche n'existe."""
         sync = self.bot.get_cog("SiteSync")
         data = getattr(sync, "data", None)
         if data is None:
-            return {}, []
+            return {}, [], 0
         compte, prets = {}, []
         for item in data.workshop():
             etape = item.get("step")
@@ -93,12 +98,12 @@ class Presence(commands.Cog):
                              f"{item.get('chapter')}")
             elif etape in ETAPES_TRAVAIL:
                 compte[etape] = compte.get(etape, 0) + 1
-        return compte, prets
+        return compte, prets, sum(compte.values())
 
     def _phrases(self) -> list:
-        compte, prets = self._depuis_fiches()
+        compte, prets, total = self._depuis_fiches()
         if not compte and not prets:
-            compte, prets = self._depuis_site()
+            compte, prets, total = self._depuis_site()
 
         phrases = []
 
@@ -106,7 +111,6 @@ class Presence(commands.Cog):
             detail = " · ".join(
                 f"{sitelib.STEP_INFO[e][2]} {compte[e]}"
                 for e in ETAPES_TRAVAIL if compte.get(e))
-            total = sum(compte.values())
             phrases.append(f"l'atelier — {detail}")
             phrases.append(
                 f"{total} chapitre{'s' if total > 1 else ''} en fabrication")

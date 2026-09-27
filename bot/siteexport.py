@@ -113,21 +113,26 @@ def rendre(entrees: dict, tete: str = "") -> str:
 # ═══════════════════════════════════════════════════════
 
 def _derniere_etape(fiche: dict):
-    """(id de l'étape, horodatage, note) de l'étape validée la plus avancée.
+    """(id de l'étape, horodatage, note) de ce que le site doit montrer.
 
-    La plus avancée dans la chaîne, pas la plus récente : une fiche ouverte
-    depuis le stock valide ses pages aujourd'hui et son clean il y a un
-    mois, et c'est bien le clean que le site doit montrer. L'horodatage,
-    lui, reste celui du dernier mouvement.
+    Le site raconte une chaîne en file indienne : « clean fait » veut dire
+    que tout ce qui précède l'est aussi. On prend donc la dernière étape
+    d'une suite **ininterrompue** depuis le début — ni la plus récente
+    (une fiche ouverte depuis le stock valide ses pages aujourd'hui et son
+    clean il y a un mois), ni la plus avancée (la trad peut finir avant le
+    clean, et le site ne doit pas dire « trad faite » d'un chapitre pas
+    encore nettoyé). L'horodatage, lui, reste celui du dernier mouvement.
     """
     faites = fiche.get("etapes") or {}
     if not faites:
         return None, fiche.get("ouvert_le", 0), None
-    eid, detail = max(
-        faites.items(),
-        key=lambda kv: STEP_IDS.index(kv[0]) if kv[0] in STEP_IDS else -1)
+    eid = None
+    for etape in STEP_IDS:
+        if etape not in faites:
+            break
+        eid = etape
     quand = max((d.get("le") or 0) for d in faites.values())
-    return eid, quand, detail.get("note")
+    return eid, quand, (faites.get(eid) or {}).get("note")
 
 
 def fiche_a_retenir(fiches: list):

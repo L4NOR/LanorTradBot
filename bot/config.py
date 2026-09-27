@@ -291,6 +291,19 @@ ATELIER_ETAPE_ROLES = {
     "sortie": ("founder", "moderator"),
 }
 
+# Ce que chaque étape attend avant de s'ouvrir. La traduction n'a besoin
+# que des raws : elle avance en même temps que le clean, et l'édition
+# attend les deux. Pour revenir à la file indienne (la trad après le
+# clean), il suffit d'écrire "trad": ("clean",).
+# Une étape absente d'ici attend simplement celle d'avant.
+ATELIER_PREALABLES = {
+    "clean":  ("pages",),
+    "trad":   ("pages",),
+    "edit":   ("clean", "trad"),
+    "qcheck": ("edit",),
+    "sortie": ("qcheck",),
+}
+
 # Peuvent valider n'importe quelle étape (et débloquer une fiche coincée).
 # Ajoute "trial" ici si tu veux que les personnes en test participent
 # avant d'avoir reçu leur rôle métier.
