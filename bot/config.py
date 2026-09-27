@@ -304,6 +304,36 @@ ATELIER_PREALABLES = {
     "sortie": ("qcheck",),
 }
 
+# ── Les titulaires ────────────────────────────────────────────────
+# Qui fait quoi, série par série. Quand une étape s'ouvre, elle est
+# confiée directement à son titulaire : c'est lui qui est pingé (pas tout
+# le métier), et son échéance démarre. S'il rend l'étape (↩️ sur la
+# fiche), elle retourne au pot commun et le métier prend le relais — le
+# bot ne la lui recolle pas.
+# "*" vaut pour toutes les séries ; une série remplace ce qu'elle précise.
+# Un titulaire peut valider son étape sur sa série même sans le rôle.
+# Quelqu'un qui n'est pas sur le serveur est ignoré : le métier est pingé.
+_LANOR = 608234789564186644
+ATELIER_TITULAIRES = {
+    "*": {"pages": _LANOR, "clean": _LANOR, "trad": _LANOR,
+          "edit": _LANOR, "qcheck": _LANOR},
+    "tougen-anki": {
+        "trad":   433305136975183882,    # Taichoskii
+        "qcheck": 937386825562062858,    # Zerox
+    },
+    "catenaccio": {
+        "trad":   1254517559277916260,   # Kamina
+        "qcheck": 599196449044955156,    # Flexxon
+    },
+}
+
+# Pas d'échéance pour ces personnes-là quand elles prennent une étape :
+# elles tiennent l'atelier et reçoivent déjà les alertes du staff. Les
+# rappels de retard et la libération automatique ne seraient que du
+# bruit ; la relance douce (un MP après quelques jours sans bouger, deux
+# au plus) reste.
+ATELIER_SANS_ECHEANCE = (_LANOR,)
+
 # Peuvent valider n'importe quelle étape (et débloquer une fiche coincée).
 # Ajoute "trial" ici si tu veux que les personnes en test participent
 # avant d'avoir reçu leur rôle métier.

@@ -74,6 +74,12 @@ Les principes :
     pages. Deux étapes ouvertes, c'est deux postes : deux personnes
     dessus, deux échéances, deux séries de rappels. Un cleaner n'a jamais
     qu'un bouton à lui ; le staff, qui peut tout, choisit l'étape.
+  • **Chaque série a ses titulaires.** Sur Tougen Anki la trad est à
+    quelqu'un, le Q-check à quelqu'un d'autre (`ATELIER_TITULAIRES`).
+    L'étape qui s'ouvre lui est confiée directement : il est pingé, pas
+    tout le métier. S'il rend, le métier prend le relais et le bot ne la
+    lui recolle pas. Qui tient l'atelier n'a pas d'échéance sur ses
+    propres étapes (`ATELIER_SANS_ECHEANCE`).
   • **Déposer, c'est prendre.** Quelqu'un du métier qui dépose ses pages
     dans le fil est déjà au travail : la fiche le note sur l'étape sans
     attendre qu'il pense à 🙋.
@@ -118,6 +124,7 @@ from bot.config import (
     ATELIER_CHANNEL, ATELIER_ANNONCE_ETAPE,
     ATELIER_FIL, ATELIER_FIL_ARCHIVE,
     ATELIER_ETAPE_ROLES, ATELIER_ROLES_JOKER, ATELIER_PREALABLES,
+    ATELIER_TITULAIRES, ATELIER_SANS_ECHEANCE,
     ATELIER_RELANCE, ATELIER_RELANCE_JOURS, ATELIER_RELANCE_INTERVALLE,
     ATELIER_RELANCE_MAX,
     ATELIER_DELAIS, ATELIER_DELAI_PAGES, ATELIER_DELAI_PAGES_REF,
@@ -188,21 +195,37 @@ def _nom_manga(cle: str) -> str:
     return f"{info.get('emoji', '📖')} {info.get('name', cle)}"
 
 
-def _peut_valider(member: discord.Member, etape: str) -> bool:
-    """Le métier de l'étape, ou un rôle passe-partout (staff)."""
+def _titulaire(fiche, etape: str):
+    """L'id du titulaire de `etape` sur la série de la fiche, ou None.
+
+    La série d'abord, puis « * » qui vaut pour toutes (`ATELIER_TITULAIRES`).
+    """
+    serie = ATELIER_TITULAIRES.get((fiche or {}).get("manga")) or {}
+    return serie.get(etape) or (ATELIER_TITULAIRES.get("*") or {}).get(etape)
+
+
+def _peut_valider(member: discord.Member, etape: str, fiche=None) -> bool:
+    """Le métier de l'étape, son titulaire sur la série, ou le staff."""
     if member.guild_permissions.administrator:
+        return True
+    # Le titulaire d'une étape la fait sur sa série, rôle ou pas : c'est
+    # la personne à qui on l'a confiée, un oubli de rôle ne doit pas la
+    # bloquer devant son propre bouton.
+    if fiche is not None and _titulaire(fiche, etape) == member.id:
         return True
     attendus = set(ATELIER_ETAPE_ROLES.get(etape, ())) | set(ATELIER_ROLES_JOKER)
     ids = {ROLES.get(c) for c in attendus} - {None}
     return any(r.id in ids for r in member.roles)
 
 
-def _est_du_metier(member: discord.Member, etape: str) -> bool:
-    """Le rôle métier de l'étape, sans les rôles passe-partout.
+def _est_du_metier(member: discord.Member, etape: str, fiche=None) -> bool:
+    """Le rôle métier de l'étape (ou son titulaire), sans les passe-partout.
 
     `_peut_valider` dit qui a le droit ; celui-ci dit à qui ça s'adresse.
     Sans quoi le staff verrait toute la chaîne dans son établi.
     """
+    if fiche is not None and _titulaire(fiche, etape) == member.id:
+        return True
     ids = {ROLES.get(c) for c in ATELIER_ETAPE_ROLES.get(etape, ())} - {None}
     return any(r.id in ids for r in member.roles)
 
@@ -316,6 +339,19 @@ def _liberer(poste: dict):
                  rappels=[], libre_le=time.time(), rappels_libre=0)
     for champ in ("staff_prevenu", "relances", "relance_le"):
         poste.pop(champ, None)
+
+
+def _rendre(poste: dict):
+    """Libère un poste en retenant qui le tenait.
+
+    Un titulaire qui rend son étape a dit qu'il ne pouvait pas : le bot ne
+    la lui recollera pas au prochain démarrage.
+    """
+    if poste.get("pris_par"):
+        rendu = poste.setdefault("rendu_par", [])
+        if poste["pris_par"] not in rendu:
+            rendu.append(poste["pris_par"])
+    _liberer(poste)
 
 
 def _recalculer(fiche: dict) -> list:
@@ -460,8 +496,15 @@ def _delai_jours(etape: str, pages=None):
     return base
 
 
-def _echeance_pour(fiche: dict, etape: str, depart=None):
-    """L'échéance de `etape` si on la prenait maintenant (ou à `depart`)."""
+def _echeance_pour(fiche: dict, etape: str, depart=None, membre_id=None):
+    """L'échéance de `etape` si on la prenait maintenant (ou à `depart`).
+
+    Aucune pour qui tient l'atelier (`ATELIER_SANS_ECHEANCE`) : les
+    rappels, les alertes de retard et la libération automatique sont
+    faits pour l'équipe, pas pour qui reçoit déjà les alertes du staff.
+    """
+    if membre_id is not None and membre_id in ATELIER_SANS_ECHEANCE:
+        return None
     jours = _delai_jours(etape, fiche.get("pages"))
     if jours is None:
         return None
@@ -599,7 +642,8 @@ async def _faire_avancement(interaction, cog, fiche, etape, *, sur_fiche):
 
 
 async def _faire_rendre(interaction, cog, fiche, etape, *, sur_fiche):
-    _liberer(cog.poste(fiche, etape))
+    poste = cog.poste(fiche, etape)
+    _rendre(poste)
     cog.sauver()
     log.info("Atelier : %s (%s) rendu par %s", fiche["cle"], etape,
              interaction.user)
@@ -808,7 +852,7 @@ class MetierButton(discord.ui.Button):
                 f"⏳ Pas encore : {attente}.\nTon bouton s'allumera tout "
                 "seul quand ce sera ton tour.")
 
-        if not _peut_valider(interaction.user, self.etape):
+        if not _peut_valider(interaction.user, self.etape, fiche):
             return await _refus(
                 interaction,
                 f"❌ **{_libelle(self.etape)}** est réservé à son métier.\n"
@@ -958,7 +1002,7 @@ class PrendreButton(discord.ui.Button):
 
         moi = interaction.user
         ouvertes = _en_cours(fiche)
-        permises = [e for e in ouvertes if _peut_valider(moi, e)]
+        permises = [e for e in ouvertes if _peut_valider(moi, e, fiche)]
         if not permises:
             return await _refus(
                 interaction,
@@ -973,7 +1017,7 @@ class PrendreButton(discord.ui.Button):
         libres = [e for e in permises if libre(e)]
         # Son métier d'abord : le staff passe partout, mais un cleaner qui a
         # aussi un rôle passe-partout veut le clean, pas la trad.
-        choix = [e for e in libres if _est_du_metier(moi, e)] or libres
+        choix = [e for e in libres if _est_du_metier(moi, e, fiche)] or libres
         if not choix:
             miennes = [e for e in permises if _preneur(fiche, e) == moi.id]
             if miennes:
@@ -1006,12 +1050,12 @@ class AvancementButton(discord.ui.Button):
             return await _refus(interaction, "✅ Ce chapitre est déjà terminé.")
 
         moi = interaction.user
-        permises = [e for e in _en_cours(fiche) if _peut_valider(moi, e)]
+        permises = [e for e in _en_cours(fiche) if _peut_valider(moi, e, fiche)]
         if not permises:
             return await _refus(
                 interaction, "❌ Les étapes en cours sont réservées à leur métier.")
         choix = ([e for e in permises if _preneur(fiche, e) == moi.id]
-                 or [e for e in permises if _est_du_metier(moi, e)]
+                 or [e for e in permises if _est_du_metier(moi, e, fiche)]
                  or permises)
         await _agir(interaction, cog, fiche, choix, _faire_avancement,
                     "📄 Le compte de quelle étape ?")
@@ -1093,20 +1137,20 @@ class RenvoyerButton(discord.ui.Button):
         moi = interaction.user
         if fiche.get("termine"):
             de = DERNIERE
-            if not _peut_valider(moi, ETAPES[-2]):
+            if not _peut_valider(moi, ETAPES[-2], fiche):
                 return await _refus(
                     interaction,
                     f"❌ Renvoyer une fiche bouclée, c'est le rôle du "
                     f"**{_libelle(ETAPES[-2])}**.")
         else:
             ouvertes = _en_cours(fiche)
-            permises = [e for e in ouvertes if _peut_valider(moi, e)]
+            permises = [e for e in ouvertes if _peut_valider(moi, e, fiche)]
             if not permises:
                 return await _refus(
                     interaction,
                     f"❌ Renvoyer, c'est le rôle d'une étape en cours "
                     f"({_et(ouvertes)}).")
-            de = next((e for e in permises if _est_du_metier(moi, e)),
+            de = next((e for e in permises if _est_du_metier(moi, e, fiche)),
                       permises[0])
 
         faites = fiche.get("etapes") or {}
@@ -1182,7 +1226,7 @@ class PrendreSelect(discord.ui.Select):
             return await interaction.response.send_message(
                 "⚠️ Quelqu'un vient de la prendre. `/mes_taches` pour "
                 "rafraîchir la liste.", ephemeral=True)
-        if not _peut_valider(interaction.user, etape):
+        if not _peut_valider(interaction.user, etape, fiche):
             return await interaction.response.send_message(
                 f"❌ L'étape **{_libelle(etape)}** est réservée "
                 "à son métier.", ephemeral=True)
@@ -1236,8 +1280,7 @@ class Atelier(commands.Cog):
         self.bot.add_view(FicheView())
         if ATELIER_RELANCE:
             self.relance.start()
-        if self._a_redessiner:
-            asyncio.create_task(self._redessiner())
+        asyncio.create_task(self._au_demarrage())
 
     def cog_unload(self):
         if self.relance.is_running():
@@ -1310,18 +1353,63 @@ class Atelier(commands.Cog):
             log.info("Atelier : %d fiche(s) passee(s) aux postes par etape",
                      migrees)
 
-    async def _redessiner(self):
-        """Réécrit les fiches migrées : nouveaux boutons, nouvelles couleurs."""
+    async def _au_demarrage(self):
+        """Une fois connecté : titulaires, puis fiches à redessiner.
+
+        Les étapes ouvertes que personne ne tient vont à leur titulaire —
+        c'est ce qui arrive aux fiches d'avant les titulaires, ou quand un
+        titulaire est ajouté dans la config. Chacun reçoit un seul MP qui
+        récapitule, plutôt qu'un ping par fiche.
+        """
         await self.bot.wait_until_ready()
         guild = self.bot.get_guild(GUILD_ID)
         if guild is None:
             return
-        for cle in self._a_redessiner:
-            fiche = self.fiche_par_cle(cle)
-            if fiche is not None:
-                await self._reecrire(guild, fiche)
-                await asyncio.sleep(1)          # sans brusquer l'API
-        self._a_redessiner = []
+        try:
+            a_redessiner = list(self._a_redessiner)
+            par_membre = {}
+            for fiche in self.en_cours():
+                confiees = self._confier(guild, fiche, _en_cours(fiche))
+                for etape, membre in confiees.items():
+                    par_membre.setdefault(membre, []).append((fiche, etape))
+                if confiees and fiche["cle"] not in a_redessiner:
+                    a_redessiner.append(fiche["cle"])
+
+            for cle in a_redessiner:
+                fiche = self.fiche_par_cle(cle)
+                if fiche is not None:
+                    await self._reecrire(guild, fiche)
+                    await asyncio.sleep(1)          # sans brusquer l'API
+            self._a_redessiner = []
+
+            for membre, taches in par_membre.items():
+                await self._mp_confiees(membre, taches)
+        except Exception:
+            log.exception("Atelier : demarrage incomplet")
+
+    async def _mp_confiees(self, membre, taches):
+        """« Voici ce qui t'a été confié » — un MP, toutes fiches comprises."""
+        lignes = []
+        for fiche, etape in taches[:15]:
+            info = ETAPE_INFO.get(etape, ("", "?", "•", ""))
+            echeance = _poste(fiche, etape).get("echeance")
+            lignes.append(
+                f"{info[2]} **{_nom_manga(fiche['manga'])} ch. "
+                f"{fiche['chapitre']}** — {info[1]}"
+                + (f", à rendre <t:{int(echeance)}:R>" if echeance else "")
+                + f"\n→ {fiche.get('url', '')}")
+        if len(taches) > 15:
+            lignes.append(f"*…et {len(taches) - 15} autre(s) : `/mes_taches`.*")
+        try:
+            await membre.send(
+                "🎒 **Ce qui t'a été confié à l'atelier**\n\n"
+                "Tu es titulaire de ces étapes sur leur série : elles sont "
+                "à ton nom sur les fiches.\n\n" + "\n\n".join(lignes)
+                + "\n\nSi tu ne peux pas en prendre une, **↩️ Je rends** sur "
+                  "la fiche la remet au pot commun — personne ne te "
+                  "demandera pourquoi.")
+        except discord.HTTPException:
+            log.info("Atelier : MP de titulaire impossible pour %s", membre)
 
     def sauver(self):
         self._store.save()
@@ -1340,9 +1428,32 @@ class Atelier(commands.Cog):
         _liberer(poste)
         poste["pris_par"] = membre_id
         poste["pris_le"] = time.time()
-        poste["echeance"] = _echeance_pour(fiche, etape)
+        poste["echeance"] = _echeance_pour(fiche, etape, membre_id=membre_id)
         poste.pop("libre_le", None)
         self.sauver()
+
+    def _confier(self, guild, fiche, etapes) -> dict:
+        """Confie chaque étape libre à son titulaire. Rend {étape: membre}.
+
+        Un titulaire qui a rendu l'étape (ou à qui elle a été reprise) n'en
+        hérite plus : il a dit qu'il ne pouvait pas, le métier prend le
+        relais. Un titulaire absent du serveur non plus.
+        """
+        confiees = {}
+        for etape in etapes:
+            if etape not in _en_cours(fiche) or _preneur(fiche, etape):
+                continue
+            titulaire = _titulaire(fiche, etape)
+            if not titulaire or titulaire in _poste(fiche, etape).get("rendu_par", []):
+                continue
+            membre = guild.get_member(titulaire) if guild else None
+            if membre is None:
+                continue
+            self.attribuer(fiche, etape, membre.id)
+            confiees[etape] = membre
+            log.info("Atelier : %s (%s) confie a %s, titulaire",
+                     fiche["cle"], etape, membre)
+        return confiees
 
     def fiche(self, manga: str, chapitre: str):
         return self._store.get("fiches", {}).get(_cle(manga, chapitre))
@@ -1624,6 +1735,7 @@ class Atelier(commands.Cog):
             "par": auteur.id, "le": time.time(), "note": note, "lien": lien,
         }
         nouvelles = _recalculer(fiche)
+        confiees = self._confier(guild, fiche, nouvelles)
 
         # Le renvoi est réglé quand l'étape qui l'avait fait valide à son
         # tour : le motif quitte alors le haut de la fiche (il reste dans
@@ -1635,7 +1747,7 @@ class Atelier(commands.Cog):
         self.sauver()
 
         log.info("Atelier : %s — %s valide par %s", fiche["cle"], etape, auteur)
-        await self._prevenir(guild, fiche, nouvelles)
+        await self._prevenir(guild, fiche, nouvelles, confiees)
         await self._suivi_public(guild, fiche)
         return nouvelles
 
@@ -1646,7 +1758,8 @@ class Atelier(commands.Cog):
         corrigée se ré-édite ; le clean, qui n'en dépend pas, reste acquis.
         La personne qui avait fait l'étape la reprend directement — c'est
         son travail, elle sait où chercher — à moins qu'elle ne soit plus
-        là ou plus du métier : le métier est alors pingé.
+        là ou plus du métier : le titulaire de l'étape la reprend, et à
+        défaut le métier est pingé.
         """
         depuis = de or (DERNIERE if fiche.get("termine") else fiche.get("etape"))
         faites = fiche.setdefault("etapes", {})
@@ -1659,14 +1772,16 @@ class Atelier(commands.Cog):
         fiche.setdefault("retours", []).append(retour)
         fiche["retour"] = retour
         fiche["termine"] = False
-        _recalculer(fiche)
+        nouvelles = _recalculer(fiche)
 
         repreneur = guild.get_member(avant.get("par") or 0)
-        if repreneur is not None and _peut_valider(repreneur, cible):
+        if repreneur is not None and _peut_valider(repreneur, cible, fiche):
             self.attribuer(fiche, cible, repreneur.id)
         else:
             repreneur = None
-            self.sauver()
+        confiees = self._confier(guild, fiche, nouvelles)
+        repreneur = repreneur or confiees.get(cible)
+        self.sauver()
 
         log.info("Atelier : %s renvoye de %s a %s par %s",
                  fiche["cle"], depuis, cible, auteur)
@@ -1713,8 +1828,12 @@ class Atelier(commands.Cog):
         except discord.HTTPException as e:
             log.warning("Renvoi %s non annonce : %s", fiche.get("cle"), e)
 
-    async def _prevenir(self, guild, fiche, nouvelles):
-        """Une ligne dans le salon pour passer le relais aux étapes qui s'ouvrent."""
+    async def _prevenir(self, guild, fiche, nouvelles, confiees=None):
+        """Le relais, dans le salon : une ligne par étape qui s'ouvre.
+
+        Une étape confiée à son titulaire pingue la personne, avec son
+        échéance ; une étape sans titulaire pingue le métier entier.
+        """
         if not ATELIER_ANNONCE_ETAPE:
             return
         if not nouvelles and not fiche.get("termine"):
@@ -1732,15 +1851,25 @@ class Atelier(commands.Cog):
                      f"toute seule. {lien}")
             mentions = discord.AllowedMentions.none()
         else:
-            qui = []
+            confiees = confiees or {}
+            lignes = []
             for etape in nouvelles:
-                role = _role_de(guild, etape)
-                qui.append(role.mention if role else f"**{ETAPE_INFO[etape][1]}**")
-            ensemble = (" — les deux avancent en même temps"
+                info = ETAPE_INFO[etape]
+                membre = confiees.get(etape)
+                if membre is not None:
+                    echeance = _poste(fiche, etape).get("echeance")
+                    qui = membre.mention + (f", à rendre <t:{int(echeance)}:R>"
+                                            if echeance else "")
+                else:
+                    role = _role_de(guild, etape)
+                    qui = ((role.mention if role else f"**{info[1]}**")
+                           + " — 🙋 sur la fiche pour la prendre")
+                lignes.append(f"{info[2]} **{info[1]}** → {qui}")
+            ensemble = ("\n*Les deux avancent en même temps.*"
                         if len(nouvelles) > 1 else "")
-            texte = (f"{' '.join(qui)} — **{titre}** attend "
-                     f"{_et(nouvelles)}{ensemble}.\n{lien}")
-            mentions = discord.AllowedMentions(roles=True)
+            texte = (f"**{titre}** passe à la suite :\n" + "\n".join(lignes)
+                     + f"{ensemble}\n{lien}")
+            mentions = discord.AllowedMentions(users=True, roles=True)
 
         try:
             await salon.send(texte, allowed_mentions=mentions)
@@ -2065,7 +2194,7 @@ class Atelier(commands.Cog):
             pris = (etape in _en_cours(fiche)
                     and not _preneur(fiche, etape)
                     and isinstance(auteur, discord.Member)
-                    and _est_du_metier(auteur, etape))
+                    and _est_du_metier(auteur, etape, fiche))
             if pris:
                 self.attribuer(fiche, etape, auteur.id)
             else:
@@ -2131,7 +2260,7 @@ class Atelier(commands.Cog):
                 return etape
         if isinstance(auteur, discord.Member):
             for etape in ouvertes + ["pages"]:
-                if _est_du_metier(auteur, etape):
+                if _est_du_metier(auteur, etape, fiche):
                     return etape
         return ouvertes[0] if len(ouvertes) == 1 else None
 
@@ -2172,7 +2301,8 @@ class Atelier(commands.Cog):
         # Prise d'avant l'arrivée des délais : on lui en donne une à partir
         # de sa date de prise, sans quoi elle n'en aurait jamais.
         if not poste.get("echeance") and poste.get("pris_le"):
-            poste["echeance"] = _echeance_pour(fiche, etape, poste["pris_le"])
+            poste["echeance"] = _echeance_pour(fiche, etape, poste["pris_le"],
+                                               membre_id=poste.get("pris_par"))
             self.sauver()
 
         membre = guild.get_member(poste["pris_par"])
@@ -2283,7 +2413,7 @@ class Atelier(commands.Cog):
         """L'étape retourne au pot commun, et le métier est repingé."""
         info = ETAPE_INFO.get(etape, ("", "?", "•", ""))
         titre = f"{_nom_manga(fiche['manga'])} ch. {fiche['chapitre']}"
-        _liberer(self.poste(fiche, etape))
+        _rendre(self.poste(fiche, etape))
         self.sauver()
 
         try:
@@ -2533,8 +2663,10 @@ class Atelier(commands.Cog):
             "postes": {},
         }
         # Ouvre ce qui peut l'être : le clean et la trad ensemble, ou la
-        # trad seule si le clean vient du stock.
+        # trad seule si le clean vient du stock. Chaque étape va tout de
+        # suite à son titulaire sur la série.
         nouvelles = _recalculer(fiche)
+        confiees = self._confier(interaction.guild, fiche, nouvelles)
 
         embeds = [self._embed(interaction.guild, fiche)]
         for fichier in fichiers[1:]:
@@ -2571,7 +2703,7 @@ class Atelier(commands.Cog):
         if fil is not None:
             await self._reecrire(interaction.guild, fiche)
 
-        await self._prevenir(interaction.guild, fiche, nouvelles)
+        await self._prevenir(interaction.guild, fiche, nouvelles, confiees)
         # Le suivi public commence ici. `avancer()` n'est jamais appelé pour
         # l'étape « pages » — sans cette ligne, les abonnés n'apprenaient
         # jamais qu'un chapitre entrait en clean, alors que l'étape figure
@@ -2646,12 +2778,12 @@ class Atelier(commands.Cog):
             moi = interaction.user
             cible = next(
                 (e for e in ouvertes if _preneur(fiche, e) == moi.id),
-                next((e for e in ouvertes if _est_du_metier(moi, e)),
+                next((e for e in ouvertes if _est_du_metier(moi, e, fiche)),
                      ouvertes[0] if ouvertes else "pages"))
         if cible == DERNIERE:
             return await interaction.response.send_message(
                 "❌ La **sortie** ne se compte pas en pages.", ephemeral=True)
-        if not _peut_valider(interaction.user, cible):
+        if not _peut_valider(interaction.user, cible, fiche):
             return await interaction.response.send_message(
                 f"❌ L'étape **{_libelle(cible)}** est réservée à son métier.\n"
                 f"On recrute : {SITE_URL}/equipe", ephemeral=True)
@@ -2963,9 +3095,9 @@ class Atelier(commands.Cog):
             for etape in _en_cours(fiche):
                 if _preneur(fiche, etape):
                     continue
-                if _est_du_metier(membre, etape):
+                if _est_du_metier(membre, etape, fiche):
                     strictes.append((fiche, etape))
-                elif _peut_valider(membre, etape):
+                elif _peut_valider(membre, etape, fiche):
                     larges.append((fiche, etape))
         return strictes or larges
 
@@ -3078,6 +3210,7 @@ class Atelier(commands.Cog):
             fiche.pop("sortie", None)
         fiche.pop("retour", None)
         _recalculer(fiche)
+        self._confier(interaction.guild, fiche, _en_cours(fiche))
         self.sauver()
         await self._reecrire(interaction.guild, fiche)
 
@@ -3372,7 +3505,7 @@ class Atelier(commands.Cog):
         if fiche is None:
             return await interaction.response.send_message(
                 "❌ Aucune fiche pour ce chapitre.", ephemeral=True)
-        if not any(_peut_valider(interaction.user, e)
+        if not any(_peut_valider(interaction.user, e, fiche)
                    for e in (_en_cours(fiche) or [DERNIERE])):
             return await interaction.response.send_message(
                 "❌ Réservé à l'équipe sur ce chapitre.", ephemeral=True)
