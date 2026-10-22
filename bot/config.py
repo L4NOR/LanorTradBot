@@ -234,7 +234,8 @@ WELCOME_PING_CHANNELS = ["welcome", "rules", "faq"]
 
 # Minutes avant que ces messages s'effacent tout seuls (0 = ils restent).
 # Utile pour que les salons de reference ne se remplissent pas d'arrivees.
-WELCOME_PING_DELETE_AFTER = 0
+# Le menage repasse toutes les 10 min et survit aux redemarrages du bot.
+WELCOME_PING_DELETE_AFTER = 24 * 60
 
 
 # ═══════════════════════════════════════════════════════

@@ -3,21 +3,24 @@ Welcome — accueil auto des nouveaux membres
 =============================================
 Deux comportements selon le serveur :
 
-  🩸 **info** — le salon #bienvenue est une page de référence : on ne la
-     pollue pas avec un message par arrivée. Le nouveau reçoit un **MP**
-     avec l'essentiel (site, alertes de sorties, support), et le rôle
-     « 📖 Lecteur » lui est attribué automatiquement.
+  🩸 **info** — le nouveau reçoit un **MP** avec l'essentiel (site, alertes
+     de sorties, support), le rôle « 📖 Lecteur », et une mention dans
+     #bienvenue, #règles et #faq. Ces salons sont des pages de référence :
+     les mentions s'effacent d'elles-mêmes au bout de
+     WELCOME_PING_DELETE_AFTER minutes.
 
   🌍 **community** — embed de bienvenue bilingue posté dans #gates-of-lanor,
      avec renvoi vers la vérification.
 """
 import logging
+import re
+from datetime import datetime, timedelta, timezone
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from bot.config import (
-    CHANNELS, ROLES, BASE_ROLES, COLOR_NEUTRAL, IS_INFO_SERVER, SITE,
+    CHANNELS, ROLES, BASE_ROLES, COLOR_NEUTRAL, GUILD_ID, IS_INFO_SERVER, SITE,
     WELCOME_PING_CHANNELS, WELCOME_PING_DELETE_AFTER,
 )
 
@@ -41,12 +44,30 @@ MESSAGES_ARRIVEE = {
     ),
 }
 
+# Le ménage reconnaît un ping d'arrivée à son texte : le modèle ci-dessus,
+# champs compris. Les pages de référence que le bot poste dans ces mêmes
+# salons n'y ressemblent pas, elles ne sont donc jamais touchées.
+MOTIFS_ARRIVEE = {
+    cle: re.compile(
+        ".+?".join(re.escape(bout) for bout in re.split(r"\{\w+\}", modele)),
+        re.S)
+    for cle, modele in MESSAGES_ARRIVEE.items()
+}
+
 
 class Welcome(commands.Cog):
     """Accueil des nouveaux membres."""
 
     def __init__(self, bot):
         self.bot = bot
+
+    async def cog_load(self):
+        if IS_INFO_SERVER and WELCOME_PING_DELETE_AFTER:
+            self.menage.start()
+
+    def cog_unload(self):
+        if self.menage.is_running():
+            self.menage.cancel()
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -107,7 +128,6 @@ class Welcome(commands.Cog):
             "support": self._mention(member.guild, "tickets", "#support"),
             "recrutement": self._mention(member.guild, "recrutement", "#recrutement"),
         }
-        efface = WELCOME_PING_DELETE_AFTER * 60 or None
 
         for cle in WELCOME_PING_CHANNELS:
             ch_id = CHANNELS.get(cle)
@@ -118,12 +138,53 @@ class Welcome(commands.Cog):
             try:
                 await salon.send(
                     modele.format(**refs),
-                    delete_after=efface,
                     allowed_mentions=discord.AllowedMentions(users=True),
                 )
             except discord.HTTPException as e:
                 log.warning("Ping d'arrivée impossible dans #%s : %s",
                             getattr(salon, "name", cle), e)
+
+    # Pas de delete_after à l'envoi : il vit en mémoire, et un redémarrage
+    # du bot l'oublie. On repasse plutôt dans les salons pour effacer ce qui
+    # a fait son temps — les pings postés avant un redémarrage, ou avant
+    # que ce ménage existe, partent donc aussi.
+    @tasks.loop(minutes=10)
+    async def menage(self):
+        guild = self.bot.get_guild(GUILD_ID)
+        if guild is None:
+            return
+        limite = (datetime.now(timezone.utc)
+                  - timedelta(minutes=WELCOME_PING_DELETE_AFTER))
+
+        for cle in WELCOME_PING_CHANNELS:
+            ch_id = CHANNELS.get(cle)
+            salon = guild.get_channel(ch_id) if ch_id else None
+            motif = MOTIFS_ARRIVEE.get(cle)
+            if not isinstance(salon, discord.TextChannel) or motif is None:
+                continue
+
+            def est_ping(m, motif=motif):
+                return (m.author.id == self.bot.user.id
+                        and motif.fullmatch(m.content) is not None)
+
+            # Un par un (bulk=False) : une suppression groupée remonterait
+            # dans les logs comme une purge. 200 messages lus par passage ;
+            # s'il en reste au-delà, le passage suivant les atteindra.
+            try:
+                effaces = await salon.purge(
+                    limit=200, before=limite, check=est_ping, bulk=False,
+                    reason="Ping d'arrivée expiré")
+            except discord.HTTPException as e:
+                log.warning("Ménage des arrivées impossible dans #%s : %s",
+                            salon.name, e)
+                continue
+            if effaces:
+                log.info("%d ping(s) d'arrivée effacé(s) dans #%s",
+                         len(effaces), salon.name)
+
+    @menage.before_loop
+    async def _avant_menage(self):
+        await self.bot.wait_until_ready()
 
     @staticmethod
     def _mention(guild, cle, defaut):
